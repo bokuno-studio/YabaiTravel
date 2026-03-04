@@ -31,3 +31,4 @@
 - [データ構造設計](./SPEC_DATA_STRUCTURE.md) — テーブル構成・更新戦略（UPSERT・部分更新）
 - [課金・変更リクエスト仕様](./SPEC_BILLING_AND_CHANGE_REQUESTS.md) — 課金ユーザーの変更リクエスト、コミュニティノート的運用、個人情報非保持
 - [生成AI利用方針](./SPEC_AI_USAGE.md) — データ収集等でのAI利用（試行錯誤中）
+- [UI・画面仕様](./SPEC_UI.md) — 一覧・絞り込み、将来のAIチャット化
