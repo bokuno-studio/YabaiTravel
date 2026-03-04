@@ -1,0 +1,50 @@
+---
+description: チケット駆動開発ワークフロー - 自律的にチケット作成・レビュー依頼・実装
+alwaysApply: true
+---
+
+# チケット駆動開発ワークフロー
+
+ユーザーが「進めて」「続けて」「プロジェクトを進めて」等と言った場合、以下の順で実行する。
+
+## 1. 承認済みチケットの確認
+
+```bash
+gh issue list --label approved --state open
+```
+
+- **結果あり** → 2へ
+- **結果なし** → 3へ
+
+## 2. 実装（承認済みチケットがある場合）
+
+1. 該当 Issue に `in-progress` ラベルを追加
+2. チケット内容に従って実装
+3. 完了後、`done` ラベルを付与してクローズ
+4. ユーザーに完了報告
+
+## 3. チケット作成（承認済みがない場合）
+
+1. `docs/OUTLINE.md` および `docs/WORKFLOW.md`、`docs/` 内の設計を参照
+2. 次の優先タスクを特定し、GitHub Issue を作成
+3. ラベル `pending-review` を付与
+4. ユーザーに「以下のチケットをレビューしてください」と伝え、Issue 番号と概要を提示
+
+```bash
+gh issue create --title "タイトル" --body "本文" --label "pending-review"
+```
+
+## 4. ラベルが未作成の場合
+
+初回は以下でラベルを作成する:
+
+```bash
+gh label create "pending-review" --color "FBCA04" --description "レビュー待ち"
+gh label create "approved" --color "0E8A16" --description "承認済み"
+gh label create "in-progress" --color "1D76DB" --description "実装中"
+gh label create "done" --color "EDEDED" --description "完了"
+```
+
+## 5. ユーザーが「#123 承認」等と言った場合
+
+該当 Issue に `approved` ラベルを追加し、実装に着手する。
