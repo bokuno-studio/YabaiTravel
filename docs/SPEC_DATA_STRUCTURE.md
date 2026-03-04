@@ -28,6 +28,7 @@ erDiagram
         string start_place
         string prohibited_items
         string course_map_url
+        string furusato_nozei_url
         timestamp collected_at
         timestamp updated_at
     }
