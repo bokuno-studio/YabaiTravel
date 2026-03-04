@@ -1,6 +1,6 @@
 # データ構造設計
 
-大会データのテーブル構成と、随時アップデートのための設計。
+大会データのテーブル構成。**確定情報のみ格納**し、**更新は原則発生しない**設計。
 
 ---
 
@@ -29,7 +29,6 @@ erDiagram
         string prohibited_items
         string course_map_url
         string furusato_nozei_url
-        jsonb manual_override_fields
         timestamp collected_at
         timestamp updated_at
     }
@@ -103,9 +102,9 @@ erDiagram
 
 | 設計上のポイント | 内容 |
 |------------------|------|
-| 識別子 | 公式URL または 大会名+日付 でユニーク判定。新規は INSERT、既存は UPDATE |
+| 識別子 | 公式URL または 大会名+日付 でユニーク判定 |
+| 格納ルール | **確定情報のみ**。不確かなものは格納しない |
 | コースマップ | `course_map_url` で Supabase Storage のパスを保持。画像/PDF をアップロード |
-| 天気 | `weather_forecast` は開催日接近時に更新 |
 
 ### categories（カテゴリ）
 
@@ -127,56 +126,38 @@ erDiagram
 
 ### change_requests（変更リクエスト）
 
-課金ユーザーからの情報訂正・補足の提案。承認後は本データに反映し、該当フィールドを自動更新対象外にする。詳細は [課金・変更リクエスト仕様](./SPEC_BILLING_AND_CHANGE_REQUESTS.md)。
+課金ユーザーからの情報訂正・補足の提案。承認後は本データに反映。詳細は [課金・変更リクエスト仕様](./SPEC_BILLING_AND_CHANGE_REQUESTS.md)。
 
 ---
 
-## 更新戦略（全件洗替しない設計）
+## 収集・格納の原則
 
-### 1. 収集単位の分離
+### 1. 確定情報のみ格納
 
-```
-[収集プログラム] → 公式サイト等をクロール
-         → 差分検出
-         → レコード単位で UPSERT（存在すれば UPDATE、なければ INSERT）
-```
+- 不確かな情報は DB に格納しない
+- これにより **更新は原則発生しない**（間違ったデータを入れないため）
 
-### 2. 識別キー
+### 2. 新規は INSERT、既存は上書きしない
+
+- **新規レコード**: INSERT
+- **既存レコード**: **上書きしない**。空のフィールドを埋める追加のみ可
+
+### 3. 空の項目を埋める（追加で探しに行く）
+
+- データが取れなかった項目は、別ソースを探しに行って取得するのは **あり**
+- 取得できた確定情報を、空のフィールドに **追加**する
+- 既に値があるフィールドは触らない
+
+### 4. 識別キー
 
 | テーブル | 識別キー | 備考 |
 |----------|----------|------|
 | events | `(official_url)` または `(name, event_date)` | URL が安定していれば URL 優先 |
 | categories | `(event_id, name)` | 同一大会内でカテゴリ名は一意と仮定 |
 
-### 3. UPSERT のルール
+### 5. 収集メタデータ
 
-- **新規**: 全フィールドを INSERT
-- **既存**: 取得した値が **非 NULL** のフィールドのみ UPDATE
-- **取得できなかった項目**: 既存の値を維持（上書きしない）
-- **手動更新済み**: 変更リクエスト承認済みのフィールドは **自動更新対象外**（上書きしない）。`manual_override_fields` 等で管理
-
-```sql
--- 例: events の部分更新
-UPDATE events SET
-  entry_start = COALESCE(incoming.entry_start, entry_start),
-  entry_end = COALESCE(incoming.entry_end, entry_end),
-  weather_forecast = COALESCE(incoming.weather_forecast, weather_forecast),
-  updated_at = NOW()
-WHERE id = ?
-```
-
-### 4. 収集メタデータ
-
-各テーブルに `collected_at` / `updated_at` を保持し、
-
-- いつ取得したか
-- どの項目が未取得か
-
-を追跡可能にする。将来的に「情報未確定」の表示にも利用。
-
-### 5. バージョン管理（オプション）
-
-変更履歴が必要な場合は、`event_snapshots` 等の履歴テーブルを別途用意し、`updated_at` 毎にスナップショットを保存する方式も検討可能。初期は `updated_at` のみで十分と想定。
+`collected_at` でいつ取得したかを記録。空の項目が残っている場合は、追加収集の対象として扱う。
 
 ---
 
@@ -184,15 +165,18 @@ WHERE id = ?
 
 ```mermaid
 flowchart LR
-    A[公式サイト] --> B[収集プログラム]
-    B --> C[差分検出]
-    C --> D{新規?}
-    D -->|Yes| E[INSERT]
-    D -->|No| F[部分UPDATE]
-    E --> G[(Supabase)]
-    F --> G
+    A[公式サイト等] --> B[収集プログラム]
+    B --> C{確定情報?}
+    C -->|Yes| D{新規?}
+    C -->|No| E[格納しない]
+    D -->|Yes| F[INSERT]
+    D -->|No| G{該当フィールド空?}
+    G -->|Yes| H[空の項目にのみ反映]
+    G -->|No| E
+    F --> I[(Supabase)]
+    H --> I
 ```
 
-- 定期的にクロール（日次/週次等）
-- 発表前は項目が空のまま登録し、情報が出るたびに部分更新
-- 全件削除・全件再取得は行わない
+- 確定情報のみ格納
+- 既存データの上書きはしない
+- 空の項目は、**追加で探しに行って**埋める（別ソースを検索する等）
