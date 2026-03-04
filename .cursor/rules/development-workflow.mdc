@@ -48,3 +48,13 @@ gh label create "done" --color "EDEDED" --description "完了"
 ## 5. ユーザーが「#123 承認」等と言った場合
 
 該当 Issue に `approved` ラベルを追加し、実装に着手する。
+
+## 6. 変更後のGit運用
+
+ファイルを編集したら、**必ずコミットしてGitHubにプッシュ**する。
+
+```bash
+git add -A && git status
+git commit -m "適切なコミットメッセージ"
+git push
+```
