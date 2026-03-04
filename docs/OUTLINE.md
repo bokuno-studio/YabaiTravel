@@ -22,9 +22,11 @@
 
 - **フロント**: React + TypeScript + Vite（Vercel デプロイ）
 - **バックエンド/DB**: Supabase
-- **データ収集**: Dify Bot（将来）
+- **データ収集**: 別途実装（方式は任せる）
 - **開発フロー**: チケット駆動、Mermaid 等でデータ構造・画面遷移を可視化
 
 ## 5. 関連ドキュメント
 
 - [大会データ項目仕様](./SPEC_RACE_DATA.md) — 各大会で管理する項目の詳細
+- [データ構造設計](./SPEC_DATA_STRUCTURE.md) — テーブル構成・更新戦略（UPSERT・部分更新）
+- [生成AI利用方針](./SPEC_AI_USAGE.md) — データ収集等でのAI利用（試行錯誤中）
