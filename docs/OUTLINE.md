@@ -34,3 +34,4 @@
 - [UI・画面仕様](./SPEC_UI.md) — 一覧・絞り込み、将来のAIチャット化
 - [データ取得元](./SPEC_DATA_SOURCES.md) — ランネット、各国公式、UTMB等、追加方針
 - [デプロイ・環境運用](./SPEC_DEPLOYMENT.md) — 検証/本番、ブランチ、スキーマ、デプロイフロー
+- [Supabase セットアップ](./SETUP_SUPABASE.md) — ハンズオン手順
