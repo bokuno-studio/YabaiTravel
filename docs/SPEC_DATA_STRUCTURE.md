@@ -63,7 +63,8 @@ erDiagram
         uuid id PK
         uuid event_id FK
         string direction
-        string method
+        string route_detail
+        string total_time_estimate
         string cost_estimate
         boolean cash_required
         string booking_url
@@ -118,7 +119,7 @@ erDiagram
 
 ### access_routes（アクセス）
 
-往路・復路を `direction: "outbound" | "return"` で区別。大会単位。
+往路・復路を `direction: "outbound" | "return"` で区別。大会単位。`route_detail` に経路・乗り換え情報、`total_time_estimate` にトータル時間の目安を保持。
 
 ### accommodations（宿泊）
 
@@ -134,6 +135,7 @@ erDiagram
 
 ### 1. 確定情報のみ格納
 
+- **確定** = 公式で発表されている情報
 - 不確かな情報は DB に格納しない
 - これにより **更新は原則発生しない**（間違ったデータを入れないため）
 
@@ -158,6 +160,12 @@ erDiagram
 ### 5. 収集メタデータ
 
 `collected_at` でいつ取得したかを記録。空の項目が残っている場合は、追加収集の対象として扱う。
+
+### 6. 取得元の方針
+
+- **手動入力はなし**
+- API が使える項目は API で取得
+- 基本は Google（検索・Maps・Directions 等）が主なソースになる想定
 
 ---
 
