@@ -29,4 +29,5 @@
 
 - [大会データ項目仕様](./SPEC_RACE_DATA.md) — 各大会で管理する項目の詳細
 - [データ構造設計](./SPEC_DATA_STRUCTURE.md) — テーブル構成・更新戦略（UPSERT・部分更新）
+- [課金・変更リクエスト仕様](./SPEC_BILLING_AND_CHANGE_REQUESTS.md) — 課金ユーザーの変更リクエスト、コミュニティノート的運用、個人情報非保持
 - [生成AI利用方針](./SPEC_AI_USAGE.md) — データ収集等でのAI利用（試行錯誤中）

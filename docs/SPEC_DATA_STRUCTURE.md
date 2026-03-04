@@ -29,6 +29,7 @@ erDiagram
         string prohibited_items
         string course_map_url
         string furusato_nozei_url
+        jsonb manual_override_fields
         timestamp collected_at
         timestamp updated_at
     }
@@ -79,6 +80,17 @@ erDiagram
         int avg_cost_3star
         timestamp updated_at
     }
+    
+    change_requests {
+        uuid id PK
+        string target_type
+        uuid target_id FK
+        string target_field
+        text proposed_value
+        string status
+        timestamp created_at
+        timestamp reviewed_at
+    }
 ```
 
 ---
@@ -113,6 +125,10 @@ erDiagram
 
 前泊推奨地・費用目安。大会単位。
 
+### change_requests（変更リクエスト）
+
+課金ユーザーからの情報訂正・補足の提案。承認後は本データに反映し、該当フィールドを自動更新対象外にする。詳細は [課金・変更リクエスト仕様](./SPEC_BILLING_AND_CHANGE_REQUESTS.md)。
+
 ---
 
 ## 更新戦略（全件洗替しない設計）
@@ -137,6 +153,7 @@ erDiagram
 - **新規**: 全フィールドを INSERT
 - **既存**: 取得した値が **非 NULL** のフィールドのみ UPDATE
 - **取得できなかった項目**: 既存の値を維持（上書きしない）
+- **手動更新済み**: 変更リクエスト承認済みのフィールドは **自動更新対象外**（上書きしない）。`manual_override_fields` 等で管理
 
 ```sql
 -- 例: events の部分更新
