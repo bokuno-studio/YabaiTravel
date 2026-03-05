@@ -49,13 +49,14 @@
     "categories": [
       {
         "name": "100K",
+        "distance_km": 100,
         "elevation_gain": 5500,
         "start_time": "05:00",
         "reception_end": "04:30",
         "reception_place": "富士北麓公園",
         "start_place": "富士北麓公園",
         "finish_rate": 0.72,
-        "time_limit": "24:00:00",
+        "time_limit": "24 hours",
         "required_pace": "約15分/km",
         "required_climb_pace": "約25分/100m",
         "mandatory_gear": "ヘッドランプ、保温シート、水1.5L以上",
@@ -116,13 +117,14 @@
     "categories": [
       {
         "name": "フルマラソン",
+        "distance_km": 42.195,
         "elevation_gain": null,
         "start_time": "09:10",
         "reception_end": null,
         "reception_place": "東京ビッグサイト",
         "start_place": "東京都庁前",
         "finish_rate": 0.98,
-        "time_limit": "07:00:00",
+        "time_limit": "7 hours",
         "required_pace": null,
         "required_climb_pace": null,
         "mandatory_gear": null,
@@ -183,13 +185,14 @@
     "categories": [
       {
         "name": "Beast",
+        "distance_km": 21,
         "elevation_gain": 1500,
         "start_time": "08:00",
         "reception_end": null,
         "reception_place": "会場受付",
         "start_place": "会場スタートエリア",
         "finish_rate": 0.65,
-        "time_limit": "06:00:00",
+        "time_limit": "6 hours",
         "required_pace": null,
         "required_climb_pace": null,
         "mandatory_gear": null,
@@ -250,13 +253,14 @@
     "categories": [
       {
         "name": "メイン",
+        "distance_km": 26,
         "elevation_gain": 2400,
         "start_time": "07:00",
         "reception_end": "06:30",
         "reception_place": "白馬村役場前",
         "start_place": "白馬八方尾根",
         "finish_rate": 0.85,
-        "time_limit": "06:30:00",
+        "time_limit": "6 hours 30 minutes",
         "required_pace": "約12分/km",
         "required_climb_pace": "約18分/100m",
         "mandatory_gear": "ヘッドランプ、保温シート、水1L以上",

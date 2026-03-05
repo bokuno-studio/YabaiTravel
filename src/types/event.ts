@@ -56,6 +56,7 @@ export type Category = {
   id: string
   event_id: string
   name: string
+  distance_km: number | null
   elevation_gain: number | null
   start_time: string | null
   reception_end: string | null

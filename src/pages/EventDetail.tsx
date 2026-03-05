@@ -58,15 +58,27 @@ function EventDetail() {
 
   const formatInterval = (v: string | null) => {
     if (!v) return null
-    // PostgreSQL interval 例: "24:00:00" → "24時間"
-    const m = v.match(/^(\d+):(\d+):(\d+)$/)
-    if (m) {
-      const h = parseInt(m[1], 10)
-      const min = parseInt(m[2], 10)
+    // PostgreSQL interval: "24:00:00", "07:00:00", "06:30:00", "1 day", "6 hours 30 minutes" 等
+    const hms = v.match(/^(\d+):(\d+):(\d+)/)
+    if (hms) {
+      const h = parseInt(hms[1], 10)
+      const min = parseInt(hms[2], 10)
+      const sec = parseInt(hms[3], 10)
       const parts = []
       if (h > 0) parts.push(`${h}時間`)
       if (min > 0) parts.push(`${min}分`)
+      if (sec > 0 && h === 0 && min === 0) parts.push(`${sec}秒`)
       return parts.length ? parts.join('') : v
+    }
+    const dayMatch = v.match(/(\d+)\s*day/)
+    const hourMatch = v.match(/(\d+)\s*hour/)
+    const minMatch = v.match(/(\d+)\s*minute/)
+    if (dayMatch || hourMatch || minMatch) {
+      const parts = []
+      if (dayMatch) parts.push(`${parseInt(dayMatch[1], 10)}日`)
+      if (hourMatch) parts.push(`${parseInt(hourMatch[1], 10)}時間`)
+      if (minMatch) parts.push(`${parseInt(minMatch[1], 10)}分`)
+      return parts.join('')
     }
     return v
   }
@@ -381,13 +393,24 @@ function EventDetail() {
             {categories.map((cat) => (
               <div key={cat.id} className="category-card">
                 <h3 className="category-name">{cat.name}</h3>
-                <dl className="event-detail-dl">
-                  {cat.elevation_gain != null && (
-                    <>
-                      <dt>獲得標高</dt>
-                      <dd>{cat.elevation_gain}m</dd>
-                    </>
+                <div className="category-stats">
+                  {cat.distance_km != null && (
+                    <span className="category-stat">
+                      <strong>距離</strong> {cat.distance_km}km
+                    </span>
                   )}
+                  {cat.elevation_gain != null && (
+                    <span className="category-stat">
+                      <strong>獲得標高</strong> {cat.elevation_gain}m
+                    </span>
+                  )}
+                  {cat.time_limit && (
+                    <span className="category-stat">
+                      <strong>制限時間</strong> {formatInterval(cat.time_limit)}
+                    </span>
+                  )}
+                </div>
+                <dl className="event-detail-dl">
                   {cat.start_time && (
                     <>
                       <dt>スタート時間</dt>
@@ -416,12 +439,6 @@ function EventDetail() {
                     <>
                       <dt>完走率</dt>
                       <dd>{(cat.finish_rate * 100).toFixed(1)}%</dd>
-                    </>
-                  )}
-                  {cat.time_limit && (
-                    <>
-                      <dt>制限時間</dt>
-                      <dd>{formatInterval(cat.time_limit)}</dd>
                     </>
                   )}
                   {formatCutoffTimes(cat.cutoff_times) && (
