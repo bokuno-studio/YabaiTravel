@@ -22,10 +22,8 @@ const migrationsDir = join(__dirname, '../supabase/migrations');
 
 const url = process.env.DATABASE_URL;
 if (!url) {
-  console.error('DATABASE_URL が設定されていません。');
-  console.error('ローカル: .env.local に DATABASE_URL を設定');
-  console.error('Vercel: Project Settings > Environment Variables に DATABASE_URL を追加');
-  process.exit(1);
+  console.warn('DATABASE_URL が未設定のためマイグレーションをスキップします。');
+  process.exit(0);
 }
 
 const client = new pg.Client({ connectionString: url });

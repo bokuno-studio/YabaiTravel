@@ -20,8 +20,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const url = process.env.DATABASE_URL
 if (!url) {
-  console.error('DATABASE_URL が設定されていません。')
-  process.exit(1)
+  console.warn('DATABASE_URL が未設定のためシードをスキップします。')
+  process.exit(0)
 }
 
 const client = new pg.Client({ connectionString: url })
