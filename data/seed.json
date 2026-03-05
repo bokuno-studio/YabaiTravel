@@ -1,0 +1,34 @@
+[
+  {
+    "name": "Mt. FUJI TRAIL 100K",
+    "event_date": "2026-05-10",
+    "location": "山梨県・静岡県",
+    "race_type": "trail",
+    "official_url": "https://example.com/fuji-trail",
+    "entry_url": "https://example.com/fuji-entry"
+  },
+  {
+    "name": "TOKYO MARATHON",
+    "event_date": "2026-03-01",
+    "location": "東京都",
+    "race_type": "marathon",
+    "official_url": "https://example.com/tokyo-marathon",
+    "entry_url": "https://example.com/tokyo-entry"
+  },
+  {
+    "name": "SPARTAN RACE CHIBA BEAST",
+    "event_date": "2026-09-20",
+    "location": "千葉県",
+    "race_type": "spartan",
+    "official_url": "https://example.com/spartan-chiba",
+    "entry_url": "https://example.com/spartan-entry"
+  },
+  {
+    "name": "GOLDEN TRAIL SERIES JAPAN",
+    "event_date": "2026-07-15",
+    "location": "長野県",
+    "race_type": "trail",
+    "official_url": "https://example.com/golden-trail",
+    "entry_url": "https://example.com/golden-entry"
+  }
+]

@@ -59,7 +59,19 @@
 
 ---
 
-## Step 6: ローカルに環境変数を設定
+## Step 6: API で yabai_travel スキーマを公開
+
+フロントから Supabase の API で `yabai_travel` スキーマのテーブルを参照するため、以下を設定する。
+
+1. **Project Settings** → **API** タブ
+2. **Exposed schemas**（または **Schema**）のセクションを探す
+3. `yabai_travel` を追加（既に `public` のみの場合は、`yabai_travel` を追加）
+
+※ 設定がない場合は、Supabase のバージョンによってはデフォルトで全スキーマが公開されている場合もある。フロントでデータが取得できない場合にこの設定を確認する。
+
+---
+
+## Step 7: ローカルに環境変数を設定
 
 プロジェクトルートに `.env.local` を作成（既にあれば追記）:
 

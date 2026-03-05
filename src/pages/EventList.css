@@ -1,0 +1,35 @@
+.event-list-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  color: #e5e7eb;
+}
+
+.event-list-loading,
+.event-list-error {
+  max-width: 960px;
+  margin: 2rem auto;
+  padding: 2rem;
+  text-align: center;
+  color: #e5e7eb;
+}
+
+.event-list-error {
+  color: #f87171;
+}
+
+.event-card-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.event-card-link:hover {
+  opacity: 0.9;
+}
