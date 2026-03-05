@@ -95,9 +95,12 @@ DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-ap-northeast-1.pooler.
 2. `DATABASE_URL` を追加（Production / Preview / Development すべてに設定推奨）
 3. 値: Supabase Dashboard > Project Settings > Database > **Connection string**（URI 形式）
 
-設定後、`git push` でデプロイするとビルド時にマイグレーションが自動実行される。
+設定後、`git push` でデプロイするとビルド時に以下が自動実行される:
 
-**初回のみ**: シードデータ投入は `npm run db:seed` をローカルで1回実行（DATABASE_URL が .env.local にあれば可）。
+- **マイグレーション**: スキーマ更新
+- **シード**: `data/seed.json` の内容で DB を上書き（既存データは削除される）
+
+※ 手動でデータを追加している場合は、`package.json` の build から `npm run db:seed` を外すこと。
 
 ---
 
