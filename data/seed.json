@@ -1,6 +1,6 @@
 [
   {
-    "name": "Mt. FUJI TRAIL 100K",
+    "name": "Mt. Fuji Trail 100",
     "event_date": "2026-05-10",
     "location": "山梨県・静岡県",
     "race_type": "trail",
@@ -48,226 +48,94 @@
     ],
     "categories": [
       {
-        "name": "100K",
-        "distance_km": 100,
-        "elevation_gain": 5500,
+        "name": "100mi",
+        "distance_km": 160,
+        "elevation_gain": 7500,
+        "start_time": "04:00",
+        "reception_end": "03:30",
+        "reception_place": "富士北麓公園",
+        "start_place": "富士北麓公園",
+        "finish_rate": 0.65,
+        "time_limit": "36 hours",
+        "required_pace": "約13.5分/km",
+        "required_climb_pace": "約28分/100m",
+        "mandatory_gear": "ヘッドランプ、保温シート、水1.5L以上、防寒着",
+        "recommended_gear": "トレッキングポール、予備電池",
+        "prohibited_items": null,
+        "poles_allowed": true,
+        "entry_fee": 35000,
+        "cutoff_times": [
+          { "point": "CP1", "time": "08:00" },
+          { "point": "CP2", "time": "14:00" },
+          { "point": "CP3", "time": "22:00" },
+          { "point": "CP4", "time": "翌06:00" }
+        ]
+      },
+      {
+        "name": "70k",
+        "distance_km": 70,
+        "elevation_gain": 4200,
         "start_time": "05:00",
         "reception_end": "04:30",
         "reception_place": "富士北麓公園",
         "start_place": "富士北麓公園",
         "finish_rate": 0.72,
         "time_limit": "24 hours",
-        "required_pace": "約15分/km",
-        "required_climb_pace": "約25分/100m",
+        "required_pace": "約20分/km",
+        "required_climb_pace": "約28分/100m",
         "mandatory_gear": "ヘッドランプ、保温シート、水1.5L以上",
         "recommended_gear": "トレッキングポール、防寒着",
         "prohibited_items": null,
         "poles_allowed": true,
-        "entry_fee": 25000,
+        "entry_fee": 28000,
         "cutoff_times": [
           { "point": "CP1", "time": "08:00" },
           { "point": "CP2", "time": "12:00" },
           { "point": "CP3", "time": "18:00" }
         ]
-      }
-    ]
-  },
-  {
-    "name": "TOKYO MARATHON",
-    "event_date": "2026-03-01",
-    "location": "東京都",
-    "race_type": "marathon",
-    "official_url": "https://example.com/tokyo-marathon",
-    "entry_url": "https://example.com/tokyo-entry",
-    "participant_count": 38000,
-    "stay_status": "day_trip",
-    "weather_forecast": "曇り",
-    "entry_start": "2025-08-01",
-    "entry_end": "2025-08-31",
-    "entry_start_typical": "8月上旬",
-    "entry_end_typical": "8月末",
-    "reception_place": "東京ビッグサイト",
-    "start_place": "東京都庁前",
-    "prohibited_items": null,
-    "course_map_url": null,
-    "furusato_nozei_url": null,
-    "access_routes": [
-      {
-        "direction": "outbound",
-        "route_detail": "都内各駅から東京ビッグサイト・都庁前へ。地下鉄・バス利用可。",
-        "total_time_estimate": "自宅により30分〜1時間",
-        "cost_estimate": "往復約500円〜",
-        "cash_required": false,
-        "booking_url": null,
-        "shuttle_available": null,
-        "taxi_estimate": null
       },
       {
-        "direction": "return",
-        "route_detail": "東京駅・有楽町駅方面へ。地下鉄・JR利用可。",
-        "total_time_estimate": "ゴールから30分〜1時間",
-        "cost_estimate": null,
-        "cash_required": false,
-        "booking_url": null,
-        "shuttle_available": null,
-        "taxi_estimate": null
-      }
-    ],
-    "accommodations": [],
-    "categories": [
-      {
-        "name": "フルマラソン",
-        "distance_km": 42.195,
-        "elevation_gain": null,
-        "start_time": "09:10",
-        "reception_end": null,
-        "reception_place": "東京ビッグサイト",
-        "start_place": "東京都庁前",
-        "finish_rate": 0.98,
-        "time_limit": "7 hours",
-        "required_pace": null,
-        "required_climb_pace": null,
-        "mandatory_gear": null,
-        "recommended_gear": null,
-        "prohibited_items": null,
-        "poles_allowed": false,
-        "entry_fee": 18200
-      }
-    ]
-  },
-  {
-    "name": "SPARTAN RACE CHIBA BEAST",
-    "event_date": "2026-09-20",
-    "location": "千葉県",
-    "race_type": "spartan",
-    "official_url": "https://example.com/spartan-chiba",
-    "entry_url": "https://example.com/spartan-entry",
-    "participant_count": 2000,
-    "stay_status": "day_trip",
-    "weather_forecast": null,
-    "entry_start": "2026-04-01",
-    "entry_end": "2026-09-10",
-    "entry_start_typical": "4月頃",
-    "entry_end_typical": "開催1週間前",
-    "reception_place": "会場受付",
-    "start_place": "会場スタートエリア",
-    "prohibited_items": null,
-    "course_map_url": null,
-    "furusato_nozei_url": null,
-    "access_routes": [
-      {
-        "direction": "outbound",
-        "route_detail": "東京駅 → 総武線快速 → 千葉駅 → バスまたはタクシーで会場へ",
-        "total_time_estimate": "約1.5時間",
-        "cost_estimate": "往復約3,000円",
-        "cash_required": false,
-        "booking_url": null,
-        "shuttle_available": "千葉駅発シャトルバスあり",
-        "taxi_estimate": "最寄り駅から約20分・約4,000円"
-      },
-      {
-        "direction": "return",
-        "route_detail": "会場 → シャトルバス → 千葉駅 → 総武線快速 → 東京駅",
-        "total_time_estimate": "約1.5時間",
-        "cost_estimate": null,
-        "cash_required": false,
-        "booking_url": null,
-        "shuttle_available": null,
-        "taxi_estimate": null
-      }
-    ],
-    "accommodations": [
-      {
-        "recommended_area": "千葉市・幕張周辺",
-        "avg_cost_3star": 8000
-      }
-    ],
-    "categories": [
-      {
-        "name": "Beast",
-        "distance_km": 21,
-        "elevation_gain": 1500,
-        "start_time": "08:00",
-        "reception_end": null,
-        "reception_place": "会場受付",
-        "start_place": "会場スタートエリア",
-        "finish_rate": 0.65,
-        "time_limit": "6 hours",
-        "required_pace": null,
-        "required_climb_pace": null,
-        "mandatory_gear": null,
-        "recommended_gear": null,
-        "prohibited_items": null,
-        "poles_allowed": false,
-        "entry_fee": 18000
-      }
-    ]
-  },
-  {
-    "name": "GOLDEN TRAIL SERIES JAPAN",
-    "event_date": "2026-07-15",
-    "location": "長野県",
-    "race_type": "trail",
-    "official_url": "https://example.com/golden-trail",
-    "entry_url": "https://example.com/golden-entry",
-    "participant_count": 500,
-    "stay_status": "post_stay_recommended",
-    "weather_forecast": null,
-    "entry_start": "2026-02-01",
-    "entry_end": "2026-05-31",
-    "entry_start_typical": "2月頃",
-    "entry_end_typical": "5月末",
-    "reception_place": "白馬村役場前",
-    "start_place": "白馬八方尾根",
-    "prohibited_items": "イヤホン",
-    "course_map_url": "https://example.com/golden-course",
-    "furusato_nozei_url": "https://example.com/hakuba-furusato",
-    "access_routes": [
-      {
-        "direction": "outbound",
-        "route_detail": "新宿駅 → 特急あずさ → 松本駅 → 大糸線 → 白馬駅。白馬駅からシャトルバスで会場へ。",
-        "total_time_estimate": "約4時間",
-        "cost_estimate": "往復約15,000円",
-        "cash_required": false,
-        "booking_url": "https://example.com/azusa-booking",
-        "shuttle_available": "白馬駅発シャトルバスあり",
-        "taxi_estimate": "白馬駅から約20分・約5,000円"
-      },
-      {
-        "direction": "return",
-        "route_detail": "会場 → シャトルバス → 白馬駅 → 大糸線 → 松本駅 → 特急あずさ → 新宿駅",
-        "total_time_estimate": "約4時間",
-        "cost_estimate": null,
-        "cash_required": false,
-        "booking_url": null,
-        "shuttle_available": null,
-        "taxi_estimate": null
-      }
-    ],
-    "accommodations": [
-      {
-        "recommended_area": "白馬村・八方尾根周辺",
-        "avg_cost_3star": 15000
-      }
-    ],
-    "categories": [
-      {
-        "name": "メイン",
-        "distance_km": 26,
+        "name": "40k",
+        "distance_km": 40,
         "elevation_gain": 2400,
-        "start_time": "07:00",
-        "reception_end": "06:30",
-        "reception_place": "白馬村役場前",
-        "start_place": "白馬八方尾根",
+        "start_time": "06:00",
+        "reception_end": "05:30",
+        "reception_place": "富士北麓公園",
+        "start_place": "富士北麓公園",
         "finish_rate": 0.85,
-        "time_limit": "6 hours 30 minutes",
-        "required_pace": "約12分/km",
-        "required_climb_pace": "約18分/100m",
+        "time_limit": "12 hours",
+        "required_pace": "約18分/km",
+        "required_climb_pace": "約25分/100m",
         "mandatory_gear": "ヘッドランプ、保温シート、水1L以上",
         "recommended_gear": "トレッキングポール",
         "prohibited_items": null,
         "poles_allowed": true,
-        "entry_fee": 22000
+        "entry_fee": 22000,
+        "cutoff_times": [
+          { "point": "CP1", "time": "09:00" },
+          { "point": "CP2", "time": "12:00" }
+        ]
+      },
+      {
+        "name": "Sakuya",
+        "distance_km": 22,
+        "elevation_gain": 1200,
+        "start_time": "07:00",
+        "reception_end": "06:30",
+        "reception_place": "富士北麓公園",
+        "start_place": "富士北麓公園",
+        "finish_rate": 0.92,
+        "time_limit": "6 hours",
+        "required_pace": "約16分/km",
+        "required_climb_pace": "約22分/100m",
+        "mandatory_gear": "ヘッドランプ、保温シート、水0.5L以上",
+        "recommended_gear": "トレッキングポール",
+        "prohibited_items": null,
+        "poles_allowed": true,
+        "entry_fee": 15000,
+        "cutoff_times": [
+          { "point": "CP1", "time": "09:30" }
+        ]
       }
     ]
   }

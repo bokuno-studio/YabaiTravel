@@ -1,6 +1,11 @@
 /** ステイタス（宿泊）判定 */
 export type StayStatus = 'day_trip' | 'pre_stay_required' | 'post_stay_recommended'
 
+/** 一覧用: カテゴリを埋め込んだ大会 */
+export type EventWithCategories = Event & {
+  categories?: Category[]
+}
+
 /** yabai_travel.events テーブルの型 */
 export type Event = {
   id: string
