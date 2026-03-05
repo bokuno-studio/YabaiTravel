@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "db:migrate": "node scripts/run-migration.js",
     "db:seed": "node scripts/seed-events.js",
+    "deploy:watch": "sh scripts/watch-deploy.sh",
     "prepare": "husky"
   },
   "dependencies": {

@@ -26,6 +26,8 @@ jobs:
         run: npm run lint
 
       - name: Build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npm run build
 
       - name: Deploy to Vercel (via deploy hook)

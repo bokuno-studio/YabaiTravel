@@ -49,7 +49,7 @@ gh label create "done" --color "EDEDED" --description "完了"
 
 該当 Issue に `approved` ラベルを追加し、実装に着手する。
 
-## 6. 変更後のGit運用
+## 6. 変更後のGit運用とデプロイ監視
 
 ファイルを編集したら、**必ずコミットしてGitHubにプッシュ**する。
 
@@ -59,12 +59,17 @@ git commit -m "適切なコミットメッセージ"
 git push
 ```
 
-**プッシュ後は必ずユーザーに告知する:**
+**プッシュ後は必ずデプロイを監視する:**
 
-> staging にプッシュしました。デプロイの成否を確認してください。
-> 失敗している場合: **Vercel** と **GitHub** の両方に `DATABASE_URL` が設定されているか確認してください。
-> - Vercel: Project Settings → Environment Variables
-> - GitHub: Repository → Settings → Secrets and variables → Actions
+```bash
+npm run deploy:watch
+```
+
+- staging にプッシュ → `staging-build.yml` を監視
+- main にプッシュ → `deploy-vercel.yml` を監視
+- `gh run watch` で完了まで待機
+- **失敗時**: `gh run view --log-failed` でログ取得 → 原因調査 → 修正 → 再プッシュ → 再度監視
+- **成功時**: ユーザーに「デプロイ完了」と報告。対応 Issue があればクローズ
 
 ## 7. デプロイ
 
