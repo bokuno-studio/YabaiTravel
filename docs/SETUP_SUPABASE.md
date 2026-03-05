@@ -45,18 +45,17 @@
 
 ---
 
-## Step 5: スキーマ作成（SQL Editor）
+## Step 5: スキーマ作成
+
+**方法A: SQL Editor（手動）**
 
 1. 左メニュー **SQL Editor** を開く
 2. **New query** をクリック
-3. 以下を貼り付けて **Run** を実行:
+3. `supabase/migrations/001_create_schema.sql` の内容を貼り付けて **Run** を実行
 
-```sql
--- yabai_travel スキーマを作成
-CREATE SCHEMA IF NOT EXISTS yabai_travel;
-```
+**方法B: 接続文字列で実行**
 
-4. 成功すれば「Success. No rows returned」と表示される
+`.env.local` に `DATABASE_URL` を設定後、`npm run db:migrate` を実行
 
 ---
 
