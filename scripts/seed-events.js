@@ -20,8 +20,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const url = process.env.DATABASE_URL
 if (!url) {
-  console.warn('DATABASE_URL が未設定のためシードをスキップします。')
-  process.exit(0)
+  console.error('')
+  console.error('*** エラー: DATABASE_URL が設定されていません ***')
+  console.error('Vercel: Project Settings → Environment Variables → DATABASE_URL を追加')
+  console.error('ローカル: .env.local に DATABASE_URL を設定')
+  console.error('')
+  process.exit(1)
 }
 
 const client = new pg.Client({ connectionString: url })
