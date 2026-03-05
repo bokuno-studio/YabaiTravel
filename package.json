@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run db:migrate && npm run db:seed && tsc -b && vite build",
+    "build:skip-db": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "db:migrate": "node --env-file=.env.local scripts/run-migration.js",
-    "db:seed": "node --env-file=.env.local scripts/seed-events.js"
+    "db:migrate": "node scripts/run-migration.js",
+    "db:seed": "node scripts/seed-events.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",

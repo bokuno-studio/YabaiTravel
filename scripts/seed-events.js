@@ -1,12 +1,20 @@
 /**
  * 初期データ投入スクリプト
  * data/seed.json を読み込み、yabai_travel の events, access_routes, accommodations, categories に INSERT
- * 将来は別ソース（スクレイピング・API）に差し替え可能な構造
+ * .env.local があれば読み込む（Vercel では DATABASE_URL を環境変数に設定）
  */
 import pg from 'pg'
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { dirname, join, resolve } from 'path'
+
+const envPath = resolve(process.cwd(), '.env.local')
+if (existsSync(envPath) && !process.env.DATABASE_URL) {
+  readFileSync(envPath, 'utf8').split('\n').forEach((line) => {
+    const m = line.match(/^([^#=]+)=(.*)$/)
+    if (m) process.env[m[1].trim()] = m[2].trim().replace(/^["']|["']$/g, '')
+  })
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 

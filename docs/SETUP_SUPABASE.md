@@ -77,9 +77,27 @@
 ```
 VITE_SUPABASE_URL=https://あなたのProjectURL.supabase.co
 VITE_SUPABASE_ANON_KEY=あなたのanonキー
+DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres
 ```
 
-※ `.env.local` は `.gitignore` に含まれていることを確認（通常 Vite では含まれる）
+- `VITE_*`: フロント用（Supabase クライアント）
+- `DATABASE_URL`: マイグレーション・シード用（Supabase Dashboard > Project Settings > Database > Connection string）
+
+※ `.env.local` は `.gitignore` に含まれていることを確認
+
+---
+
+## Step 8: Vercel デプロイ時の自動マイグレーション
+
+デプロイ時にマイグレーションを自動実行するには、**Vercel に `DATABASE_URL` を設定**する。
+
+1. Vercel Dashboard → プロジェクト → **Settings** → **Environment Variables**
+2. `DATABASE_URL` を追加（Production / Preview / Development すべてに設定推奨）
+3. 値: Supabase Dashboard > Project Settings > Database > **Connection string**（URI 形式）
+
+設定後、`git push` でデプロイするとビルド時にマイグレーションが自動実行される。
+
+**初回のみ**: シードデータ投入は `npm run db:seed` をローカルで1回実行（DATABASE_URL が .env.local にあれば可）。
 
 ---
 
