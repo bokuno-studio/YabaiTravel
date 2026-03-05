@@ -3,7 +3,7 @@
  * DATABASE_URL が設定されている場合、supabase/migrations/*.sql を順に実行
  */
 import pg from 'pg';
-import { readFileSync } from 'fs';
+import { readdirSync, readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -22,9 +22,15 @@ const client = new pg.Client({ connectionString: url });
 async function run() {
   try {
     await client.connect();
-    const sql = readFileSync(join(migrationsDir, '001_create_schema.sql'), 'utf8');
-    await client.query(sql);
-    console.log('001_create_schema.sql: 実行完了');
+    const files = readdirSync(migrationsDir)
+      .filter((f) => f.endsWith('.sql'))
+      .sort();
+
+    for (const file of files) {
+      const sql = readFileSync(join(migrationsDir, file), 'utf8');
+      await client.query(sql);
+      console.log(`${file}: 実行完了`);
+    }
   } finally {
     await client.end();
   }
