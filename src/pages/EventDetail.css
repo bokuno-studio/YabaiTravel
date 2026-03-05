@@ -69,3 +69,54 @@
 .event-detail-dl a:hover {
   text-decoration: underline;
 }
+
+.event-detail-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.badge-stay.badge-day_trip {
+  background: #065f46;
+  color: #a7f3d0;
+}
+
+.badge-stay.badge-pre_stay_required {
+  background: #7c2d12;
+  color: #fed7aa;
+}
+
+.badge-stay.badge-post_stay_recommended {
+  background: #4c1d95;
+  color: #e9d5ff;
+}
+
+.section-title {
+  margin: 2rem 0 0.75rem;
+  font-size: 1.1rem;
+  color: #d1d5db;
+  border-bottom: 1px solid #4b5563;
+  padding-bottom: 0.25rem;
+}
+
+.section-title:first-of-type {
+  margin-top: 0;
+}
+
+.multi-line {
+  white-space: pre-wrap;
+}
+
+.category-card {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.category-name {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  color: #f9fafb;
+}

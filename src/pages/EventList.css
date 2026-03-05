@@ -33,3 +33,32 @@
 .event-card-link:hover {
   opacity: 0.9;
 }
+
+.event-entry-period,
+.event-scale {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.event-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.badge-stay.badge-day_trip {
+  background: #065f46;
+  color: #a7f3d0;
+}
+
+.badge-stay.badge-pre_stay_required {
+  background: #7c2d12;
+  color: #fed7aa;
+}
+
+.badge-stay.badge-post_stay_recommended {
+  background: #4c1d95;
+  color: #e9d5ff;
+}

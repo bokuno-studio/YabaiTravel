@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
-import type { Event } from '../types/event'
+import type { Event, StayStatus } from '../types/event'
 import '../App.css'
 import './EventList.css'
 
@@ -11,6 +11,7 @@ function EventList() {
   const [error, setError] = useState<string | null>(null)
   const [raceType, setRaceType] = useState<string>('all')
   const [month, setMonth] = useState<string>('')
+  const [stayStatus, setStayStatus] = useState<string>('all')
 
   useEffect(() => {
     async function fetchEvents() {
@@ -40,6 +41,7 @@ function EventList() {
 
   const filtered = events.filter((event) => {
     if (raceType !== 'all' && event.race_type !== raceType) return false
+    if (stayStatus !== 'all' && event.stay_status !== stayStatus) return false
     if (month && event.event_date) {
       const [y, m] = month.split('-')
       if (!event.event_date.startsWith(`${y}-${m}`)) return false
@@ -55,6 +57,22 @@ function EventList() {
       spartan: 'スパルタン',
     }
     return map[t] ?? t
+  }
+
+  const stayStatusLabel = (s: StayStatus | null) => {
+    if (!s) return null
+    const map: Record<StayStatus, string> = {
+      day_trip: '日帰り可能',
+      pre_stay_required: '前泊必須',
+      post_stay_recommended: '後泊推奨',
+    }
+    return map[s]
+  }
+
+  const entryPeriodText = (e: Event) => {
+    if (e.entry_start && e.entry_end) return `${e.entry_start}〜${e.entry_end}`
+    if (e.entry_start_typical && e.entry_end_typical) return `${e.entry_start_typical}〜${e.entry_end_typical}`
+    return null
   }
 
   if (loading) return <p className="event-list-loading">読み込み中...</p>
@@ -85,6 +103,19 @@ function EventList() {
           </select>
         </div>
         <div className="filter-group">
+          <label htmlFor="stayStatus">ステイタス</label>
+          <select
+            id="stayStatus"
+            value={stayStatus}
+            onChange={(e) => setStayStatus(e.target.value)}
+          >
+            <option value="all">すべて</option>
+            <option value="day_trip">日帰り可能</option>
+            <option value="pre_stay_required">前泊必須</option>
+            <option value="post_stay_recommended">後泊推奨</option>
+          </select>
+        </div>
+        <div className="filter-group">
           <label htmlFor="month">開催月</label>
           <input
             id="month"
@@ -109,10 +140,23 @@ function EventList() {
                       <span>{event.event_date}</span>
                       {event.location && <span> / {event.location}</span>}
                     </p>
+                    {entryPeriodText(event) && (
+                      <p className="event-entry-period">申込: {entryPeriodText(event)}</p>
+                    )}
+                    {event.participant_count != null && (
+                      <p className="event-scale">約{event.participant_count.toLocaleString()}人</p>
+                    )}
                   </div>
-                  <span className={`badge badge-${event.race_type ?? 'other'}`}>
-                    {raceTypeLabel(event.race_type)}
-                  </span>
+                  <div className="event-card-badges">
+                    {event.stay_status && (
+                      <span className={`badge badge-stay badge-${event.stay_status}`}>
+                        {stayStatusLabel(event.stay_status)}
+                      </span>
+                    )}
+                    <span className={`badge badge-${event.race_type ?? 'other'}`}>
+                      {raceTypeLabel(event.race_type)}
+                    </span>
+                  </div>
                 </Link>
               </li>
             ))}
