@@ -59,6 +59,13 @@ git commit -m "適切なコミットメッセージ"
 git push
 ```
 
+**プッシュ後は必ずユーザーに告知する:**
+
+> staging にプッシュしました。デプロイの成否を確認してください。
+> 失敗している場合: **Vercel** と **GitHub** の両方に `DATABASE_URL` が設定されているか確認してください。
+> - Vercel: Project Settings → Environment Variables
+> - GitHub: Repository → Settings → Secrets and variables → Actions
+
 ## 7. デプロイ
 
 - **検証環境**: `staging` ブランチにマージ/プッシュで検証へ反映

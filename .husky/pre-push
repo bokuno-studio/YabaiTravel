@@ -1,0 +1,19 @@
+#!/bin/sh
+# staging / main にプッシュする時だけリマインダー表示
+branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+if [ "$branch" = "staging" ] || [ "$branch" = "main" ]; then
+  echo ""
+  echo "=============================================="
+  echo "  📢 デプロイ確認をお願いします"
+  echo "=============================================="
+  echo ""
+  echo "  $branch にプッシュします。"
+  echo "  デプロイ後、Vercel の成否を確認してください。"
+  echo ""
+  echo "  失敗時: DATABASE_URL が設定されているか確認"
+  echo "    - Vercel: Project Settings → Environment Variables"
+  echo "    - GitHub: Settings → Secrets → Actions"
+  echo ""
+  echo "=============================================="
+  echo ""
+fi
