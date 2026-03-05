@@ -24,7 +24,14 @@ function EventDetail() {
         if (err) throw err
         setEvent(data)
       } catch (e) {
-        setError(e instanceof Error ? e.message : '取得に失敗しました')
+        const msg =
+          e instanceof Error
+            ? e.message
+            : e && typeof e === 'object' && 'message' in e
+              ? String((e as { message: unknown }).message)
+              : String(e)
+        console.error('[EventDetail] 取得エラー:', e)
+        setError(msg || '取得に失敗しました')
       } finally {
         setLoading(false)
       }
