@@ -58,7 +58,6 @@ function EventDetail() {
 
   const formatInterval = (v: string | null) => {
     if (!v) return null
-    // PostgreSQL interval: "24:00:00", "07:00:00", "06:30:00", "1 day", "6 hours 30 minutes" 等
     const hms = v.match(/^(\d+):(\d+):(\d+)/)
     if (hms) {
       const h = parseInt(hms[1], 10)
@@ -83,7 +82,6 @@ function EventDetail() {
     return v
   }
 
-  /** カットオフタイム JSONB を表示用テキストに変換 */
   const formatCutoffTimes = (cutoff: unknown): string | null => {
     if (!cutoff || !Array.isArray(cutoff)) return null
     const items = cutoff
@@ -105,13 +103,34 @@ function EventDetail() {
 
   return (
     <div className="event-detail-page">
+      {/* 1. 基本情報（一番上）: 日程・レース名・場所・種類・規模 */}
       <header className="event-detail-header">
         <Link to="/" className="back-link">← 一覧に戻る</Link>
         <h1>{event.name}</h1>
-        <p className="event-detail-meta">
-          {event.event_date}
-          {event.location && ` / ${event.location}`}
-        </p>
+        <div className="event-detail-basic">
+          <dl className="event-detail-dl event-detail-dl-inline">
+            <dt>日程</dt>
+            <dd>{event.event_date}</dd>
+            {event.location && (
+              <>
+                <dt>場所</dt>
+                <dd>{event.location}</dd>
+              </>
+            )}
+            {event.race_type && (
+              <>
+                <dt>レース種別</dt>
+                <dd>{event.race_type === 'trail' ? 'トレラン' : event.race_type === 'marathon' ? 'マラソン' : event.race_type === 'spartan' ? 'スパルタン' : event.race_type}</dd>
+              </>
+            )}
+            {event.participant_count != null && (
+              <>
+                <dt>大会規模</dt>
+                <dd>約{event.participant_count.toLocaleString()}人</dd>
+              </>
+            )}
+          </dl>
+        </div>
         <div className="event-detail-badges">
           {event.stay_status && (
             <span className={`badge badge-stay badge-${event.stay_status}`}>
@@ -124,275 +143,26 @@ function EventDetail() {
             </span>
           )}
         </div>
+        {(event.official_url || event.entry_url) && (
+          <div className="event-detail-links">
+            {event.official_url && (
+              <a href={event.official_url} target="_blank" rel="noreferrer">公式</a>
+            )}
+            {event.entry_url && (
+              <a href={event.entry_url} target="_blank" rel="noreferrer">申込</a>
+            )}
+          </div>
+        )}
       </header>
 
       <section className="event-detail-body">
-        {/* 基本情報（SPEC_RACE_DATA 大会単位） */}
-        <h2 className="section-title">基本情報</h2>
-        <dl className="event-detail-dl">
-          <dt>大会名</dt>
-          <dd>{event.name}</dd>
-          <dt>日付</dt>
-          <dd>{event.event_date}</dd>
-          {event.location && (
-            <>
-              <dt>場所</dt>
-              <dd>{event.location}</dd>
-            </>
-          )}
-          {event.race_type && (
-            <>
-              <dt>レースの種類</dt>
-              <dd>{event.race_type === 'trail' ? 'トレラン' : event.race_type === 'marathon' ? 'マラソン' : event.race_type === 'spartan' ? 'スパルタン' : event.race_type}</dd>
-            </>
-          )}
-          {event.official_url && (
-            <>
-              <dt>公式URL</dt>
-              <dd>
-                <a href={event.official_url} target="_blank" rel="noreferrer">
-                  {event.official_url}
-                </a>
-              </dd>
-            </>
-          )}
-          {event.entry_url && (
-            <>
-              <dt>申込みサイトURL</dt>
-              <dd>
-                <a href={event.entry_url} target="_blank" rel="noreferrer">
-                  {event.entry_url}
-                </a>
-              </dd>
-            </>
-          )}
-          {event.participant_count != null && (
-            <>
-              <dt>大会規模</dt>
-              <dd>約{event.participant_count.toLocaleString()}人</dd>
-            </>
-          )}
-          {event.reception_place && (
-            <>
-              <dt>受付場所</dt>
-              <dd>{event.reception_place}</dd>
-            </>
-          )}
-          {event.start_place && (
-            <>
-              <dt>スタート場所</dt>
-              <dd>{event.start_place}</dd>
-            </>
-          )}
-        </dl>
-
-        {/* 天気（SPEC_RACE_DATA 大会単位） */}
-        {(event.weather_forecast || event.weather_history != null) && (
-          <>
-            <h2 className="section-title">天気</h2>
-            <dl className="event-detail-dl">
-              {event.weather_forecast && (
-                <>
-                  <dt>今年の天気予報</dt>
-                  <dd>{event.weather_forecast}</dd>
-                </>
-              )}
-              {event.weather_history != null && event.weather_history !== '' && (
-                <>
-                  <dt>例年の天気</dt>
-                  <dd>{typeof event.weather_history === 'object' ? JSON.stringify(event.weather_history) : String(event.weather_history)}</dd>
-                </>
-              )}
-            </dl>
-          </>
-        )}
-
-        {/* 申込み（大会共通の場合） */}
-        {(event.entry_start || event.entry_end || event.entry_start_typical || event.entry_end_typical) && (
-          <>
-            <h2 className="section-title">申込み</h2>
-            <dl className="event-detail-dl">
-              {event.entry_start && (
-                <>
-                  <dt>申込み開始</dt>
-                  <dd>{event.entry_start}</dd>
-                </>
-              )}
-              {event.entry_end && (
-                <>
-                  <dt>申込み終了</dt>
-                  <dd>{event.entry_end}</dd>
-                </>
-              )}
-              {event.entry_start_typical && (
-                <>
-                  <dt>例年の申込み開始</dt>
-                  <dd>{event.entry_start_typical}</dd>
-                </>
-              )}
-              {event.entry_end_typical && (
-                <>
-                  <dt>例年の申込み終了</dt>
-                  <dd>{event.entry_end_typical}</dd>
-                </>
-              )}
-            </dl>
-          </>
-        )}
-
-        {/* 東京からのアクセス（往路） - 経路・乗り換え、時間、費用、現金必須、予約サイト、前泊推奨地、宿泊費用 */}
-        {outbound && (
-          <>
-            <h2 className="section-title">東京からのアクセス（往路）</h2>
-            <dl className="event-detail-dl">
-              {outbound.route_detail && (
-                <>
-                  <dt>経路・乗り換え情報</dt>
-                  <dd className="multi-line">{outbound.route_detail}</dd>
-                </>
-              )}
-              {outbound.total_time_estimate && (
-                <>
-                  <dt>トータル時間の目安</dt>
-                  <dd>{outbound.total_time_estimate}</dd>
-                </>
-              )}
-              {outbound.cost_estimate && (
-                <>
-                  <dt>費用概算</dt>
-                  <dd>{outbound.cost_estimate}</dd>
-                </>
-              )}
-              {outbound.cash_required && (
-                <>
-                  <dt>現金必須</dt>
-                  <dd>あり</dd>
-                </>
-              )}
-              {outbound.booking_url && (
-                <>
-                  <dt>予約サイトリンク</dt>
-                  <dd>
-                    <a href={outbound.booking_url} target="_blank" rel="noreferrer">
-                      {outbound.booking_url}
-                    </a>
-                  </dd>
-                </>
-              )}
-            </dl>
-            {(outbound.shuttle_available || outbound.taxi_estimate) && (
-              <>
-                <h3 className="section-subtitle">公共交通で行けない場合</h3>
-                <dl className="event-detail-dl">
-                  {outbound.shuttle_available && (
-                    <>
-                      <dt>シャトルバス</dt>
-                      <dd>{outbound.shuttle_available}</dd>
-                    </>
-                  )}
-                  {outbound.taxi_estimate && (
-                    <>
-                      <dt>タクシー</dt>
-                      <dd>{outbound.taxi_estimate}</dd>
-                    </>
-                  )}
-                </dl>
-              </>
-            )}
-            {accommodations.length > 0 && (
-              <dl className="event-detail-dl">
-                {accommodations.some((a) => a.recommended_area) && (
-                  <>
-                    <dt>前泊推奨地</dt>
-                    <dd>{accommodations.map((a) => a.recommended_area).filter(Boolean).join('、')}</dd>
-                  </>
-                )}
-                {accommodations.some((a) => a.avg_cost_3star != null) && (
-                  <>
-                    <dt>宿泊費用目安（星3）</dt>
-                    <dd>約{accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円</dd>
-                  </>
-                )}
-              </dl>
-            )}
-          </>
-        )}
-
-        {/* 東京までのアクセス（復路） - 経路・乗り換え、トータル時間の目安 */}
-        {returnRoute && (
-          <>
-            <h2 className="section-title">東京までのアクセス（復路）</h2>
-            <dl className="event-detail-dl">
-              {returnRoute.route_detail && (
-                <>
-                  <dt>経路・乗り換え情報</dt>
-                  <dd className="multi-line">{returnRoute.route_detail}</dd>
-                </>
-              )}
-              {returnRoute.total_time_estimate && (
-                <>
-                  <dt>トータル時間の目安</dt>
-                  <dd>{returnRoute.total_time_estimate}</dd>
-                </>
-              )}
-              {returnRoute.cost_estimate && (
-                <>
-                  <dt>費用概算</dt>
-                  <dd>{returnRoute.cost_estimate}</dd>
-                </>
-              )}
-              {returnRoute.cash_required && (
-                <>
-                  <dt>現金必須</dt>
-                  <dd>あり</dd>
-                </>
-              )}
-            </dl>
-          </>
-        )}
-
-        {/* その他 - コースマップ、使用禁止品、ふるさと納税 */}
-        {(event.course_map_url || event.prohibited_items || event.furusato_nozei_url) && (
-          <>
-            <h2 className="section-title">その他</h2>
-            <dl className="event-detail-dl">
-              {event.course_map_url && (
-                <>
-                  <dt>コースマップ（画像またはPDF）</dt>
-                  <dd>
-                    <a href={event.course_map_url} target="_blank" rel="noreferrer">
-                      {event.course_map_url}
-                    </a>
-                  </dd>
-                </>
-              )}
-              {event.prohibited_items && (
-                <>
-                  <dt>使用禁止品</dt>
-                  <dd>{event.prohibited_items}</dd>
-                </>
-              )}
-              {event.furusato_nozei_url && (
-                <>
-                  <dt>ふるさと納税申込リンク</dt>
-                  <dd>
-                    <a href={event.furusato_nozei_url} target="_blank" rel="noreferrer">
-                      {event.furusato_nozei_url}
-                    </a>
-                  </dd>
-                </>
-              )}
-            </dl>
-          </>
-        )}
-
-        {/* カテゴリ */}
+        {/* 2. カテゴリ別セクション: 各カテゴリのスペック */}
         {categories.length > 0 && (
           <>
-            <h2 className="section-title">カテゴリ</h2>
+            <h2 className="section-title">レーススペック（カテゴリ別）</h2>
             {categories.map((cat) => (
-              <div key={cat.id} className="category-card">
-                <h3 className="category-name">{cat.name}</h3>
+              <div key={cat.id} className="category-section" id={`category-${cat.name}`}>
+                <h3 className="category-section-title">{cat.name}</h3>
                 <div className="category-stats">
                   {cat.distance_km != null && (
                     <span className="category-stat">
@@ -407,6 +177,11 @@ function EventDetail() {
                   {cat.time_limit && (
                     <span className="category-stat">
                       <strong>制限時間</strong> {formatInterval(cat.time_limit)}
+                    </span>
+                  )}
+                  {cat.entry_fee != null && (
+                    <span className="category-stat">
+                      <strong>申込費</strong> {cat.entry_fee.toLocaleString()}円
                     </span>
                   )}
                 </div>
@@ -479,19 +254,253 @@ function EventDetail() {
                   )}
                   {cat.poles_allowed != null && (
                     <>
-                      <dt>ポールの可否</dt>
+                      <dt>ポール</dt>
                       <dd>{cat.poles_allowed ? '可' : '不可'}</dd>
-                    </>
-                  )}
-                  {cat.entry_fee != null && (
-                    <>
-                      <dt>申込みの費用</dt>
-                      <dd>{cat.entry_fee.toLocaleString()}円</dd>
                     </>
                   )}
                 </dl>
               </div>
             ))}
+          </>
+        )}
+
+        {/* 3. 申込み */}
+        {(event.entry_start || event.entry_end || event.entry_start_typical || event.entry_end_typical) && (
+          <>
+            <h2 className="section-title">申込み</h2>
+            <dl className="event-detail-dl">
+              {event.entry_start && (
+                <>
+                  <dt>申込み開始</dt>
+                  <dd>{event.entry_start}</dd>
+                </>
+              )}
+              {event.entry_end && (
+                <>
+                  <dt>申込み終了</dt>
+                  <dd>{event.entry_end}</dd>
+                </>
+              )}
+              {event.entry_start_typical && (
+                <>
+                  <dt>例年</dt>
+                  <dd>{event.entry_start_typical}〜{event.entry_end_typical}</dd>
+                </>
+              )}
+            </dl>
+          </>
+        )}
+
+        {/* 4. 公共交通機関で行けるか */}
+        {(outbound || returnRoute) && (
+          <>
+            <h2 className="section-title">公共交通機関で行けるか</h2>
+            <div className="access-summary">
+              {outbound && (
+                <div className="access-summary-item">
+                  <span className="access-summary-label">往路</span>
+                  <span>{outbound.total_time_estimate}</span>
+                  {outbound.cost_estimate && <span className="access-summary-cost">{outbound.cost_estimate}</span>}
+                </div>
+              )}
+              {returnRoute && (
+                <div className="access-summary-item">
+                  <span className="access-summary-label">復路</span>
+                  <span>{returnRoute.total_time_estimate}</span>
+                  {returnRoute.cost_estimate && <span className="access-summary-cost">{returnRoute.cost_estimate}</span>}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* 5. 何日必要か */}
+        {(event.stay_status || accommodations.length > 0) && (
+          <>
+            <h2 className="section-title">何日必要か</h2>
+            <dl className="event-detail-dl">
+              {event.stay_status && (
+                <>
+                  <dt>ステイタス</dt>
+                  <dd>{stayStatusLabel(event.stay_status)}</dd>
+                </>
+              )}
+              {accommodations.some((a) => a.recommended_area) && (
+                <>
+                  <dt>前泊推奨地</dt>
+                  <dd>{accommodations.map((a) => a.recommended_area).filter(Boolean).join('、')}</dd>
+                </>
+              )}
+              {accommodations.some((a) => a.avg_cost_3star != null) && (
+                <>
+                  <dt>宿泊費用目安（星3）</dt>
+                  <dd>約{accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円</dd>
+                </>
+              )}
+            </dl>
+          </>
+        )}
+
+        {/* 6. トータルコスト */}
+        {(outbound?.cost_estimate || accommodations.some((a) => a.avg_cost_3star != null) || categories.some((c) => c.entry_fee != null)) && (
+          <>
+            <h2 className="section-title">トータルコスト</h2>
+            <dl className="event-detail-dl">
+              {outbound?.cost_estimate && (
+                <>
+                  <dt>往路交通費</dt>
+                  <dd>{outbound.cost_estimate}</dd>
+                </>
+              )}
+              {returnRoute?.cost_estimate && (
+                <>
+                  <dt>復路交通費</dt>
+                  <dd>{returnRoute.cost_estimate}</dd>
+                </>
+              )}
+              {accommodations.some((a) => a.avg_cost_3star != null) && (
+                <>
+                  <dt>宿泊</dt>
+                  <dd>約{accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円</dd>
+                </>
+              )}
+              {(() => {
+                const fees = categories.filter((c) => c.entry_fee != null).map((c) => c.entry_fee!)
+                if (fees.length === 0) return null
+                return (
+                  <>
+                    <dt>申込費（最小）</dt>
+                    <dd>{Math.min(...fees).toLocaleString()}円〜</dd>
+                  </>
+                )
+              })()}
+            </dl>
+          </>
+        )}
+
+        {/* 7. コスト・アクセスの詳細 */}
+        {(outbound || returnRoute) && (
+          <>
+            <h2 className="section-title">アクセスの詳細</h2>
+            {outbound && (
+              <>
+                <h3 className="section-subtitle">往路</h3>
+                <dl className="event-detail-dl">
+                  {outbound.route_detail && (
+                    <>
+                      <dt>経路・乗り換え</dt>
+                      <dd className="multi-line">{outbound.route_detail}</dd>
+                    </>
+                  )}
+                  {outbound.total_time_estimate && (
+                    <>
+                      <dt>所要時間</dt>
+                      <dd>{outbound.total_time_estimate}</dd>
+                    </>
+                  )}
+                  {outbound.cost_estimate && (
+                    <>
+                      <dt>費用概算</dt>
+                      <dd>{outbound.cost_estimate}</dd>
+                    </>
+                  )}
+                  {outbound.cash_required && (
+                    <>
+                      <dt>現金必須</dt>
+                      <dd>あり</dd>
+                    </>
+                  )}
+                  {outbound.booking_url && (
+                    <>
+                      <dt>予約サイト</dt>
+                      <dd>
+                        <a href={outbound.booking_url} target="_blank" rel="noreferrer">{outbound.booking_url}</a>
+                      </dd>
+                    </>
+                  )}
+                  {outbound.shuttle_available && (
+                    <>
+                      <dt>シャトルバス</dt>
+                      <dd>{outbound.shuttle_available}</dd>
+                    </>
+                  )}
+                  {outbound.taxi_estimate && (
+                    <>
+                      <dt>タクシー</dt>
+                      <dd>{outbound.taxi_estimate}</dd>
+                    </>
+                  )}
+                </dl>
+              </>
+            )}
+            {returnRoute && (
+              <>
+                <h3 className="section-subtitle">復路</h3>
+                <dl className="event-detail-dl">
+                  {returnRoute.route_detail && (
+                    <>
+                      <dt>経路・乗り換え</dt>
+                      <dd className="multi-line">{returnRoute.route_detail}</dd>
+                    </>
+                  )}
+                  {returnRoute.total_time_estimate && (
+                    <>
+                      <dt>所要時間</dt>
+                      <dd>{returnRoute.total_time_estimate}</dd>
+                    </>
+                  )}
+                  {returnRoute.cost_estimate && (
+                    <>
+                      <dt>費用概算</dt>
+                      <dd>{returnRoute.cost_estimate}</dd>
+                    </>
+                  )}
+                </dl>
+              </>
+            )}
+          </>
+        )}
+
+        {/* その他 */}
+        {(event.weather_forecast || event.weather_history != null || event.course_map_url || event.prohibited_items || event.furusato_nozei_url) && (
+          <>
+            <h2 className="section-title">その他</h2>
+            <dl className="event-detail-dl">
+              {event.weather_forecast && (
+                <>
+                  <dt>天気予報</dt>
+                  <dd>{event.weather_forecast}</dd>
+                </>
+              )}
+              {event.weather_history != null && event.weather_history !== '' && (
+                <>
+                  <dt>例年の天気</dt>
+                  <dd>{typeof event.weather_history === 'object' ? JSON.stringify(event.weather_history) : String(event.weather_history)}</dd>
+                </>
+              )}
+              {event.course_map_url && (
+                <>
+                  <dt>コースマップ</dt>
+                  <dd>
+                    <a href={event.course_map_url} target="_blank" rel="noreferrer">{event.course_map_url}</a>
+                  </dd>
+                </>
+              )}
+              {event.prohibited_items && (
+                <>
+                  <dt>使用禁止品</dt>
+                  <dd>{event.prohibited_items}</dd>
+                </>
+              )}
+              {event.furusato_nozei_url && (
+                <>
+                  <dt>ふるさと納税</dt>
+                  <dd>
+                    <a href={event.furusato_nozei_url} target="_blank" rel="noreferrer">{event.furusato_nozei_url}</a>
+                  </dd>
+                </>
+              )}
+            </dl>
           </>
         )}
       </section>
