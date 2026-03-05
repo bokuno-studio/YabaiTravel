@@ -59,7 +59,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>yabai.travel</h1>
-        <p className="app-subtitle">変態レースカレンダー（モック）</p>
+        <p className="app-subtitle">エンデュランスレース一覧（モック）</p>
       </header>
 
       <section className="filters">
