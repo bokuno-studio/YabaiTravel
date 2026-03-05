@@ -36,3 +36,4 @@
 - [デプロイ・環境運用](./SPEC_DEPLOYMENT.md) — 検証/本番、ブランチ、スキーマ、デプロイフロー
 - [Supabase セットアップ](./SETUP_SUPABASE.md) — ハンズオン手順
 - [Vercel セットアップ](./SETUP_VERCEL.md) — ハンズオン手順
+- [開発ステップ概要（Phase 1〜）](./PLAN_PHASE1.md) — どの順番で実装を進めるかの概要
