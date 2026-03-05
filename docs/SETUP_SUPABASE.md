@@ -59,15 +59,14 @@
 
 ---
 
-## Step 6: API で yabai_travel スキーマを公開
+## Step 6: API で yabai_travel スキーマを公開（必須）
 
-フロントから Supabase の API で `yabai_travel` スキーマのテーブルを参照するため、以下を設定する。
+フロントから `yabai_travel` スキーマのテーブルを参照するには、**Exposed schemas に `yabai_travel` を追加する必要がある**。未設定だと「Could not query the database for the schema cache」エラーになる。
 
 1. **Project Settings** → **API** タブ
 2. **Exposed schemas**（または **Schema**）のセクションを探す
-3. `yabai_travel` を追加（既に `public` のみの場合は、`yabai_travel` を追加）
-
-※ 設定がない場合は、Supabase のバージョンによってはデフォルトで全スキーマが公開されている場合もある。フロントでデータが取得できない場合にこの設定を確認する。
+3. `yabai_travel` を追加（`public` に加えて `yabai_travel` を指定）
+4. 保存後、フロントが `yabai_travel.events` 等にアクセス可能になる
 
 ---
 
