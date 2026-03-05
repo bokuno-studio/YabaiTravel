@@ -61,6 +61,7 @@ export type Category = {
   id: string
   event_id: string
   name: string
+  stay_status: StayStatus | null
   distance_km: number | null
   elevation_gain: number | null
   start_time: string | null

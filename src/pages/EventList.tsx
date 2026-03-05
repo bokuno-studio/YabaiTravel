@@ -229,30 +229,14 @@ function EventList() {
           <ul>
             {filtered.map((event) => (
               <li key={event.id} className="event-card">
-                <Link to={`/events/${event.id}`} className="event-card-link">
-                  <div className="event-main">
-                    <h2>{event.name}</h2>
+                <div className="event-card-inner">
+                  <Link to={`/events/${event.id}`} className="event-card-main">
+                    <div className="event-main">
+                      <h2>{event.name}</h2>
                     <p className="event-meta">
                       <span>{event.event_date}</span>
                       {event.location && <span> / {event.location}</span>}
                     </p>
-                    {(event.categories ?? []).length > 0 && (
-                      <div className="event-category-chips">
-                        {(event.categories ?? []).map((cat) => (
-                          <span
-                            key={cat.id}
-                            className="category-chip"
-                            title={
-                              cat.distance_km != null || cat.elevation_gain != null
-                                ? `${cat.distance_km != null ? `${cat.distance_km}km` : ''} ${cat.elevation_gain != null ? `D+${cat.elevation_gain}m` : ''}`.trim()
-                                : undefined
-                            }
-                          >
-                            {cat.name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                     {entryPeriodText(event) && (
                       <p className="event-entry-period">申込: {entryPeriodText(event)}</p>
                     )}
@@ -271,6 +255,25 @@ function EventList() {
                     </span>
                   </div>
                 </Link>
+                {(event.categories ?? []).length > 0 && (
+                  <div className="event-category-chips">
+                    {(event.categories ?? []).map((cat) => (
+                      <Link
+                        key={cat.id}
+                        to={`/events/${event.id}/categories/${cat.id}`}
+                        className="category-chip"
+                        title={
+                          cat.distance_km != null || cat.elevation_gain != null
+                            ? `${cat.distance_km != null ? `${cat.distance_km}km` : ''} ${cat.elevation_gain != null ? `D+${cat.elevation_gain}m` : ''}`.trim()
+                            : undefined
+                        }
+                      >
+                        {cat.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                </div>
               </li>
             ))}
           </ul>

@@ -49,6 +49,7 @@
     "categories": [
       {
         "name": "100mi",
+        "stay_status": "pre_stay_required",
         "distance_km": 160,
         "elevation_gain": 7500,
         "start_time": "04:00",
@@ -73,6 +74,7 @@
       },
       {
         "name": "70k",
+        "stay_status": "pre_stay_required",
         "distance_km": 70,
         "elevation_gain": 4200,
         "start_time": "05:00",
@@ -96,6 +98,7 @@
       },
       {
         "name": "40k",
+        "stay_status": "pre_stay_required",
         "distance_km": 40,
         "elevation_gain": 2400,
         "start_time": "06:00",
@@ -118,6 +121,7 @@
       },
       {
         "name": "Sakuya",
+        "stay_status": "day_trip",
         "distance_km": 22,
         "elevation_gain": 1200,
         "start_time": "07:00",
