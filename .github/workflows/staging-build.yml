@@ -1,4 +1,4 @@
-# staging へのプッシュ時にビルドを実行
+# staging へのプッシュ時にビルドを実行（DATABASE_URL は GitHub Secrets から取得）
 # 失敗時は GitHub のコミットに ❌ が付き、メール通知される場合あり
 name: Staging Build Check
 
