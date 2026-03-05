@@ -62,7 +62,12 @@
         "recommended_gear": "トレッキングポール、防寒着",
         "prohibited_items": null,
         "poles_allowed": true,
-        "entry_fee": 25000
+        "entry_fee": 25000,
+        "cutoff_times": [
+          { "point": "CP1", "time": "08:00" },
+          { "point": "CP2", "time": "12:00" },
+          { "point": "CP3", "time": "18:00" }
+        ]
       }
     ]
   },

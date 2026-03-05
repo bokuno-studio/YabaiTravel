@@ -101,10 +101,10 @@ async function run() {
         await client.query(
           `INSERT INTO yabai_travel.categories (
             event_id, name, elevation_gain, start_time, reception_end,
-            reception_place, start_place, finish_rate, time_limit,
+            reception_place, start_place, finish_rate, time_limit, cutoff_times,
             required_pace, required_climb_pace, mandatory_gear, recommended_gear,
             prohibited_items, poles_allowed, entry_fee
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
           [
             eventId,
             cat.name,
@@ -115,6 +115,7 @@ async function run() {
             cat.start_place ?? null,
             cat.finish_rate ?? null,
             cat.time_limit ?? null,
+            cat.cutoff_times ? JSON.stringify(cat.cutoff_times) : null,
             cat.required_pace ?? null,
             cat.required_climb_pace ?? null,
             cat.mandatory_gear ?? null,

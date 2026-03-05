@@ -71,6 +71,19 @@ function EventDetail() {
     return v
   }
 
+  /** カットオフタイム JSONB を表示用テキストに変換 */
+  const formatCutoffTimes = (cutoff: unknown): string | null => {
+    if (!cutoff || !Array.isArray(cutoff)) return null
+    const items = cutoff
+      .filter((x): x is { point?: string; time?: string } => x != null && typeof x === 'object')
+      .map((x) => {
+        const p = x.point ?? '—'
+        const t = x.time ?? '—'
+        return `${p}: ${t}`
+      })
+    return items.length > 0 ? items.join('\n') : null
+  }
+
   if (loading) return <p className="event-detail-loading">読み込み中...</p>
   if (error) return <p className="event-detail-error">エラー: {error}</p>
   if (!event) return <p className="event-detail-error">大会が見つかりません</p>
@@ -102,9 +115,25 @@ function EventDetail() {
       </header>
 
       <section className="event-detail-body">
-        {/* 基本情報 */}
+        {/* 基本情報（SPEC_RACE_DATA 大会単位） */}
         <h2 className="section-title">基本情報</h2>
         <dl className="event-detail-dl">
+          <dt>大会名</dt>
+          <dd>{event.name}</dd>
+          <dt>日付</dt>
+          <dd>{event.event_date}</dd>
+          {event.location && (
+            <>
+              <dt>場所</dt>
+              <dd>{event.location}</dd>
+            </>
+          )}
+          {event.race_type && (
+            <>
+              <dt>レースの種類</dt>
+              <dd>{event.race_type === 'trail' ? 'トレラン' : event.race_type === 'marathon' ? 'マラソン' : event.race_type === 'spartan' ? 'スパルタン' : event.race_type}</dd>
+            </>
+          )}
           {event.official_url && (
             <>
               <dt>公式URL</dt>
@@ -117,7 +146,7 @@ function EventDetail() {
           )}
           {event.entry_url && (
             <>
-              <dt>申込みURL</dt>
+              <dt>申込みサイトURL</dt>
               <dd>
                 <a href={event.entry_url} target="_blank" rel="noreferrer">
                   {event.entry_url}
@@ -145,7 +174,7 @@ function EventDetail() {
           )}
         </dl>
 
-        {/* 天気 */}
+        {/* 天気（SPEC_RACE_DATA 大会単位） */}
         {(event.weather_forecast || event.weather_history != null) && (
           <>
             <h2 className="section-title">天気</h2>
@@ -166,7 +195,7 @@ function EventDetail() {
           </>
         )}
 
-        {/* 申込み */}
+        {/* 申込み（大会共通の場合） */}
         {(event.entry_start || event.entry_end || event.entry_start_typical || event.entry_end_typical) && (
           <>
             <h2 className="section-title">申込み</h2>
@@ -199,20 +228,20 @@ function EventDetail() {
           </>
         )}
 
-        {/* 東京からのアクセス（往路） */}
+        {/* 東京からのアクセス（往路） - 経路・乗り換え、時間、費用、現金必須、予約サイト、前泊推奨地、宿泊費用 */}
         {outbound && (
           <>
             <h2 className="section-title">東京からのアクセス（往路）</h2>
             <dl className="event-detail-dl">
               {outbound.route_detail && (
                 <>
-                  <dt>経路・乗り換え</dt>
+                  <dt>経路・乗り換え情報</dt>
                   <dd className="multi-line">{outbound.route_detail}</dd>
                 </>
               )}
               {outbound.total_time_estimate && (
                 <>
-                  <dt>所要時間</dt>
+                  <dt>トータル時間の目安</dt>
                   <dd>{outbound.total_time_estimate}</dd>
                 </>
               )}
@@ -230,7 +259,7 @@ function EventDetail() {
               )}
               {outbound.booking_url && (
                 <>
-                  <dt>予約サイト</dt>
+                  <dt>予約サイトリンク</dt>
                   <dd>
                     <a href={outbound.booking_url} target="_blank" rel="noreferrer">
                       {outbound.booking_url}
@@ -238,19 +267,26 @@ function EventDetail() {
                   </dd>
                 </>
               )}
-              {outbound.shuttle_available && (
-                <>
-                  <dt>シャトルバス</dt>
-                  <dd>{outbound.shuttle_available}</dd>
-                </>
-              )}
-              {outbound.taxi_estimate && (
-                <>
-                  <dt>タクシー</dt>
-                  <dd>{outbound.taxi_estimate}</dd>
-                </>
-              )}
             </dl>
+            {(outbound.shuttle_available || outbound.taxi_estimate) && (
+              <>
+                <h3 className="section-subtitle">公共交通で行けない場合</h3>
+                <dl className="event-detail-dl">
+                  {outbound.shuttle_available && (
+                    <>
+                      <dt>シャトルバス</dt>
+                      <dd>{outbound.shuttle_available}</dd>
+                    </>
+                  )}
+                  {outbound.taxi_estimate && (
+                    <>
+                      <dt>タクシー</dt>
+                      <dd>{outbound.taxi_estimate}</dd>
+                    </>
+                  )}
+                </dl>
+              </>
+            )}
             {accommodations.length > 0 && (
               <dl className="event-detail-dl">
                 {accommodations.some((a) => a.recommended_area) && (
@@ -270,35 +306,47 @@ function EventDetail() {
           </>
         )}
 
-        {/* 東京までのアクセス（復路） */}
+        {/* 東京までのアクセス（復路） - 経路・乗り換え、トータル時間の目安 */}
         {returnRoute && (
           <>
             <h2 className="section-title">東京までのアクセス（復路）</h2>
             <dl className="event-detail-dl">
               {returnRoute.route_detail && (
                 <>
-                  <dt>経路・乗り換え</dt>
+                  <dt>経路・乗り換え情報</dt>
                   <dd className="multi-line">{returnRoute.route_detail}</dd>
                 </>
               )}
               {returnRoute.total_time_estimate && (
                 <>
-                  <dt>所要時間</dt>
+                  <dt>トータル時間の目安</dt>
                   <dd>{returnRoute.total_time_estimate}</dd>
+                </>
+              )}
+              {returnRoute.cost_estimate && (
+                <>
+                  <dt>費用概算</dt>
+                  <dd>{returnRoute.cost_estimate}</dd>
+                </>
+              )}
+              {returnRoute.cash_required && (
+                <>
+                  <dt>現金必須</dt>
+                  <dd>あり</dd>
                 </>
               )}
             </dl>
           </>
         )}
 
-        {/* その他 */}
+        {/* その他 - コースマップ、使用禁止品、ふるさと納税 */}
         {(event.course_map_url || event.prohibited_items || event.furusato_nozei_url) && (
           <>
             <h2 className="section-title">その他</h2>
             <dl className="event-detail-dl">
               {event.course_map_url && (
                 <>
-                  <dt>コースマップ</dt>
+                  <dt>コースマップ（画像またはPDF）</dt>
                   <dd>
                     <a href={event.course_map_url} target="_blank" rel="noreferrer">
                       {event.course_map_url}
@@ -314,7 +362,7 @@ function EventDetail() {
               )}
               {event.furusato_nozei_url && (
                 <>
-                  <dt>ふるさと納税</dt>
+                  <dt>ふるさと納税申込リンク</dt>
                   <dd>
                     <a href={event.furusato_nozei_url} target="_blank" rel="noreferrer">
                       {event.furusato_nozei_url}
@@ -376,6 +424,12 @@ function EventDetail() {
                       <dd>{formatInterval(cat.time_limit)}</dd>
                     </>
                   )}
+                  {formatCutoffTimes(cat.cutoff_times) && (
+                    <>
+                      <dt>カットオフタイム</dt>
+                      <dd className="multi-line">{formatCutoffTimes(cat.cutoff_times)}</dd>
+                    </>
+                  )}
                   {cat.required_pace && (
                     <>
                       <dt>必要ペース</dt>
@@ -408,13 +462,13 @@ function EventDetail() {
                   )}
                   {cat.poles_allowed != null && (
                     <>
-                      <dt>ポール</dt>
+                      <dt>ポールの可否</dt>
                       <dd>{cat.poles_allowed ? '可' : '不可'}</dd>
                     </>
                   )}
                   {cat.entry_fee != null && (
                     <>
-                      <dt>申込み費用</dt>
+                      <dt>申込みの費用</dt>
                       <dd>{cat.entry_fee.toLocaleString()}円</dd>
                     </>
                   )}

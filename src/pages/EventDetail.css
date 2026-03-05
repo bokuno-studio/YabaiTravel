@@ -104,6 +104,13 @@
   margin-top: 0;
 }
 
+.section-subtitle {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.95rem;
+  color: #b8bcc4;
+  font-weight: 600;
+}
+
 .multi-line {
   white-space: pre-wrap;
 }
