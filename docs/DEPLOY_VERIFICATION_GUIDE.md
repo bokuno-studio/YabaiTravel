@@ -37,7 +37,7 @@ GitHub Actions ワークフロー:
 | `VERCEL_PROJECT_ID` | Vercel Project ID（Settings → General） |
 | `VERCEL_TOKEN` | Vercel Dashboard → Settings → Tokens で作成 |
 | `DATABASE_URL` | ビルド時に DB が必要な場合 |
-| `SUPABASE_URL` | コースマップ Storage 用（Project URL、例: `https://xxxxx.supabase.co`） |
+| `VITE_SUPABASE_URL` | フロント＋コースマップ Storage 用（Project URL、例: `https://xxxxx.supabase.co`） |
 | `SUPABASE_SERVICE_ROLE_KEY` | コースマップ Storage アップロード用（Project Settings → API → service_role） |
 
 ---

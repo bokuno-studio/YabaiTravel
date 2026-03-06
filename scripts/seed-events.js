@@ -151,7 +151,7 @@ async function run() {
       // コースマップファイル（PDF/GPX/画像は DL → Supabase Storage にアップロード、それ以外は外部リンク）
       // SKIP_COURSE_MAP_DOWNLOAD=1 の場合は DL をスキップし外部 URL をそのまま使用（後方互換）
       const skipDownload = process.env.SKIP_COURSE_MAP_DOWNLOAD === '1'
-      const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
+      const supabaseUrl = process.env.VITE_SUPABASE_URL
       const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
       const supabase = supabaseUrl && supabaseServiceKey
         ? createClient(supabaseUrl, supabaseServiceKey)

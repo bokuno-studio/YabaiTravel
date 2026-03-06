@@ -116,7 +116,7 @@ DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-ap-northeast-1.pooler.
 | `VITE_SUPABASE_URL` | Project URL（例: `https://xxxxx.supabase.co`） |
 | `SUPABASE_SERVICE_ROLE_KEY` | Project Settings > API > service_role（コースマップ Storage アップロード用） |
 
-3. **GitHub Actions** でデプロイする場合、上記に加えて **GitHub Secrets** に `SUPABASE_URL`（= VITE_SUPABASE_URL と同じ値）と `SUPABASE_SERVICE_ROLE_KEY` を追加する。
+3. **GitHub Actions** でデプロイする場合、上記に加えて **GitHub Secrets** に `VITE_SUPABASE_URL` と `SUPABASE_SERVICE_ROLE_KEY` を追加する。
 
 設定後、`git push` でデプロイするとビルド時に以下が自動実行される:
 
