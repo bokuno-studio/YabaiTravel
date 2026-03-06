@@ -41,6 +41,9 @@ export type Event = {
   furusato_nozei_url: string | null
   event_series_id: string | null
   total_cost_estimate: string | null
+  entry_type: string | null
+  required_qualification: string | null
+  previous_edition_url: string | null
   collected_at: string | null
   updated_at: string | null
 }
@@ -91,6 +94,7 @@ export type Category = {
   prohibited_items: string | null
   poles_allowed: boolean | null
   entry_fee: number | null
+  itra_points: string | null
   collected_at: string | null
   updated_at: string | null
 }

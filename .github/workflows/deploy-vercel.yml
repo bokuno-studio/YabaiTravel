@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Run tests
+        run: npm run test
+
       - name: Verify Secrets
         run: |
           if [ -z "$VERCEL_ORG_ID" ]; then echo "::error::VERCEL_ORG_ID is empty"; exit 1; fi

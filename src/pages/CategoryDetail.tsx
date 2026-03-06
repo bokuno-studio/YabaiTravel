@@ -22,8 +22,8 @@ function CategoryDetail() {
     async function fetchData() {
       try {
         const [eventRes, catRes, routesRes, accRes, allCatsRes, courseMapsRes] = await Promise.all([
-          supabase.from('events').select('*').eq('id', eventId).single(),
-          supabase.from('categories').select('*').eq('id', categoryId).eq('event_id', eventId).single(),
+          supabase.from('events').select('*').eq('id', eventId).maybeSingle(),
+          supabase.from('categories').select('*').eq('id', categoryId).eq('event_id', eventId).maybeSingle(),
           supabase.from('access_routes').select('*').eq('event_id', eventId).order('direction'),
           supabase.from('accommodations').select('*').eq('event_id', eventId),
           supabase.from('categories').select('*').eq('event_id', eventId).order('name'),
@@ -32,9 +32,9 @@ function CategoryDetail() {
 
         if (eventRes.error) throw eventRes.error
         if (catRes.error) throw catRes.error
-        const ev = eventRes.data
+        const ev = eventRes.data ?? null
         setEvent(ev)
-        setCategory(catRes.data)
+        setCategory(catRes.data ?? null)
         setAccessRoutes(routesRes.data ?? [])
         setAccommodations(accRes.data ?? [])
         setCategories(allCatsRes.data ?? [])
@@ -224,6 +224,49 @@ function CategoryDetail() {
           </div>
         )}
 
+        {/* === レース情報（上部） === */}
+
+        {/* コースマップ（レース情報として上部に配置） */}
+        {(courseMapFiles.length > 0 || event.course_map_url) && (
+          <>
+            <h2 className="section-title">コースマップ</h2>
+            <dl className="event-detail-dl">
+              {courseMapFiles.length > 0 ? (
+                <>
+                  <dt>サイト内保管</dt>
+                  <dd>
+                    <ul className="course-map-list">
+                      {courseMapFiles.map((cm) => (
+                        <li key={cm.id}>
+                          <a href={cm.file_path} target="_blank" rel="noreferrer">
+                            {cm.display_name ?? (cm.year ? `${cm.year}年コース` : 'コースマップ')}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="course-map-note">レース終了後も参照できます</p>
+                  </dd>
+                </>
+              ) : event.course_map_url ? (
+                <>
+                  <dt>外部リンク</dt>
+                  <dd>
+                    <a href={event.course_map_url} target="_blank" rel="noreferrer">{event.course_map_url}</a>
+                  </dd>
+                </>
+              ) : null}
+            </dl>
+          </>
+        )}
+
+        {/* 使用禁止品（大会共通・レース情報として上部に配置） */}
+        {event.prohibited_items && (
+          <>
+            <h2 className="section-title">使用禁止品</h2>
+            <p className="section-desc">{event.prohibited_items}</p>
+          </>
+        )}
+
         {/* レーススペック（このカテゴリのみ） */}
         <h2 className="section-title">レーススペック</h2>
         <dl className="event-detail-dl">
@@ -308,10 +351,28 @@ function CategoryDetail() {
         </dl>
 
         {/* 申込み */}
-        {(event.entry_start || event.entry_end || event.entry_start_typical || event.entry_end_typical) && (
+        {(event.entry_start || event.entry_end || event.entry_start_typical || event.entry_end_typical || event.entry_type || event.required_qualification || category.itra_points) && (
           <>
             <h2 className="section-title">申込み</h2>
             <dl className="event-detail-dl">
+              {event.entry_type && (
+                <>
+                  <dt>エントリ種別</dt>
+                  <dd>{event.entry_type === 'lottery' ? '抽選' : event.entry_type === 'first_come' ? '先着' : event.entry_type}</dd>
+                </>
+              )}
+              {event.required_qualification && (
+                <>
+                  <dt>参加資格</dt>
+                  <dd>{event.required_qualification}</dd>
+                </>
+              )}
+              {category.itra_points && (
+                <>
+                  <dt>ITRA</dt>
+                  <dd>{category.itra_points}</dd>
+                </>
+              )}
               {event.entry_start && (
                 <>
                   <dt>申込み開始</dt>
@@ -337,6 +398,8 @@ function CategoryDetail() {
           </>
         )}
 
+        {/* === ロジ情報（下部） === */}
+
         {/* 公共交通機関で行けるか */}
         {(outbound || returnRoute) && (
           <>
@@ -360,8 +423,8 @@ function CategoryDetail() {
           </>
         )}
 
-        {/* 何日必要か（カテゴリの stay_status を優先） */}
-        {(stayStatus || accommodations.length > 0) && (
+        {/* 何日必要か（ステイタス・前泊推奨地のみ。宿泊費用は別セクションへ） */}
+        {(stayStatus || accommodations.some((a) => a.recommended_area)) && (
           <>
             <h2 className="section-title">何日必要か</h2>
             <dl className="event-detail-dl">
@@ -377,12 +440,17 @@ function CategoryDetail() {
                   <dd>{accommodations.map((a) => a.recommended_area).filter(Boolean).join('、')}</dd>
                 </>
               )}
-              {accommodations.some((a) => a.avg_cost_3star != null) && (
-                <>
-                  <dt>宿泊費用目安（星3）</dt>
-                  <dd>約{accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円</dd>
-                </>
-              )}
+            </dl>
+          </>
+        )}
+
+        {/* 宿泊費用（ロジ情報として独立セクション） */}
+        {accommodations.some((a) => a.avg_cost_3star != null) && (
+          <>
+            <h2 className="section-title">宿泊費用</h2>
+            <dl className="event-detail-dl">
+              <dt>目安（星3）</dt>
+              <dd>約{accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円</dd>
             </dl>
           </>
         )}
@@ -506,41 +574,19 @@ function CategoryDetail() {
           </>
         )}
 
-        {/* その他 */}
-        {/* コースマップ（サイト内保持・レース終了後も参照可能） */}
-        {(courseMapFiles.length > 0 || event.course_map_url) && (
+        {/* 去年のレースはこちら（previous_edition_url） */}
+        {event.previous_edition_url && (
           <>
-            <h2 className="section-title">コースマップ</h2>
-            <dl className="event-detail-dl">
-              {courseMapFiles.length > 0 ? (
-                <>
-                  <dt>サイト内保管</dt>
-                  <dd>
-                    <ul className="course-map-list">
-                      {courseMapFiles.map((cm) => (
-                        <li key={cm.id}>
-                          <a href={cm.file_path} target="_blank" rel="noreferrer">
-                            {cm.display_name ?? (cm.year ? `${cm.year}年コース` : 'コースマップ')}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="course-map-note">レース終了後も参照できます</p>
-                  </dd>
-                </>
-              ) : event.course_map_url ? (
-                <>
-                  <dt>外部リンク</dt>
-                  <dd>
-                    <a href={event.course_map_url} target="_blank" rel="noreferrer">{event.course_map_url}</a>
-                  </dd>
-                </>
-              ) : null}
-            </dl>
+            <h2 className="section-title">去年のレース</h2>
+            <p>
+              <a href={event.previous_edition_url} target="_blank" rel="noreferrer">
+                去年のレースはこちら
+              </a>
+            </p>
           </>
         )}
 
-        {/* 過去の開催（去年のコースマップ・料金・申込日） */}
+        {/* 過去の開催（event_series 経由・去年のコースマップ・料金・申込日） */}
         {pastEditions.length > 0 && (
           <>
             <h2 className="section-title">過去の開催</h2>
@@ -585,7 +631,7 @@ function CategoryDetail() {
           </>
         )}
 
-        {(event.weather_forecast || event.weather_history != null || event.prohibited_items || event.furusato_nozei_url) && (
+        {(event.weather_forecast || event.weather_history != null || event.furusato_nozei_url) && (
           <>
             <h2 className="section-title">その他</h2>
             <dl className="event-detail-dl">
@@ -599,12 +645,6 @@ function CategoryDetail() {
                 <>
                   <dt>例年の天気</dt>
                   <dd>{typeof event.weather_history === 'object' ? JSON.stringify(event.weather_history) : String(event.weather_history)}</dd>
-                </>
-              )}
-              {event.prohibited_items && (
-                <>
-                  <dt>使用禁止品</dt>
-                  <dd>{event.prohibited_items}</dd>
                 </>
               )}
               {event.furusato_nozei_url && (

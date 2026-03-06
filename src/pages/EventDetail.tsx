@@ -20,12 +20,12 @@ function EventDetail() {
     async function fetchData() {
       try {
         const [eventRes, catRes] = await Promise.all([
-          supabase.from('events').select('*').eq('id', eventId).single(),
+          supabase.from('events').select('*').eq('id', eventId).maybeSingle(),
           supabase.from('categories').select('*').eq('event_id', eventId).order('name'),
         ])
 
         if (eventRes.error) throw eventRes.error
-        setEvent(eventRes.data)
+        setEvent(eventRes.data ?? null)
         setCategories(catRes.data ?? [])
       } catch (e) {
         const msg =
