@@ -77,28 +77,52 @@
 ```
 VITE_SUPABASE_URL=https://あなたのProjectURL.supabase.co
 VITE_SUPABASE_ANON_KEY=あなたのanonキー
+SUPABASE_SERVICE_ROLE_KEY=あなたのservice_roleキー
 DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres
 ```
 
 - `VITE_*`: フロント用（Supabase クライアント）
+- `SUPABASE_SERVICE_ROLE_KEY`: シード時のコースマップ Storage アップロード用（Project Settings > API > service_role）
 - `DATABASE_URL`: マイグレーション・シード用（Supabase Dashboard > Project Settings > Database > Connection string）
 
 ※ `.env.local` は `.gitignore` に含まれていることを確認
 
 ---
 
-## Step 8: Vercel デプロイ時の自動マイグレーション
+## Step 8: Storage バケット作成（コースマップ用）
 
-デプロイ時にマイグレーションを自動実行するには、**Vercel に `DATABASE_URL` を設定**する。
+コースマップ（PDF/GPX）を Supabase Storage で保管する場合、バケットを作成する。
+
+1. 左メニュー **Storage** を開く
+2. **New bucket** をクリック
+3. Name: `course-maps`
+4. **Public bucket** にチェック（公開 URL で配信するため）
+5. **Create bucket** をクリック
+
+※ 既存バケットがある場合はスキップ
+
+---
+
+## Step 9: Vercel デプロイ時の自動マイグレーション
+
+デプロイ時にマイグレーションを自動実行するには、**Vercel に以下を設定**する。
 
 1. Vercel Dashboard → プロジェクト → **Settings** → **Environment Variables**
-2. `DATABASE_URL` を追加（Production / Preview / Development すべてに設定推奨）
-3. 値: Supabase Dashboard > Project Settings > Database > **Connection string**（URI 形式）
+2. 以下を追加（Production / Preview / Development すべてに設定推奨）:
+
+| 変数名 | 値 |
+|--------|-----|
+| `DATABASE_URL` | Supabase Dashboard > Project Settings > Database > Connection string（URI 形式） |
+| `VITE_SUPABASE_URL` | Project URL（例: `https://xxxxx.supabase.co`） |
+| `SUPABASE_SERVICE_ROLE_KEY` | Project Settings > API > service_role（コースマップ Storage アップロード用） |
+
+3. **GitHub Actions** でデプロイする場合、上記に加えて **GitHub Secrets** に `SUPABASE_URL`（= VITE_SUPABASE_URL と同じ値）と `SUPABASE_SERVICE_ROLE_KEY` を追加する。
 
 設定後、`git push` でデプロイするとビルド時に以下が自動実行される:
 
 - **マイグレーション**: スキーマ更新
-- **シード**: `data/seed.json` の内容で DB を上書き（既存データは削除される）
+- **シード**: `data/seed.json` の内容で DB を上書き。コースマップは DL → Supabase Storage にアップロード → 公開 URL を DB に保存
+- **ビルド**: デプロイに大きなファイルを含めない（Storage に置くため）
 
 ※ 手動でデータを追加している場合は、`package.json` の build から `npm run db:seed` を外すこと。
 

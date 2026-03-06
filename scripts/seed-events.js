@@ -1,15 +1,17 @@
 /**
  * 初期データ投入スクリプト
  * data/seed.json を読み込み、yabai_travel の events, access_routes, accommodations, categories に INSERT
- * コースマップの PDF/GPX/画像は URL から DL して public/course-maps/ に保管
+ * コースマップの PDF/GPX/画像は URL から DL して Supabase Storage (course-maps) にアップロード
  * .env.local があれば読み込む（Vercel では DATABASE_URL を環境変数に設定）
  */
 import pg from 'pg'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { createClient } from '@supabase/supabase-js'
+import { existsSync, readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join, resolve } from 'path'
 
 const DOWNLOAD_EXT = ['.pdf', '.gpx', '.png', '.jpg', '.jpeg', '.webp', '.gif']
+const STORAGE_BUCKET = 'course-maps'
 
 /** URL から DL 可能なファイルか */
 function isDownloadable(url) {
@@ -33,17 +35,26 @@ function filenameFromUrl(url) {
   }
 }
 
-/** ファイルを DL して public/course-maps/{eventId}/ に保存。成功時は相対パスを返す */
-async function downloadCourseMap(url, eventId, publicDir) {
+/**
+ * URL から DL して Supabase Storage にアップロード。成功時は公開 URL を返す
+ * @param {string} url - ダウンロード元 URL
+ * @param {string} eventId - イベント ID（パス用）
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase - Service Role クライアント
+ * @returns {Promise<string>} 公開 URL
+ */
+async function uploadCourseMapToStorage(url, eventId, supabase) {
   const filename = filenameFromUrl(url)
-  const dir = join(publicDir, 'course-maps', eventId)
-  const filePath = join(dir, filename)
-  mkdirSync(dir, { recursive: true })
+  const storagePath = `${eventId}/${filename}`
   const res = await fetch(url, { redirect: 'follow' })
   if (!res.ok) throw new Error(`DL失敗 ${url}: ${res.status}`)
   const buf = Buffer.from(await res.arrayBuffer())
-  writeFileSync(filePath, buf)
-  return `/course-maps/${eventId}/${filename}`
+  const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(storagePath, buf, {
+    contentType: res.headers.get('content-type') || 'application/octet-stream',
+    upsert: true,
+  })
+  if (error) throw new Error(`Storage アップロード失敗: ${error.message}`)
+  const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath)
+  return data.publicUrl
 }
 
 const envPath = resolve(process.cwd(), '.env.local')
@@ -137,25 +148,31 @@ async function run() {
       )
       const eventId = eventResult.rows[0].id
 
-      // コースマップファイル（PDF/GPX/画像は DL して保管、それ以外は外部リンク）
-      // CI では SKIP_COURSE_MAP_DOWNLOAD=1 で DL をスキップ（Vercel 100MB 制限対策）
+      // コースマップファイル（PDF/GPX/画像は DL → Supabase Storage にアップロード、それ以外は外部リンク）
+      // SKIP_COURSE_MAP_DOWNLOAD=1 の場合は DL をスキップし外部 URL をそのまま使用（後方互換）
       const skipDownload = process.env.SKIP_COURSE_MAP_DOWNLOAD === '1'
-      const publicDir = join(__dirname, '../public')
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      const supabase = supabaseUrl && supabaseServiceKey
+        ? createClient(supabaseUrl, supabaseServiceKey)
+        : null
+
       for (const cm of item.course_map_files ?? []) {
         let filePath
         if (cm.url) {
-          if (!skipDownload && isDownloadable(cm.url)) {
+          if (!skipDownload && supabase && isDownloadable(cm.url)) {
             try {
-              filePath = await downloadCourseMap(cm.url, eventId, publicDir)
-              console.log(`  DL: ${cm.display_name ?? filenameFromUrl(cm.url)}`)
+              filePath = await uploadCourseMapToStorage(cm.url, eventId, supabase)
+              console.log(`  Storage: ${cm.display_name ?? filenameFromUrl(cm.url)}`)
             } catch (e) {
-              console.warn(`  DL失敗 ${cm.url}:`, e.message)
+              console.warn(`  アップロード失敗 ${cm.url}:`, e.message)
               filePath = cm.url
             }
           } else {
             filePath = cm.url
           }
         } else {
+          // filename のみ（ローカルファイル想定）の場合は従来のパス形式
           filePath = `/course-maps/${eventId}/${cm.filename}`
         }
         await client.query(

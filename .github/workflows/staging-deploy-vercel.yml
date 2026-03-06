@@ -12,6 +12,8 @@ env:
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
   DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
 jobs:
   deploy:
@@ -38,6 +40,8 @@ jobs:
           if [ -z "$VERCEL_PROJECT_ID" ]; then echo "::error::VERCEL_PROJECT_ID is empty"; exit 1; fi
           if [ -z "$VERCEL_TOKEN" ]; then echo "::error::VERCEL_TOKEN is empty"; exit 1; fi
           if [ -z "$DATABASE_URL" ]; then echo "::error::DATABASE_URL is empty"; exit 1; fi
+          if [ -z "$SUPABASE_URL" ]; then echo "::error::SUPABASE_URL is empty"; exit 1; fi
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then echo "::error::SUPABASE_SERVICE_ROLE_KEY is empty"; exit 1; fi
           echo "All secrets present!"
 
       - name: Remove .git to bypass Vercel check
@@ -49,7 +53,8 @@ jobs:
       - name: Build
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SKIP_COURSE_MAP_DOWNLOAD: "1"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: npx vercel build --token=$VERCEL_TOKEN
 
       - name: Deploy to Vercel (Preview)
