@@ -37,3 +37,4 @@
 - [Supabase セットアップ](./SETUP_SUPABASE.md) — ハンズオン手順
 - [Vercel セットアップ](./SETUP_VERCEL.md) — ハンズオン手順
 - [開発ステップ概要（Phase 1〜）](./PLAN_PHASE1.md) — どの順番で実装を進めるかの概要
+- [将来機能: Chatbot](./PLAN_FUTURE_CHATBOT.md) — 会話でレース提案する Chatbot 搭載時の注意点・設計メモ

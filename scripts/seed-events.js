@@ -1,12 +1,50 @@
 /**
  * 初期データ投入スクリプト
  * data/seed.json を読み込み、yabai_travel の events, access_routes, accommodations, categories に INSERT
+ * コースマップの PDF/GPX/画像は URL から DL して public/course-maps/ に保管
  * .env.local があれば読み込む（Vercel では DATABASE_URL を環境変数に設定）
  */
 import pg from 'pg'
-import { existsSync, readFileSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join, resolve } from 'path'
+
+const DOWNLOAD_EXT = ['.pdf', '.gpx', '.png', '.jpg', '.jpeg', '.webp', '.gif']
+
+/** URL から DL 可能なファイルか */
+function isDownloadable(url) {
+  try {
+    const pathname = new URL(url).pathname
+    const ext = pathname.slice(pathname.lastIndexOf('.')).toLowerCase()
+    return DOWNLOAD_EXT.includes(ext)
+  } catch {
+    return false
+  }
+}
+
+/** URL からファイル名を取得（デコード済み） */
+function filenameFromUrl(url) {
+  try {
+    const pathname = new URL(url).pathname
+    const basename = pathname.split('/').pop()
+    return decodeURIComponent(basename || 'file')
+  } catch {
+    return 'file'
+  }
+}
+
+/** ファイルを DL して public/course-maps/{eventId}/ に保存。成功時は相対パスを返す */
+async function downloadCourseMap(url, eventId, publicDir) {
+  const filename = filenameFromUrl(url)
+  const dir = join(publicDir, 'course-maps', eventId)
+  const filePath = join(dir, filename)
+  mkdirSync(dir, { recursive: true })
+  const res = await fetch(url, { redirect: 'follow' })
+  if (!res.ok) throw new Error(`DL失敗 ${url}: ${res.status}`)
+  const buf = Buffer.from(await res.arrayBuffer())
+  writeFileSync(filePath, buf)
+  return `/course-maps/${eventId}/${filename}`
+}
 
 const envPath = resolve(process.cwd(), '.env.local')
 if (existsSync(envPath) && !process.env.DATABASE_URL) {
@@ -39,24 +77,46 @@ async function run() {
     await client.connect()
 
     // 既存データを削除（開発用。本番では使わない想定）
+    await client.query('DELETE FROM yabai_travel.course_map_files')
     await client.query('DELETE FROM yabai_travel.categories')
     await client.query('DELETE FROM yabai_travel.access_routes')
     await client.query('DELETE FROM yabai_travel.accommodations')
     await client.query('DELETE FROM yabai_travel.events')
+    await client.query('DELETE FROM yabai_travel.event_series')
 
     for (const item of items) {
+      // event_series を取得または作成
+      let eventSeriesId = null
+      if (item.event_series_name) {
+        const getSeries = await client.query(
+          `SELECT id FROM yabai_travel.event_series WHERE name = $1`,
+          [item.event_series_name]
+        )
+        if (getSeries.rows.length === 0) {
+          const ins = await client.query(
+            `INSERT INTO yabai_travel.event_series (name) VALUES ($1) RETURNING id`,
+            [item.event_series_name]
+          )
+          eventSeriesId = ins.rows[0].id
+        } else {
+          eventSeriesId = getSeries.rows[0].id
+        }
+      }
+
       const eventResult = await client.query(
         `INSERT INTO yabai_travel.events (
-          name, event_date, location, race_type, official_url, entry_url,
+          name, event_date, location, country, race_type, official_url, entry_url,
           participant_count, stay_status, weather_forecast,
           entry_start, entry_end, entry_start_typical, entry_end_typical,
-          reception_place, start_place, prohibited_items, course_map_url, furusato_nozei_url
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+          reception_place, start_place, prohibited_items, furusato_nozei_url,
+          event_series_id, total_cost_estimate
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
         RETURNING id`,
         [
           item.name,
           item.event_date,
           item.location ?? null,
+          item.country ?? null,
           item.race_type ?? null,
           item.official_url ?? null,
           item.entry_url ?? null,
@@ -70,11 +130,38 @@ async function run() {
           item.reception_place ?? null,
           item.start_place ?? null,
           item.prohibited_items ?? null,
-          item.course_map_url ?? null,
           item.furusato_nozei_url ?? null,
+          eventSeriesId,
+          item.total_cost_estimate ?? null,
         ]
       )
       const eventId = eventResult.rows[0].id
+
+      // コースマップファイル（PDF/GPX/画像は DL して保管、それ以外は外部リンク）
+      const publicDir = join(__dirname, '../public')
+      for (const cm of item.course_map_files ?? []) {
+        let filePath
+        if (cm.url) {
+          if (isDownloadable(cm.url)) {
+            try {
+              filePath = await downloadCourseMap(cm.url, eventId, publicDir)
+              console.log(`  DL: ${cm.display_name ?? filenameFromUrl(cm.url)}`)
+            } catch (e) {
+              console.warn(`  DL失敗 ${cm.url}:`, e.message)
+              filePath = cm.url
+            }
+          } else {
+            filePath = cm.url
+          }
+        } else {
+          filePath = `/course-maps/${eventId}/${cm.filename}`
+        }
+        await client.query(
+          `INSERT INTO yabai_travel.course_map_files (event_id, file_path, year, display_name)
+           VALUES ($1, $2, $3, $4)`,
+          [eventId, filePath, cm.year ?? null, cm.display_name ?? null]
+        )
+      }
 
       for (const ar of item.access_routes ?? []) {
         await client.query(

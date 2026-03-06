@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
-import type { EventWithCategories, StayStatus, Category } from '../types/event'
+import type { EventWithCategories, Category } from '../types/event'
 import '../App.css'
 import './EventList.css'
 
@@ -29,12 +29,10 @@ function EventList() {
   const [events, setEvents] = useState<EventWithCategories[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [raceType, setRaceType] = useState<string>('all')
+  const [raceTypes, setRaceTypes] = useState<Set<string>>(new Set())
   const [month, setMonth] = useState<string>('')
-  const [stayStatus, setStayStatus] = useState<string>('all')
   const [distanceMin, setDistanceMin] = useState<string>('')
   const [distanceMax, setDistanceMax] = useState<string>('')
-  const [elevationMin, setElevationMin] = useState<string>('')
   const [timeLimitMin, setTimeLimitMin] = useState<string>('')
 
   useEffect(() => {
@@ -63,15 +61,22 @@ function EventList() {
     fetchEvents()
   }, [])
 
+  const toggleRaceType = (t: string) => {
+    setRaceTypes((prev) => {
+      const next = new Set(prev)
+      if (next.has(t)) next.delete(t)
+      else next.add(t)
+      return next
+    })
+  }
+
   const categoryMatchesFilter = (cat: Category): boolean => {
     const distMin = distanceMin ? parseFloat(distanceMin) : null
     const distMax = distanceMax ? parseFloat(distanceMax) : null
-    const elevMin = elevationMin ? parseFloat(elevationMin) : null
     const timeMin = timeLimitMin ? parseFloat(timeLimitMin) : null
 
     if (distMin != null && (cat.distance_km == null || cat.distance_km < distMin)) return false
     if (distMax != null && (cat.distance_km == null || cat.distance_km > distMax)) return false
-    if (elevMin != null && (cat.elevation_gain == null || cat.elevation_gain < elevMin)) return false
     if (timeMin != null) {
       const catHours = parseIntervalHours(cat.time_limit)
       if (catHours == null || catHours < timeMin) return false
@@ -80,14 +85,13 @@ function EventList() {
   }
 
   const filtered = events.filter((event) => {
-    if (raceType !== 'all' && event.race_type !== raceType) return false
-    if (stayStatus !== 'all' && event.stay_status !== stayStatus) return false
+    if (raceTypes.size > 0 && (event.race_type == null || !raceTypes.has(event.race_type))) return false
     if (month && event.event_date) {
       const [y, m] = month.split('-')
       if (!event.event_date.startsWith(`${y}-${m}`)) return false
     }
     const categories = event.categories ?? []
-    const hasCategoryFilter = distanceMin || distanceMax || elevationMin || timeLimitMin
+    const hasCategoryFilter = distanceMin || distanceMax || timeLimitMin
     if (hasCategoryFilter && categories.length > 0) {
       const hasMatch = categories.some(categoryMatchesFilter)
       if (!hasMatch) return false
@@ -103,16 +107,6 @@ function EventList() {
       spartan: 'スパルタン',
     }
     return map[t] ?? t
-  }
-
-  const stayStatusLabel = (s: StayStatus | null) => {
-    if (!s) return null
-    const map: Record<StayStatus, string> = {
-      day_trip: '日帰り可能',
-      pre_stay_required: '前泊必須',
-      post_stay_recommended: '後泊推奨',
-    }
-    return map[s]
   }
 
   const entryPeriodText = (e: EventWithCategories) => {
@@ -134,32 +128,20 @@ function EventList() {
       </header>
 
       <section className="filters">
-        <div className="filter-group">
-          <label htmlFor="raceType">レース種別</label>
-          <select
-            id="raceType"
-            value={raceType}
-            onChange={(e) => setRaceType(e.target.value)}
-          >
-            <option value="all">すべて</option>
-            <option value="marathon">マラソン</option>
-            <option value="trail">トレラン</option>
-            <option value="spartan">スパルタン</option>
-            <option value="other">その他</option>
-          </select>
-        </div>
-        <div className="filter-group">
-          <label htmlFor="stayStatus">ステイタス</label>
-          <select
-            id="stayStatus"
-            value={stayStatus}
-            onChange={(e) => setStayStatus(e.target.value)}
-          >
-            <option value="all">すべて</option>
-            <option value="day_trip">日帰り可能</option>
-            <option value="pre_stay_required">前泊必須</option>
-            <option value="post_stay_recommended">後泊推奨</option>
-          </select>
+        <div className="filter-group filter-race-types">
+          <label>レース種別</label>
+          <div className="filter-checkboxes">
+            {['marathon', 'trail', 'spartan', 'other'].map((t) => (
+              <label key={t} className="filter-checkbox">
+                <input
+                  type="checkbox"
+                  checked={raceTypes.has(t)}
+                  onChange={() => toggleRaceType(t)}
+                />
+                <span>{raceTypeLabel(t)}</span>
+              </label>
+            ))}
+          </div>
         </div>
         <div className="filter-group">
           <label htmlFor="month">開催月</label>
@@ -195,18 +177,6 @@ function EventList() {
           />
         </div>
         <div className="filter-group">
-          <label htmlFor="elevationMin">獲得標高（m）以上</label>
-          <input
-            id="elevationMin"
-            type="number"
-            min="0"
-            step="100"
-            placeholder="例: 2000"
-            value={elevationMin}
-            onChange={(e) => setElevationMin(e.target.value)}
-          />
-        </div>
-        <div className="filter-group">
           <label htmlFor="timeLimitMin">制限時間（h）以上</label>
           <select
             id="timeLimitMin"
@@ -235,21 +205,14 @@ function EventList() {
                       <h2>{event.name}</h2>
                     <p className="event-meta">
                       <span>{event.event_date}</span>
+                      {event.country && <span> / {event.country}</span>}
                       {event.location && <span> / {event.location}</span>}
                     </p>
                     {entryPeriodText(event) && (
                       <p className="event-entry-period">申込: {entryPeriodText(event)}</p>
                     )}
-                    {event.participant_count != null && (
-                      <p className="event-scale">約{event.participant_count.toLocaleString()}人</p>
-                    )}
                   </div>
                   <div className="event-card-badges">
-                    {event.stay_status && (
-                      <span className={`badge badge-stay badge-${event.stay_status}`}>
-                        {stayStatusLabel(event.stay_status)}
-                      </span>
-                    )}
                     <span className={`badge badge-${event.race_type ?? 'other'}`}>
                       {raceTypeLabel(event.race_type)}
                     </span>

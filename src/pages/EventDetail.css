@@ -2,7 +2,7 @@
   max-width: 1000px;
   margin: 0 auto;
   padding: 2rem 2rem 3rem;
-  color: #e5e7eb;
+  color: #1f2937;
 }
 
 .event-detail-loading,
@@ -11,17 +11,17 @@
   margin: 2rem auto;
   padding: 2rem;
   text-align: center;
-  color: #e5e7eb;
+  color: #475569;
 }
 
 .event-detail-error {
-  color: #f87171;
+  color: #dc2626;
 }
 
 .back-link {
   display: inline-block;
   margin-bottom: 1rem;
-  color: #93c5fd;
+  color: #2563eb;
   text-decoration: none;
 }
 
@@ -32,7 +32,7 @@
 .event-detail-header h1 {
   margin: 0;
   font-size: 1.5rem;
-  color: #f9fafb;
+  color: #0f172a;
 }
 
 .event-detail-basic {
@@ -52,7 +52,7 @@
 }
 
 .event-detail-dl-inline dt {
-  color: #9ca3af;
+  color: #64748b;
 }
 
 .event-detail-dl-inline dt::after {
@@ -66,7 +66,7 @@
 }
 
 .event-detail-links a {
-  color: #93c5fd;
+  color: #2563eb;
   font-size: 0.9rem;
 }
 
@@ -85,7 +85,7 @@
 }
 
 .event-detail-dl dt {
-  color: #9ca3af;
+  color: #64748b;
   font-size: 0.9rem;
 }
 
@@ -95,7 +95,7 @@
 }
 
 .event-detail-dl a {
-  color: #93c5fd;
+  color: #2563eb;
   word-break: break-all;
 }
 
@@ -111,25 +111,25 @@
 }
 
 .badge-stay.badge-day_trip {
-  background: #065f46;
-  color: #a7f3d0;
+  background: #d1fae5;
+  color: #047857;
 }
 
 .badge-stay.badge-pre_stay_required {
-  background: #7c2d12;
-  color: #fed7aa;
+  background: #fed7aa;
+  color: #9a3412;
 }
 
 .badge-stay.badge-post_stay_recommended {
-  background: #4c1d95;
-  color: #e9d5ff;
+  background: #ede9fe;
+  color: #5b21b6;
 }
 
 .section-title {
   margin: 2rem 0 0.75rem;
   font-size: 1.1rem;
-  color: #d1d5db;
-  border-bottom: 1px solid #4b5563;
+  color: #334155;
+  border-bottom: 1px solid #e2e8f0;
   padding-bottom: 0.25rem;
 }
 
@@ -140,7 +140,7 @@
 .section-subtitle {
   margin: 1rem 0 0.5rem;
   font-size: 0.95rem;
-  color: #b8bcc4;
+  color: #475569;
   font-weight: 600;
 }
 
@@ -151,9 +151,9 @@
 .category-section {
   margin-top: 1.5rem;
   padding: 1.25rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: #f8fafc;
   border-radius: 8px;
-  border-left: 3px solid rgba(16, 185, 129, 0.5);
+  border-left: 3px solid #10b981;
 }
 
 .category-section:first-of-type {
@@ -163,7 +163,7 @@
 .category-section-title {
   margin: 0 0 0.75rem;
   font-size: 1.15rem;
-  color: #f9fafb;
+  color: #0f172a;
 }
 
 .access-summary {
@@ -180,13 +180,13 @@
 }
 
 .access-summary-label {
-  color: #9ca3af;
+  color: #64748b;
   font-weight: 600;
   min-width: 2.5em;
 }
 
 .access-summary-cost {
-  color: #93c5fd;
+  color: #2563eb;
 }
 
 .event-breadcrumb {
@@ -205,21 +205,21 @@
 .category-nav-link {
   padding: 0.35rem 0.75rem;
   font-size: 0.9rem;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
   border-radius: 6px;
-  color: #d1d5db;
+  color: #475569;
   text-decoration: none;
 }
 
 .category-nav-link:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #e2e8f0;
 }
 
 .category-nav-link.active {
-  background: rgba(16, 185, 129, 0.2);
-  border-color: rgba(16, 185, 129, 0.5);
-  color: #6ee7b7;
+  background: #d1fae5;
+  border-color: #10b981;
+  color: #047857;
 }
 
 .category-list {
@@ -238,16 +238,16 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem 1.25rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   color: inherit;
   text-decoration: none;
 }
 
 .category-list-link:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
 
 .category-list-name {
@@ -257,13 +257,13 @@
 
 .category-list-spec {
   font-size: 0.9rem;
-  color: #9ca3af;
+  color: #64748b;
 }
 
 .section-desc {
   margin: 0 0 1rem;
   font-size: 0.9rem;
-  color: #9ca3af;
+  color: #64748b;
 }
 
 .category-stats {
@@ -272,16 +272,81 @@
   gap: 1rem 1.5rem;
   margin-bottom: 1rem;
   padding: 0.75rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .category-stat {
   font-size: 0.95rem;
-  color: #e5e7eb;
+  color: #475569;
 }
 
 .category-stat strong {
-  color: #9ca3af;
+  color: #64748b;
   font-weight: 600;
   margin-right: 0.25rem;
+}
+
+/* トータルコスト概算 */
+.total-cost-summary {
+  margin: 0 0 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #d1fae5;
+  border-radius: 6px;
+  font-size: 1rem;
+  color: #047857;
+}
+
+.entry-typical-note {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+/* コースマップ（サイト内保管） */
+.course-map-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.course-map-list li {
+  margin: 0.35rem 0;
+}
+
+.course-map-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+/* 過去の開催 */
+.past-editions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.past-edition-card {
+  flex: 1;
+  min-width: 200px;
+  padding: 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.past-edition-year {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  color: #2563eb;
+}
+
+.past-edition-card .event-detail-dl {
+  grid-template-columns: minmax(100px, 1fr) 1fr;
+}
+
+.past-course-map-link {
+  display: inline-block;
+  margin-right: 0.5rem;
 }

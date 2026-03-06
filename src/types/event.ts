@@ -6,12 +6,23 @@ export type EventWithCategories = Event & {
   categories?: Category[]
 }
 
+/** yabai_travel.course_map_files テーブルの型（サイト内保存） */
+export type CourseMapFile = {
+  id: string
+  event_id: string
+  file_path: string
+  year: number | null
+  display_name: string | null
+  created_at: string | null
+}
+
 /** yabai_travel.events テーブルの型 */
 export type Event = {
   id: string
   name: string
   event_date: string
   location: string | null
+  country: string | null
   official_url: string | null
   entry_url: string | null
   race_type: string | null
@@ -28,6 +39,8 @@ export type Event = {
   prohibited_items: string | null
   course_map_url: string | null
   furusato_nozei_url: string | null
+  event_series_id: string | null
+  total_cost_estimate: string | null
   collected_at: string | null
   updated_at: string | null
 }

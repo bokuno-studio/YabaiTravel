@@ -25,3 +25,8 @@ dist-ssr
 
 # テンプレート（クローン元はそのまま保持）
 spec-driven-root
+
+# コースマップ（seed で都度 DL するためコミットしない）
+public/course-maps/*
+!public/course-maps/.gitkeep
+!public/course-maps/README.md

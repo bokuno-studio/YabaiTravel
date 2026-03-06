@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
-import type { Event, AccessRoute, Accommodation, Category, StayStatus } from '../types/event'
+import type { Event, AccessRoute, Accommodation, Category, CourseMapFile, StayStatus } from '../types/event'
 import '../App.css'
 import './EventDetail.css'
 
@@ -12,6 +12,8 @@ function CategoryDetail() {
   const [accessRoutes, setAccessRoutes] = useState<AccessRoute[]>([])
   const [accommodations, setAccommodations] = useState<Accommodation[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [courseMapFiles, setCourseMapFiles] = useState<CourseMapFile[]>([])
+  const [pastEditions, setPastEditions] = useState<Array<{ event: Event; courseMaps: CourseMapFile[]; categories: Category[] }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -19,21 +21,49 @@ function CategoryDetail() {
     if (!eventId || !categoryId) return
     async function fetchData() {
       try {
-        const [eventRes, catRes, routesRes, accRes, allCatsRes] = await Promise.all([
+        const [eventRes, catRes, routesRes, accRes, allCatsRes, courseMapsRes] = await Promise.all([
           supabase.from('events').select('*').eq('id', eventId).single(),
           supabase.from('categories').select('*').eq('id', categoryId).eq('event_id', eventId).single(),
           supabase.from('access_routes').select('*').eq('event_id', eventId).order('direction'),
           supabase.from('accommodations').select('*').eq('event_id', eventId),
           supabase.from('categories').select('*').eq('event_id', eventId).order('name'),
+          supabase.from('course_map_files').select('*').eq('event_id', eventId).order('year', { ascending: false }),
         ])
 
         if (eventRes.error) throw eventRes.error
         if (catRes.error) throw catRes.error
-        setEvent(eventRes.data)
+        const ev = eventRes.data
+        setEvent(ev)
         setCategory(catRes.data)
         setAccessRoutes(routesRes.data ?? [])
         setAccommodations(accRes.data ?? [])
         setCategories(allCatsRes.data ?? [])
+        setCourseMapFiles(courseMapsRes.data ?? [])
+
+        // 同一シリーズの過去開催を取得（去年のコースマップ・料金・申込日参照用）
+        if (ev?.event_series_id) {
+          const pastRes = await supabase
+            .from('events')
+            .select('*')
+            .eq('event_series_id', ev.event_series_id)
+            .lt('event_date', ev.event_date)
+            .order('event_date', { ascending: false })
+            .limit(5)
+          const pastEvents = pastRes.data ?? []
+          const pastWithMaps: Array<{ event: Event; courseMaps: CourseMapFile[]; categories: Category[] }> = []
+          for (const pe of pastEvents) {
+            const [mapsRes, catsRes] = await Promise.all([
+              supabase.from('course_map_files').select('*').eq('event_id', pe.id).order('year', { ascending: false }),
+              supabase.from('categories').select('*').eq('event_id', pe.id).order('name'),
+            ])
+            pastWithMaps.push({
+              event: pe as Event,
+              courseMaps: mapsRes.data ?? [],
+              categories: catsRes.data ?? [],
+            })
+          }
+          setPastEditions(pastWithMaps)
+        }
       } catch (e) {
         const msg =
           e instanceof Error
@@ -84,6 +114,14 @@ function CategoryDetail() {
       return parts.join('')
     }
     return v
+  }
+
+  /** 日付を 2024/11/5 形式で表示 */
+  const formatDate = (d: string | null) => {
+    if (!d) return null
+    const m = d.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (m) return `${m[1]}/${parseInt(m[2], 10)}/${parseInt(m[3], 10)}`
+    return d
   }
 
   const formatCutoffTimes = (cutoff: unknown): string | null => {
@@ -288,8 +326,11 @@ function CategoryDetail() {
               )}
               {event.entry_start_typical && (
                 <>
-                  <dt>例年</dt>
-                  <dd>{event.entry_start_typical}〜{event.entry_end_typical}</dd>
+                  <dt>例年の申込期間</dt>
+                  <dd>
+                    {formatDate(event.entry_start_typical)}〜{formatDate(event.entry_end_typical)}
+                    <span className="entry-typical-note">（今年の申込開始の目安）</span>
+                  </dd>
                 </>
               )}
             </dl>
@@ -347,9 +388,12 @@ function CategoryDetail() {
         )}
 
         {/* トータルコスト */}
-        {(outbound?.cost_estimate || returnRoute?.cost_estimate || accommodations.some((a) => a.avg_cost_3star != null) || category.entry_fee != null) && (
+        {(event.total_cost_estimate || outbound?.cost_estimate || returnRoute?.cost_estimate || accommodations.some((a) => a.avg_cost_3star != null) || category.entry_fee != null) && (
           <>
             <h2 className="section-title">トータルコスト</h2>
+            {event.total_cost_estimate && (
+              <p className="total-cost-summary">{event.total_cost_estimate}</p>
+            )}
             <dl className="event-detail-dl">
               {outbound?.cost_estimate && (
                 <>
@@ -463,7 +507,85 @@ function CategoryDetail() {
         )}
 
         {/* その他 */}
-        {(event.weather_forecast || event.weather_history != null || event.course_map_url || event.prohibited_items || event.furusato_nozei_url) && (
+        {/* コースマップ（サイト内保持・レース終了後も参照可能） */}
+        {(courseMapFiles.length > 0 || event.course_map_url) && (
+          <>
+            <h2 className="section-title">コースマップ</h2>
+            <dl className="event-detail-dl">
+              {courseMapFiles.length > 0 ? (
+                <>
+                  <dt>サイト内保管</dt>
+                  <dd>
+                    <ul className="course-map-list">
+                      {courseMapFiles.map((cm) => (
+                        <li key={cm.id}>
+                          <a href={cm.file_path} target="_blank" rel="noreferrer">
+                            {cm.display_name ?? (cm.year ? `${cm.year}年コース` : 'コースマップ')}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="course-map-note">レース終了後も参照できます</p>
+                  </dd>
+                </>
+              ) : event.course_map_url ? (
+                <>
+                  <dt>外部リンク</dt>
+                  <dd>
+                    <a href={event.course_map_url} target="_blank" rel="noreferrer">{event.course_map_url}</a>
+                  </dd>
+                </>
+              ) : null}
+            </dl>
+          </>
+        )}
+
+        {/* 過去の開催（去年のコースマップ・料金・申込日） */}
+        {pastEditions.length > 0 && (
+          <>
+            <h2 className="section-title">過去の開催</h2>
+            <p className="section-desc">去年のコースマップ・申込期間・料金の参考</p>
+            <div className="past-editions">
+              {pastEditions.map(({ event: pe, courseMaps, categories: pastCats }) => {
+                const year = pe.event_date.slice(0, 4)
+                const sameCat = pastCats.find((c) => c.name === category?.name)
+                return (
+                  <div key={pe.id} className="past-edition-card">
+                    <h3 className="past-edition-year">{year}年</h3>
+                    <dl className="event-detail-dl">
+                      {pe.entry_start_typical && (
+                        <>
+                          <dt>申込期間</dt>
+                          <dd>{formatDate(pe.entry_start_typical)}〜{formatDate(pe.entry_end_typical)}</dd>
+                        </>
+                      )}
+                      {sameCat?.entry_fee != null && (
+                        <>
+                          <dt>{sameCat.name} 申込費</dt>
+                          <dd>{sameCat.entry_fee.toLocaleString()}円</dd>
+                        </>
+                      )}
+                      {courseMaps.length > 0 && (
+                        <>
+                          <dt>コースマップ</dt>
+                          <dd>
+                            {courseMaps.map((cm) => (
+                              <a key={cm.id} href={cm.file_path} target="_blank" rel="noreferrer" className="past-course-map-link">
+                                {cm.display_name ?? `${cm.year}年`}
+                              </a>
+                            ))}
+                          </dd>
+                        </>
+                      )}
+                    </dl>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+
+        {(event.weather_forecast || event.weather_history != null || event.prohibited_items || event.furusato_nozei_url) && (
           <>
             <h2 className="section-title">その他</h2>
             <dl className="event-detail-dl">
@@ -477,14 +599,6 @@ function CategoryDetail() {
                 <>
                   <dt>例年の天気</dt>
                   <dd>{typeof event.weather_history === 'object' ? JSON.stringify(event.weather_history) : String(event.weather_history)}</dd>
-                </>
-              )}
-              {event.course_map_url && (
-                <>
-                  <dt>コースマップ</dt>
-                  <dd>
-                    <a href={event.course_map_url} target="_blank" rel="noreferrer">{event.course_map_url}</a>
-                  </dd>
                 </>
               )}
               {event.prohibited_items && (

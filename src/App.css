@@ -5,7 +5,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  color: #e5e7eb;
+  color: #1f2937;
 }
 
 .app-header {
@@ -19,7 +19,7 @@
 
 .app-subtitle {
   margin: 0.25rem 0 0;
-  color: #888;
+  color: #64748b;
   font-size: 0.9rem;
 }
 
@@ -29,8 +29,9 @@
   gap: 1rem;
   padding: 1rem 1.25rem;
   border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .filter-group {
@@ -42,24 +43,44 @@
 
 .filter-group label {
   font-size: 0.8rem;
-  color: #aaa;
+  color: #64748b;
 }
 
 .filter-group select,
+.filter-group input[type='number'],
 .filter-group input[type='month'] {
   padding: 0.4rem 0.6rem;
   border-radius: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.2);
-  color: inherit;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #1f2937;
   font-size: 0.9rem;
 }
 
 .filter-group select:focus,
-.filter-group input[type='month']:focus {
+.filter-group input:focus {
   outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.6);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.filter-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: #475569;
+}
+
+.filter-checkbox input {
+  accent-color: #3b82f6;
 }
 
 .event-list ul {
@@ -78,20 +99,21 @@
   gap: 1rem;
   padding: 0.9rem 1.1rem;
   border-radius: 0.75rem;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .event-main h2 {
   margin: 0;
   font-size: 1rem;
-  color: #f9fafb;
+  color: #0f172a;
 }
 
 .event-meta {
   margin: 0.2rem 0 0;
   font-size: 0.85rem;
-  color: #cbd5f5;
+  color: #475569;
 }
 
 .badge {
@@ -103,28 +125,32 @@
 }
 
 .badge-marathon {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.6);
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #93c5fd;
 }
 
 .badge-trail {
-  background: rgba(16, 185, 129, 0.15);
-  border-color: rgba(16, 185, 129, 0.6);
+  background: #d1fae5;
+  color: #047857;
+  border-color: #6ee7b7;
 }
 
 .badge-spartan {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.6);
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
 }
 
 .badge-other {
-  background: rgba(139, 92, 246, 0.15);
-  border-color: rgba(139, 92, 246, 0.6);
+  background: #ede9fe;
+  color: #5b21b6;
+  border-color: #c4b5fd;
 }
 
 .empty {
   margin: 0.5rem 0 0;
-  color: #9ca3af;
+  color: #64748b;
   font-size: 0.9rem;
 }
 

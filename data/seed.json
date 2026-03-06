@@ -1,23 +1,74 @@
 [
   {
     "name": "Mt. Fuji Trail 100",
-    "event_date": "2026-05-10",
+    "event_date": "2025-05-11",
     "location": "山梨県・静岡県",
+    "country": "日本",
     "race_type": "trail",
     "official_url": "https://example.com/fuji-trail",
     "entry_url": "https://example.com/fuji-entry",
+    "participant_count": 750,
+    "stay_status": "pre_stay_required",
+    "weather_forecast": null,
+    "entry_start": null,
+    "entry_end": null,
+    "entry_start_typical": "2023-11-10",
+    "entry_end_typical": "2024-01-20",
+    "reception_place": "富士吉田市総合体育館",
+    "start_place": "富士北麓公園",
+    "prohibited_items": "イヤホン、スピーカー",
+    "total_cost_estimate": null,
+    "furusato_nozei_url": null,
+    "event_series_name": "Mt. Fuji Trail 100",
+    "course_map_files": [
+      { "filename": "2024_course.pdf", "year": 2024, "display_name": "2024年コース" }
+    ],
+    "access_routes": [],
+    "accommodations": [
+      { "recommended_area": "富士吉田市・河口湖周辺", "avg_cost_3star": 11000 }
+    ],
+    "categories": [
+      { "name": "100mi", "stay_status": "pre_stay_required", "distance_km": 160, "elevation_gain": 7500, "entry_fee": 33000 },
+      { "name": "70k", "stay_status": "pre_stay_required", "distance_km": 70, "elevation_gain": 4200, "entry_fee": 26000 },
+      { "name": "40k", "stay_status": "pre_stay_required", "distance_km": 40, "elevation_gain": 2400, "entry_fee": 20000 },
+      { "name": "Sakuya", "stay_status": "day_trip", "distance_km": 22, "elevation_gain": 1200, "entry_fee": 14000 }
+    ]
+  },
+  {
+    "name": "Mt. Fuji Trail 100",
+    "event_date": "2026-05-10",
+    "location": "山梨県・静岡県",
+    "country": "日本",
+    "race_type": "trail",
+    "official_url": "https://mtfuji100.com/",
+    "entry_url": "https://mtfuji100.com/racers/entry/",
     "participant_count": 800,
     "stay_status": "pre_stay_required",
     "weather_forecast": "晴れのち曇り",
     "entry_start": "2025-11-01",
     "entry_end": "2026-01-15",
-    "entry_start_typical": "11月上旬",
-    "entry_end_typical": "1月中旬",
+    "entry_start_typical": "2024-11-05",
+    "entry_end_typical": "2025-01-15",
     "reception_place": "富士吉田市総合体育館",
     "start_place": "富士北麓公園",
     "prohibited_items": "イヤホン、スピーカー",
-    "course_map_url": "https://example.com/fuji-course-map",
+    "total_cost_estimate": "申込+交通+宿泊で約5〜7万円（カテゴリによる）",
     "furusato_nozei_url": "https://example.com/fuji-furusato",
+    "event_series_name": "Mt. Fuji Trail 100",
+    "course_map_files": [
+      { "url": "https://mtfuji100.com/racers/course/", "year": 2026, "display_name": "コースマップ一覧（公式）" },
+      { "url": "https://mtfuji100.com/wp-content/themes/utmf/img/course/26FUJI100mi.gpx", "year": 2026, "display_name": "100mi GPX", "category": "100mi" },
+      { "url": "https://mtfuji100.com/wp-content/uploads/2025/04/FUJI100mi_COURSE_PROFILE_0410ver1.pdf", "year": 2026, "display_name": "100mi コース高低図・進行表", "category": "100mi" },
+      { "url": "https://mtfuji100.com/wp-content/uploads/2025/03/%E9%81%B8%E6%89%8B%E7%94%A8%E8%A9%B3%E7%B4%B0%E5%9B%B3FUJI100mi.pdf", "year": 2026, "display_name": "100mi コース詳細図", "category": "100mi" },
+      { "url": "https://mtfuji100.com/wp-content/themes/utmf/img/course/26KAI70k.gpx", "year": 2026, "display_name": "70k GPX", "category": "70k" },
+      { "url": "https://mtfuji100.com/wp-content/uploads/2025/03/MF100_2025_COURSE_PROFILE_KAI70k0311.pdf", "year": 2026, "display_name": "70k コース高低図・進行表", "category": "70k" },
+      { "url": "https://mtfuji100.com/wp-content/uploads/2025/03/%E9%81%B8%E6%89%8B%E7%94%A8%E8%A9%B3%E7%B4%B0%E5%9B%B3KAI70k.pdf", "year": 2026, "display_name": "70k コース詳細図", "category": "70k" },
+      { "url": "https://mtfuji100.com/wp-content/themes/utmf/img/course/26ASUMI40k.gpx", "year": 2026, "display_name": "40k GPX", "category": "40k" },
+      { "url": "https://mtfuji100.com/wp-content/uploads/2025/04/ASUMI_2025_COURSE_PROFILE_0410ver1.pdf", "year": 2026, "display_name": "40k コース高低図・進行表", "category": "40k" },
+      { "url": "https://mtfuji100.com/wp-content/uploads/2025/03/%E9%81%B8%E6%89%8B%E7%94%A8%E8%A9%B3%E7%B4%B0%E5%9B%B3ASUMI40k.pdf", "year": 2026, "display_name": "40k コース詳細図", "category": "40k" },
+      { "url": "https://mtfuji100.com/wp-content/themes/utmf/img/course/26SAKUYA_11.8km.gpx", "year": 2026, "display_name": "SAKUYA 11.8km GPX", "category": "Sakuya" },
+      { "url": "https://mtfuji100.com/wp-content/themes/utmf/img/course/26SAKUYA_5.7km.gpx", "year": 2026, "display_name": "SAKUYA 5.7km GPX", "category": "Sakuya" }
+    ],
     "access_routes": [
       {
         "direction": "outbound",
