@@ -65,7 +65,7 @@ git push
 npm run deploy:watch
 ```
 
-- staging にプッシュ → `staging-build.yml` を監視
+- staging にプッシュ → `staging-deploy-vercel.yml` を監視（ビルド＋Vercel デプロイ）
 - main にプッシュ → `deploy-vercel.yml` を監視
 - `gh run watch` で完了まで待機
 - **失敗時**: `gh run view --log-failed` でログ取得 → 原因調査 → 修正 → 再プッシュ → 再度監視

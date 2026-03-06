@@ -9,7 +9,7 @@ BRANCH="${1:-$(git symbolic-ref --short HEAD 2>/dev/null)}"
 if [ "$BRANCH" = "main" ]; then
   WORKFLOW="deploy-vercel.yml"
 elif [ "$BRANCH" = "staging" ]; then
-  WORKFLOW="staging-build.yml"
+  WORKFLOW="staging-deploy-vercel.yml"
 else
   echo "usage: $0 [main|staging]"
   echo "  または main/staging ブランチで実行"

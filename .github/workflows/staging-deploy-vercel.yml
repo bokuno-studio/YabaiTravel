@@ -1,11 +1,11 @@
-# main へのプッシュ時にビルド＋Vercel 本番デプロイを実行
-# norm-changes と同様の構成（失敗時は gh run watch で検知）
-name: Deploy to Vercel (Production)
+# staging へのプッシュ時にビルド＋Vercel プレビューデプロイを実行
+# 失敗時は gh run watch で検知できる（Vercel の自動デプロイとは別）
+name: Staging Deploy to Vercel
 
 on:
   push:
     branches:
-      - main
+      - staging
 
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -40,12 +40,12 @@ jobs:
         run: rm -rf .git
 
       - name: Pull Vercel environment
-        run: npx vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+        run: npx vercel pull --yes --environment=preview --token=$VERCEL_TOKEN
 
       - name: Build
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: npx vercel build --prod --token=$VERCEL_TOKEN
+        run: npx vercel build --token=$VERCEL_TOKEN
 
-      - name: Deploy to Vercel
-        run: npx vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+      - name: Deploy to Vercel (Preview)
+        run: npx vercel deploy --prebuilt --token=$VERCEL_TOKEN
