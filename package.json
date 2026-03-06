@@ -13,10 +13,12 @@
     "preview": "vite preview",
     "db:migrate": "node scripts/run-migration.js",
     "db:seed": "node scripts/seed-events.js",
+    "extract:test": "node scripts/crawl-extract/run-extract.js",
     "deploy:watch": "sh scripts/watch-deploy.sh",
     "prepare": "husky"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
     "@supabase/supabase-js": "^2.98.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -31,6 +33,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "cheerio": "^1.2.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",

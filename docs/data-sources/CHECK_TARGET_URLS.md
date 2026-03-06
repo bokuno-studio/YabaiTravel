@@ -119,5 +119,16 @@
 | 種別 | URL |
 |------|-----|
 | エクストリームシリーズ（有限会社エクストレモ） | https://www.a-extremo.com/event/extreme/ |
+| Albatros Adventure Marathons（日本語） | https://albatros-adventure-marathons.com/jp/ |
 
 那珂川・奥多摩・福島ならは・奥大井・尾瀬檜枝岐の5大会。
+
+---
+
+## Ahotu（持久系スポーツカレンダー）
+
+| 種別 | URL |
+|------|-----|
+| Trail de la Renaissance Noctambule | https://www.ahotu.com/ja/event/trail-de-la-renaissance-noctambule |
+
+世界最大の持久系スポーツカレンダー。指定イベントページを監視。
