@@ -90,6 +90,12 @@ npm run deploy:watch
 - `VERCEL_ORG_ID` 等を `env:` に追加し忘れると、デプロイ失敗
 - 最初のステップで `Verify Secrets` を実行し、失敗を早めに検知する
 
+### ❌ ビルド時に db:seed を実行する
+
+- `db:seed` は既存データを全削除してから seed.json を投入する
+- ビルドに含めると、デプロイのたびにクロールで取得したデータが消える
+- **対策**: `build` スクリプトから `db:seed` を除外。データ投入は `npm run crawl:run` 等をローカルから実行
+
 ### ❌ Vercel の Git 連携と GitHub Actions の二重デプロイ
 
 - 両方有効だと、同じプッシュで二重にデプロイされる

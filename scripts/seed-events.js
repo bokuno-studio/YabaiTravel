@@ -87,7 +87,7 @@ async function run() {
   try {
     await client.connect()
 
-    // 既存データを削除（開発用。本番では使わない想定）
+    // 既存データを削除（開発・リセット用。本番デプロイでは db:seed は実行されない）
     await client.query('DELETE FROM yabai_travel.course_map_files')
     await client.query('DELETE FROM yabai_travel.categories')
     await client.query('DELETE FROM yabai_travel.access_routes')
