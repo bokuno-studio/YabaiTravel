@@ -46,6 +46,7 @@ jobs:
       - name: Build
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SKIP_COURSE_MAP_DOWNLOAD: "1"
         run: npx vercel build --prod --token=$VERCEL_TOKEN
 
       - name: Deploy to Vercel

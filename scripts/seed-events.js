@@ -138,11 +138,13 @@ async function run() {
       const eventId = eventResult.rows[0].id
 
       // コースマップファイル（PDF/GPX/画像は DL して保管、それ以外は外部リンク）
+      // CI では SKIP_COURSE_MAP_DOWNLOAD=1 で DL をスキップ（Vercel 100MB 制限対策）
+      const skipDownload = process.env.SKIP_COURSE_MAP_DOWNLOAD === '1'
       const publicDir = join(__dirname, '../public')
       for (const cm of item.course_map_files ?? []) {
         let filePath
         if (cm.url) {
-          if (isDownloadable(cm.url)) {
+          if (!skipDownload && isDownloadable(cm.url)) {
             try {
               filePath = await downloadCourseMap(cm.url, eventId, publicDir)
               console.log(`  DL: ${cm.display_name ?? filenameFromUrl(cm.url)}`)
