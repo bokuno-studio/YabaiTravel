@@ -28,5 +28,10 @@ spec-driven-root
 
 # コースマップ（seed で都度 DL するためコミットしない）
 public/course-maps/*
+
+# クロール結果（実行時に生成）
+scripts/crawl/fetch-all-urls-result.json
+scripts/crawl/enrichment-result.json
+scripts/crawl/evaluation-result.json
 !public/course-maps/.gitkeep
 !public/course-maps/README.md

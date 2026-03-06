@@ -40,20 +40,18 @@ export function extract(html) {
     if (text) names.push(text.replace('大会', '').trim())
   })
 
-  // 開催日
+  // 開催日（td は 5 列、スキップなし）
   const dates = []
-  dateRow.find('td').each((i, el) => {
-    if (i === 0) return
+  dateRow.find('td').each((_, el) => {
     const text = $(el).text().trim()
     const parsed = parseJpDate(text)
     if (parsed) dates.push(parsed)
   })
 
-  // 詳細リンク
+  // 詳細リンク（td は 5 列、スキップなし。name[i] と entryEnds[i] を対応させる）
   const entryEnds = []
   const entryRow = $(rows[3])
-  entryRow.find('td').each((i, el) => {
-    if (i === 0) return
+  entryRow.find('td').each((_, el) => {
     const link = $(el).find('a[href*="round"]')
     if (link.length) {
       const href = link.attr('href')

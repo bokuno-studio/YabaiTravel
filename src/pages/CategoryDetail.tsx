@@ -198,7 +198,7 @@ function CategoryDetail() {
           )}
           {event.race_type && (
             <span className={`badge badge-${event.race_type}`}>
-              {event.race_type === 'trail' ? 'トレラン' : event.race_type === 'marathon' ? 'マラソン' : event.race_type === 'spartan' ? 'スパルタン' : event.race_type}
+              {event.race_type === 'trail' ? 'トレラン' : event.race_type === 'marathon' ? 'マラソン' : event.race_type === 'spartan' ? 'スパルタン' : event.race_type === 'adventure' ? 'アドベンチャー' : event.race_type}
             </span>
           )}
         </div>

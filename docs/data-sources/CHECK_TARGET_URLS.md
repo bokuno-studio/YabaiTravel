@@ -10,69 +10,97 @@
 
 | 地域 | URL |
 |------|-----|
-| 日本 | https://www.spartan.com/en-JP |
-| オーストラリア | https://www.spartan.com/en-AU |
-| シンガポール | https://www.spartan.com/en-SG |
-| マレーシア | https://www.spartan.com/en-MY |
-| フィリピン | https://www.spartan.com/en-PH |
-| タイ | https://www.spartan.com/en-TH |
-| ベトナム | https://www.spartan.com/en-VN |
-| インドネシア | https://www.spartan.com/en-ID |
-| インド | https://www.spartan.com/en-IN |
-| 中国 | https://www.spartan.com/en-CN |
-| 台湾 | https://www.spartan.com/en-TW |
-| 香港 | https://www.spartan.com/en-HK |
-| 韓国 | https://www.spartan.com/en-KR |
+| 日本 | https://jp.spartan.com/en |
+| オーストラリア | https://au.spartan.com/en |
+| シンガポール | https://sg.spartan.com/en |
+| マレーシア | https://my.spartan.com/en |
+| フィリピン | https://ph.spartan.com/en |
+| タイ | https://th.spartan.com/en |
+| ベトナム | https://vn.spartan.com/en |
+| インドネシア | https://id.spartan.com/en |
+| インド | https://in.spartan.com/en |
+| 中国 | https://cn.spartan.com/en |
+| 台湾 | https://tw.spartan.com/en |
+| 香港 | https://hk.spartan.com/en |
+| 韓国 | https://kr.spartan.com/en |
 
 ### ヨーロッパ
 
 | 地域 | URL |
 |------|-----|
-| イギリス | https://www.spartan.com/en-UK |
-| フランス | https://www.spartan.com/en-FR |
-| ドイツ | https://www.spartan.com/en-DE |
-| イタリア | https://www.spartan.com/en-IT |
-| スペイン | https://www.spartan.com/en-ES |
-| ポルトガル | https://www.spartan.com/en-PT |
-| オランダ | https://www.spartan.com/en-NL |
-| ベルギー | https://www.spartan.com/en-BE |
-| スイス | https://www.spartan.com/en-CH |
-| スウェーデン | https://www.spartan.com/en-SE |
-| デンマーク | https://www.spartan.com/en-DK |
-| フィンランド | https://www.spartan.com/en-FI |
-| ギリシャ | https://www.spartan.com/en-GR |
-| チェコ | https://www.spartan.com/en-CZ |
-| ハンガリー | https://www.spartan.com/en-HU |
-| ポーランド | https://www.spartan.com/en-PL |
-| スロバキア | https://www.spartan.com/en-SK |
-| スロベニア | https://www.spartan.com/en-SI |
-| クロアチア | https://www.spartan.com/en-HR |
-| ルーマニア | https://www.spartan.com/en-RO |
-| ウクライナ | https://www.spartan.com/en-UA |
-| ロシア | https://www.spartan.com/en-RU |
-| マルタ | https://www.spartan.com/en-MT |
+| イギリス | https://uk.spartan.com/en |
+| フランス | https://fr.spartan.com/en |
+| ドイツ | https://de.spartan.com/en |
+| イタリア | https://it.spartan.com/en |
+| スペイン | https://es.spartan.com/en |
+| ポルトガル | https://pt.spartan.com/en |
+| オランダ | https://nl.spartan.com/en |
+| ベルギー | https://be.spartan.com/en |
+| スイス | https://ch.spartan.com/en |
+| スウェーデン | https://se.spartan.com/en |
+| デンマーク | https://dk.spartan.com/en |
+| フィンランド | https://fi.spartan.com/en |
+| ギリシャ | https://gr.spartan.com/en |
+| チェコ | https://cz.spartan.com/en |
+| ハンガリー | https://hu.spartan.com/en |
+| ポーランド | https://pl.spartan.com/en |
+| スロバキア | https://sk.spartan.com/en |
+| スロベニア | https://si.spartan.com/en |
+| クロアチア | https://hr.spartan.com/en |
+| ルーマニア | https://ro.spartan.com/en |
+| ウクライナ | https://ua.spartan.com/en |
+| ロシア | https://ru.spartan.com/en |
+| マルタ | https://mt.spartan.com/en |
 
 ### 北米・中南米
 
 | 地域 | URL |
 |------|-----|
-| アメリカ | https://www.spartan.com/en-US |
-| カナダ | https://www.spartan.com/en-CA |
-| メキシコ | https://www.spartan.com/en-MX |
-| ブラジル | https://www.spartan.com/en-BR |
-| チリ | https://www.spartan.com/en-CL |
-| コスタリカ | https://www.spartan.com/en-CR |
+| アメリカ | https://www.spartan.com/en |
+| カナダ | https://ca.spartan.com/en |
+| メキシコ | https://mx.spartan.com/en |
+| ブラジル | https://br.spartan.com/en |
+| チリ | https://cl.spartan.com/en |
+| コスタリカ | https://cr.spartan.com/en |
 
 ### 中東・アフリカ
 
 | 地域 | URL |
 |------|-----|
-| アラブ首長国連邦 | https://www.spartan.com/en-AE |
-| 南アフリカ | https://www.spartan.com/en-ZA |
-| モーリシャス | https://www.spartan.com/en-MU |
-| オマーン | https://www.spartan.com/en-ON |
+| アラブ首長国連邦 | https://ae.spartan.com/en |
+| 南アフリカ | https://za.spartan.com/en |
+| モーリシャス | https://mu.spartan.com/en |
+| オマーン | https://om.spartan.com/en |
 
-※オマーン: ソース上のコードに基づく（要確認）
+---
+
+## Strong Viking
+
+| 種別 | URL |
+|------|-----|
+| チケット（イベント一覧） | https://strongviking.com/en/tickets/ |
+
+オランダ・ベルギー・ドイツで開催。4km〜60kmの障害物レース。Family Run あり。
+
+---
+
+## Devils Circuit
+
+| 種別 | URL |
+|------|-----|
+| Find My Race | https://www.devilscircuit.com/ |
+
+アジア最大級の障害物レース。インド12都市で開催。5km・15障害。
+
+---
+
+## Tough Mudder
+
+| 種別 | URL |
+|------|-----|
+| Find An Event | https://toughmudder.com/ |
+
+米・英・独・仏で開催。5K マッドラン〜24時間耐久まで。
 
 ---
 
@@ -91,6 +119,17 @@
 | World Series Events | https://utmb.world/utmb-world-series-events |
 
 アジア・南米・ヨーロッパ・北米・オセアニア・アフリカの60以上のイベント。Running Stones 収集で HOKA UTMB Mont-Blanc 抽選参加資格。
+
+---
+
+## ITRA（International Trail Running Association）
+
+| 種別 | URL |
+|------|-----|
+| Race Calendar（レースカレンダー） | https://www.itra.run/Races/RaceCalendar |
+| Race Results（レース結果検索） | https://www.itra.run/Races/FindRaceResults |
+
+トレイルランニングの国際団体。国・日付・距離・標高・ITRAポイント等でフィルタ可能。
 
 ---
 

@@ -8,8 +8,12 @@
 | マラソン | 各国公式 |
 | トレラン | 各国公式 |
 | スパルタン | 各国公式 |
+| Strong Viking | 公式（オランダ・ベルギー・ドイツ） |
+| Devils Circuit | 公式（インド） |
+| Tough Mudder | 公式（米・英・独・仏） |
 | UTMB | — |
 | Golden Trail | — |
+| ITRA（トレラン結果検索） | ITRA Race Results |
 | ハイロックス | — |
 | アドベンチャーレース | — |
 

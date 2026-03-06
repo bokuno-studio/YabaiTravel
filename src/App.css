@@ -142,6 +142,12 @@
   border-color: #fca5a5;
 }
 
+.badge-adventure {
+  background: #fef3c7;
+  color: #b45309;
+  border-color: #fcd34d;
+}
+
 .badge-other {
   background: #ede9fe;
   color: #5b21b6;

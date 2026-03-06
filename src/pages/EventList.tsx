@@ -105,6 +105,7 @@ function EventList() {
       marathon: 'マラソン',
       trail: 'トレラン',
       spartan: 'スパルタン',
+      adventure: 'アドベンチャー',
     }
     return map[t] ?? t
   }
@@ -131,7 +132,7 @@ function EventList() {
         <div className="filter-group filter-race-types">
           <label>レース種別</label>
           <div className="filter-checkboxes">
-            {['marathon', 'trail', 'spartan', 'other'].map((t) => (
+            {['marathon', 'trail', 'spartan', 'adventure', 'other'].map((t) => (
               <label key={t} className="filter-checkbox">
                 <input
                   type="checkbox"
