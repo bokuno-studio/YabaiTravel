@@ -14,6 +14,7 @@
     "db:migrate": "node scripts/run-migration.js",
     "db:seed": "node scripts/seed-events.js",
     "extract:test": "node scripts/crawl-extract/run-extract.js",
+    "crawl:run": "node scripts/crawl/run.js",
     "deploy:watch": "sh scripts/watch-deploy.sh",
     "prepare": "husky"
   },

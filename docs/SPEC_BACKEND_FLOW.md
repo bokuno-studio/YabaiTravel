@@ -2,6 +2,11 @@
 
 クロール・データ収集の処理の流れを整理。**認識合わせ用**。
 
+バックエンドは大きく **2 系統** に分かれる:
+
+1. **レース自体の詳細を取得** — 一覧ページから新規・更新を検知し、events / categories を DB に投入
+2. **ロジを取得** — 東京起点のアクセス（経路・所要時間・現金要否・シャトル等）を取得し、access_routes 等に投入
+
 ---
 
 ## 1. 全体フロー（俯瞰）
@@ -9,81 +14,87 @@
 ```mermaid
 flowchart TB
     subgraph トリガー
-        T[cron: 日次実行]
+        T1[cron: 日次]
+        T2[手動トリガー]
     end
 
-    subgraph Phase1["Phase 1: フェッチ（無料）"]
-        T --> F1[CHECK_TARGET_URLS を読み込み]
-        F1 --> F2[各 URL を HTTP GET]
+    subgraph 系統A["系統A: レース詳細の取得"]
+        T1 --> A1[一覧 URL をフェッチ]
+        T2 --> A1
+        A1 --> A2[変更検知]
+        A2 --> A3[抽出・DB UPSERT]
+        A3 --> EVENTS[(events)]
+        A3 --> CATS[(categories)]
     end
 
-    subgraph Phase2["Phase 2: 変更検知（無料）"]
-        F2 --> C1{前回スナップショットあり?}
-        C1 -->|No| C2[新規: ハッシュ保存]
-        C1 -->|Yes| C3{ハッシュ同一?}
-        C3 -->|Yes| SKIP[スキップ（終了）]
-        C3 -->|No| C4[ハッシュ更新]
-        C2 --> Q[抽出キューへ]
-        C4 --> Q
+    subgraph 系統B["系統B: ロジの取得"]
+        T1 --> B1[access_routes が空のイベントを取得]
+        T2 --> B1
+        B1 --> B2[東京→会場の経路取得]
+        B2 --> B3[公式詳細ページ or Google 等]
+        B3 --> B4[access_routes UPSERT]
+        B4 --> ROUTES[(access_routes)]
     end
-
-    subgraph Phase3["Phase 3: 抽出（コスト発生）"]
-        Q --> E1[キューから 1 件取得]
-        E1 --> E2{スクレイピングで取れる?}
-        E2 -->|Yes| E3[構造化データに変換]
-        E2 -->|No| E4[LLM で補助]
-        E4 --> E3
-        E3 --> E5[DB に UPSERT]
-    end
-
-    subgraph 永続化
-        DB[(Supabase)]
-    end
-
-    E5 --> DB
 ```
 
 ---
 
-## 2. データの流れ（入出力）
+## 2. 系統A: レース詳細の取得（一覧→抽出→DB）
 
 ```mermaid
 flowchart LR
-    subgraph 入力
-        URL[CHECK_TARGET_URLS<br/>50+ URL 一覧]
-    end
+    URL[CHECK_TARGET_URLS] --> |GET| HTML
+    HTML --> |ハッシュ比較| CHG{変更あり?}
+    CHG --> |Yes| EXT[抽出]
+    CHG --> |No| SKIP[スキップ]
+    EXT --> |Cheerio/LLM| JSON
+    JSON --> |UPSERT| EVENTS[(events)]
+    JSON --> |UPSERT| CATS[(categories)]
+```
 
-    subgraph Phase1
-        HTML[HTML レスポンス]
-    end
+| 対象 | 一覧ページ（A-Extremo, Golden Trail 等） |
+|------|----------------------------------------|
+| 出力 | 大会名・日付・URL・場所・カテゴリ |
+| トリガー | cron または 手動（`npm run crawl:run` 等） |
 
-    subgraph Phase2
-        HASH[content_hash]
-        SNAP[(crawl_snapshots)]
-    end
+---
 
-    subgraph Phase3
-        RAW[生 HTML]
-        JSON[構造化 JSON]
-    end
+## 3. 系統B: ロジの取得（東京起点のアクセス）
 
-    subgraph 出力
-        EVENTS[(events)]
-        CATS[(categories)]
-    end
+```mermaid
+flowchart LR
+    EV[(events)] --> |access_routes が空| TGT[対象イベント]
+    TGT --> |公式詳細ページ or 外部API| SRC[ソース取得]
+    SRC --> |経路・時間・現金要否| ROUT[access_routes]
+    ROUT --> |UPSERT| DB[(Supabase)]
+```
 
-    URL -->|GET| HTML
-    HTML -->|正規化してハッシュ| HASH
-    HASH -->|比較・保存| SNAP
-    SNAP -->|変更ありの URL| RAW
-    RAW -->|抽出| JSON
-    JSON -->|UPSERT| EVENTS
-    JSON -->|UPSERT| CATS
+| 対象 | access_routes が空のイベント |
+|------|-----------------------------|
+| 起点 | 東京（初期は東京固定） |
+| 取得項目 | 経路・乗り換え、所要時間、費用概算、現金要否、シャトル等 |
+| ソース | 公式詳細ページのスクレイピング、Google Directions API 等 |
+
+※ 他都市は将来拡張。
+
+---
+
+## 4. データの流れ（系統A 詳細）
+
+```mermaid
+flowchart LR
+    URL[CHECK_TARGET_URLS] --> HTML[HTML]
+    HTML --> HASH[content_hash]
+    HASH --> SNAP[(crawl_snapshots)]
+    SNAP --> RAW[生 HTML]
+    RAW --> JSON[構造化 JSON]
+    JSON --> EVENTS[(events)]
+    JSON --> CATS[(categories)]
 ```
 
 ---
 
-## 3. 各フェーズの詳細
+## 5. 各フェーズの詳細（系統A）
 
 ### Phase 1: フェッチ
 
@@ -149,7 +160,7 @@ flowchart LR
 
 ---
 
-## 4. 抽出結果の形式（#20 で検証する出力）
+## 6. 抽出結果の形式（#20 で検証済み）
 
 抽出スクリプトが返す JSON のイメージ。DB 投入時にマッピングする。
 
@@ -185,37 +196,32 @@ flowchart TB
 
 ---
 
-## 5. 実行環境・スケジュール
+## 7. 実行環境・トリガー
 
 ```mermaid
 flowchart TB
-    subgraph スケジューラ
-        CRON[GitHub Actions cron<br/>または Vercel Cron]
+    subgraph トリガー
+        CRON[cron: 日次]
+        MANUAL[手動: npm run crawl:run]
     end
 
     subgraph 実行
-        CRON --> RUN[Node スクリプト実行]
-        RUN --> P1[Phase 1]
-        P1 --> P2[Phase 2]
-        P2 --> P3[Phase 3]
+        CRON --> RUN[Node スクリプト]
+        MANUAL --> RUN
+        RUN --> RUN_A[系統A: レース詳細]
+        RUN --> RUN_B[系統B: ロジ]
     end
-
-    subgraph 永続化
-        SUP[(Supabase)]
-    end
-
-    P3 --> SUP
 ```
 
 | 項目 | 案 |
 |------|-----|
-| トリガー | 日次（例: 毎朝 6:00 JST） |
-| 実行場所 | GitHub Actions / Vercel Cron / 外部（未定） |
-| 所要時間 | Phase 1+2: 数分 / Phase 3: 変更量による |
+| トリガー | **手動**（`npm run crawl:run`）で即時実行。cron は後から追加 |
+| 対象 | 初期は少数ソース（A-Extremo, Golden Trail 等） |
+| 実行場所 | ローカル or GitHub Actions workflow_dispatch |
 
 ---
 
-## 6. 関連ドキュメント
+## 8. 関連ドキュメント
 
 | ドキュメント | 内容 |
 |--------------|------|
