@@ -35,8 +35,22 @@
 |------|-------|----------|
 | `VITE_SUPABASE_URL` | Supabase の Project URL | Production, Preview |
 | `VITE_SUPABASE_ANON_KEY` | Supabase の anon key | Production, Preview |
+| `DATABASE_URL` | Supabase の接続文字列（ビルド時の migrate/seed 用） | Production, Preview |
 
 ※ 本番・検証で同じ Supabase を使う場合は同じ値でよい。
+
+---
+
+## Step 3.5: GitHub Secrets（デプロイ用）
+
+GitHub Actions で Vercel にデプロイするため、**Repository** → **Settings** → **Secrets and variables** → **Actions** に以下を追加:
+
+| Name | 取得方法 |
+|------|----------|
+| `VERCEL_ORG_ID` | Vercel Dashboard → Settings → General → Organization ID |
+| `VERCEL_PROJECT_ID` | Vercel Dashboard → Settings → General → Project ID |
+| `VERCEL_TOKEN` | Vercel Dashboard → Settings → Tokens で作成 |
+| `DATABASE_URL` | Supabase → Project Settings → Database → Connection string |
 
 ---
 
@@ -44,6 +58,8 @@
 
 - **Production Branch**: `main` に設定（Settings → Git）
 - **Preview**: それ以外のブランチ（`staging` 等）のプッシュでプレビューURLが発行される
+
+**※ 二重デプロイを避ける場合**: 本プロジェクトは GitHub Actions でビルド＋デプロイする。Vercel の Git 連携で自動デプロイも有効だと二重になる。GitHub Actions のみにしたい場合は、Vercel の **Settings → Git** でリポジトリ連携を「Deploy only from Production Branch」等に制限するか、連携を解除して CLI デプロイのみにする。
 
 ---
 

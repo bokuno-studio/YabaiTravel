@@ -59,16 +59,48 @@
 
 ---
 
-## Step 6: ローカルに環境変数を設定
+## Step 6: API で yabai_travel スキーマを公開（必須）
+
+フロントから `yabai_travel` スキーマのテーブルを参照するには、**Exposed schemas に `yabai_travel` を追加する必要がある**。未設定だと「Could not query the database for the schema cache」エラーになる。
+
+1. **Project Settings** → **API** タブ
+2. **Exposed schemas**（または **Schema**）のセクションを探す
+3. `yabai_travel` を追加（`public` に加えて `yabai_travel` を指定）
+4. 保存後、フロントが `yabai_travel.events` 等にアクセス可能になる
+
+---
+
+## Step 7: ローカルに環境変数を設定
 
 プロジェクトルートに `.env.local` を作成（既にあれば追記）:
 
 ```
 VITE_SUPABASE_URL=https://あなたのProjectURL.supabase.co
 VITE_SUPABASE_ANON_KEY=あなたのanonキー
+DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres
 ```
 
-※ `.env.local` は `.gitignore` に含まれていることを確認（通常 Vite では含まれる）
+- `VITE_*`: フロント用（Supabase クライアント）
+- `DATABASE_URL`: マイグレーション・シード用（Supabase Dashboard > Project Settings > Database > Connection string）
+
+※ `.env.local` は `.gitignore` に含まれていることを確認
+
+---
+
+## Step 8: Vercel デプロイ時の自動マイグレーション
+
+デプロイ時にマイグレーションを自動実行するには、**Vercel に `DATABASE_URL` を設定**する。
+
+1. Vercel Dashboard → プロジェクト → **Settings** → **Environment Variables**
+2. `DATABASE_URL` を追加（Production / Preview / Development すべてに設定推奨）
+3. 値: Supabase Dashboard > Project Settings > Database > **Connection string**（URI 形式）
+
+設定後、`git push` でデプロイするとビルド時に以下が自動実行される:
+
+- **マイグレーション**: スキーマ更新
+- **シード**: `data/seed.json` の内容で DB を上書き（既存データは削除される）
+
+※ 手動でデータを追加している場合は、`package.json` の build から `npm run db:seed` を外すこと。
 
 ---
 

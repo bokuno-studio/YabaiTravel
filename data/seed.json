@@ -1,0 +1,197 @@
+[
+  {
+    "name": "Mt. Fuji Trail 100",
+    "event_date": "2025-05-11",
+    "location": "山梨県・静岡県",
+    "country": "日本",
+    "race_type": "trail",
+    "official_url": "https://example.com/fuji-trail",
+    "entry_url": "https://example.com/fuji-entry",
+    "participant_count": 750,
+    "stay_status": "pre_stay_required",
+    "weather_forecast": null,
+    "entry_start": null,
+    "entry_end": null,
+    "entry_start_typical": "2023-11-10",
+    "entry_end_typical": "2024-01-20",
+    "reception_place": "富士吉田市総合体育館",
+    "start_place": "富士北麓公園",
+    "prohibited_items": "イヤホン、スピーカー",
+    "total_cost_estimate": null,
+    "furusato_nozei_url": null,
+    "event_series_name": "Mt. Fuji Trail 100",
+    "course_map_files": [
+      { "filename": "2024_course.pdf", "year": 2024, "display_name": "2024年コース" }
+    ],
+    "access_routes": [],
+    "accommodations": [
+      { "recommended_area": "富士吉田市・河口湖周辺", "avg_cost_3star": 11000 }
+    ],
+    "categories": [
+      { "name": "100mi", "stay_status": "pre_stay_required", "distance_km": 160, "elevation_gain": 7500, "entry_fee": 33000 },
+      { "name": "70k", "stay_status": "pre_stay_required", "distance_km": 70, "elevation_gain": 4200, "entry_fee": 26000 },
+      { "name": "40k", "stay_status": "pre_stay_required", "distance_km": 40, "elevation_gain": 2400, "entry_fee": 20000 },
+      { "name": "Sakuya", "stay_status": "day_trip", "distance_km": 22, "elevation_gain": 1200, "entry_fee": 14000 }
+    ]
+  },
+  {
+    "name": "Mt. Fuji Trail 100",
+    "event_date": "2026-05-10",
+    "location": "山梨県・静岡県",
+    "country": "日本",
+    "race_type": "trail",
+    "official_url": "https://mtfuji100.com/",
+    "entry_url": "https://mtfuji100.com/racers/entry/",
+    "participant_count": 800,
+    "stay_status": "pre_stay_required",
+    "weather_forecast": "晴れのち曇り",
+    "entry_start": "2025-11-01",
+    "entry_end": "2026-01-15",
+    "entry_start_typical": "2024-11-05",
+    "entry_end_typical": "2025-01-15",
+    "reception_place": "富士吉田市総合体育館",
+    "start_place": "富士北麓公園",
+    "prohibited_items": "イヤホン、スピーカー",
+    "total_cost_estimate": "申込+交通+宿泊で約5〜7万円（カテゴリによる）",
+    "furusato_nozei_url": "https://example.com/fuji-furusato",
+    "event_series_name": "Mt. Fuji Trail 100",
+    "course_map_files": [
+      { "url": "https://mtfuji100.com/racers/course/", "year": 2026, "display_name": "コースマップ一覧（公式）" },
+      { "url": "https://mtfuji100.com/wp-content/themes/utmf/img/course/26FUJI100mi.gpx", "year": 2026, "display_name": "100mi GPX", "category": "100mi" },
+      { "url": "https://mtfuji100.com/wp-content/uploads/2025/04/FUJI100mi_COURSE_PROFILE_0410ver1.pdf", "year": 2026, "display_name": "100mi コース高低図・進行表", "category": "100mi" },
+      { "url": "https://mtfuji100.com/wp-content/uploads/2025/03/%E9%81%B8%E6%89%8B%E7%94%A8%E8%A9%B3%E7%B4%B0%E5%9B%B3FUJI100mi.pdf", "year": 2026, "display_name": "100mi コース詳細図", "category": "100mi" },
+      { "url": "https://mtfuji100.com/wp-content/themes/utmf/img/course/26KAI70k.gpx", "year": 2026, "display_name": "70k GPX", "category": "70k" },
+      { "url": "https://mtfuji100.com/wp-content/uploads/2025/03/MF100_2025_COURSE_PROFILE_KAI70k0311.pdf", "year": 2026, "display_name": "70k コース高低図・進行表", "category": "70k" },
+      { "url": "https://mtfuji100.com/wp-content/uploads/2025/03/%E9%81%B8%E6%89%8B%E7%94%A8%E8%A9%B3%E7%B4%B0%E5%9B%B3KAI70k.pdf", "year": 2026, "display_name": "70k コース詳細図", "category": "70k" },
+      { "url": "https://mtfuji100.com/wp-content/themes/utmf/img/course/26ASUMI40k.gpx", "year": 2026, "display_name": "40k GPX", "category": "40k" },
+      { "url": "https://mtfuji100.com/wp-content/uploads/2025/04/ASUMI_2025_COURSE_PROFILE_0410ver1.pdf", "year": 2026, "display_name": "40k コース高低図・進行表", "category": "40k" },
+      { "url": "https://mtfuji100.com/wp-content/uploads/2025/03/%E9%81%B8%E6%89%8B%E7%94%A8%E8%A9%B3%E7%B4%B0%E5%9B%B3ASUMI40k.pdf", "year": 2026, "display_name": "40k コース詳細図", "category": "40k" },
+      { "url": "https://mtfuji100.com/wp-content/themes/utmf/img/course/26SAKUYA_11.8km.gpx", "year": 2026, "display_name": "SAKUYA 11.8km GPX", "category": "Sakuya" },
+      { "url": "https://mtfuji100.com/wp-content/themes/utmf/img/course/26SAKUYA_5.7km.gpx", "year": 2026, "display_name": "SAKUYA 5.7km GPX", "category": "Sakuya" }
+    ],
+    "access_routes": [
+      {
+        "direction": "outbound",
+        "route_detail": "新宿駅 → 中央本線特急 → 大月駅 → 富士急行線 → 富士山駅。富士山駅からシャトルバスで会場へ。",
+        "total_time_estimate": "約3時間",
+        "cost_estimate": "往復約8,000円",
+        "cash_required": false,
+        "booking_url": null,
+        "shuttle_available": "富士山駅発シャトルバスあり（要予約）",
+        "taxi_estimate": "富士山駅から約15分・約3,000円"
+      },
+      {
+        "direction": "return",
+        "route_detail": "会場 → シャトルバス → 富士山駅 → 富士急行線 → 大月駅 → 中央本線特急 → 新宿駅",
+        "total_time_estimate": "約3時間",
+        "cost_estimate": null,
+        "cash_required": false,
+        "booking_url": null,
+        "shuttle_available": null,
+        "taxi_estimate": null
+      }
+    ],
+    "accommodations": [
+      {
+        "recommended_area": "富士吉田市・河口湖周辺",
+        "avg_cost_3star": 12000
+      }
+    ],
+    "categories": [
+      {
+        "name": "100mi",
+        "stay_status": "pre_stay_required",
+        "distance_km": 160,
+        "elevation_gain": 7500,
+        "start_time": "04:00",
+        "reception_end": "03:30",
+        "reception_place": "富士北麓公園",
+        "start_place": "富士北麓公園",
+        "finish_rate": 0.65,
+        "time_limit": "36 hours",
+        "required_pace": "約13.5分/km",
+        "required_climb_pace": "約28分/100m",
+        "mandatory_gear": "ヘッドランプ、保温シート、水1.5L以上、防寒着",
+        "recommended_gear": "トレッキングポール、予備電池",
+        "prohibited_items": null,
+        "poles_allowed": true,
+        "entry_fee": 35000,
+        "cutoff_times": [
+          { "point": "CP1", "time": "08:00" },
+          { "point": "CP2", "time": "14:00" },
+          { "point": "CP3", "time": "22:00" },
+          { "point": "CP4", "time": "翌06:00" }
+        ]
+      },
+      {
+        "name": "70k",
+        "stay_status": "pre_stay_required",
+        "distance_km": 70,
+        "elevation_gain": 4200,
+        "start_time": "05:00",
+        "reception_end": "04:30",
+        "reception_place": "富士北麓公園",
+        "start_place": "富士北麓公園",
+        "finish_rate": 0.72,
+        "time_limit": "24 hours",
+        "required_pace": "約20分/km",
+        "required_climb_pace": "約28分/100m",
+        "mandatory_gear": "ヘッドランプ、保温シート、水1.5L以上",
+        "recommended_gear": "トレッキングポール、防寒着",
+        "prohibited_items": null,
+        "poles_allowed": true,
+        "entry_fee": 28000,
+        "cutoff_times": [
+          { "point": "CP1", "time": "08:00" },
+          { "point": "CP2", "time": "12:00" },
+          { "point": "CP3", "time": "18:00" }
+        ]
+      },
+      {
+        "name": "40k",
+        "stay_status": "pre_stay_required",
+        "distance_km": 40,
+        "elevation_gain": 2400,
+        "start_time": "06:00",
+        "reception_end": "05:30",
+        "reception_place": "富士北麓公園",
+        "start_place": "富士北麓公園",
+        "finish_rate": 0.85,
+        "time_limit": "12 hours",
+        "required_pace": "約18分/km",
+        "required_climb_pace": "約25分/100m",
+        "mandatory_gear": "ヘッドランプ、保温シート、水1L以上",
+        "recommended_gear": "トレッキングポール",
+        "prohibited_items": null,
+        "poles_allowed": true,
+        "entry_fee": 22000,
+        "cutoff_times": [
+          { "point": "CP1", "time": "09:00" },
+          { "point": "CP2", "time": "12:00" }
+        ]
+      },
+      {
+        "name": "Sakuya",
+        "stay_status": "day_trip",
+        "distance_km": 22,
+        "elevation_gain": 1200,
+        "start_time": "07:00",
+        "reception_end": "06:30",
+        "reception_place": "富士北麓公園",
+        "start_place": "富士北麓公園",
+        "finish_rate": 0.92,
+        "time_limit": "6 hours",
+        "required_pace": "約16分/km",
+        "required_climb_pace": "約22分/100m",
+        "mandatory_gear": "ヘッドランプ、保温シート、水0.5L以上",
+        "recommended_gear": "トレッキングポール",
+        "prohibited_items": null,
+        "poles_allowed": true,
+        "entry_fee": 15000,
+        "cutoff_times": [
+          { "point": "CP1", "time": "09:30" }
+        ]
+      }
+    ]
+  }
+]

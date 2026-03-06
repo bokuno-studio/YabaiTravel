@@ -107,7 +107,10 @@ erDiagram
 |------------------|------|
 | 識別子 | 公式URL または 大会名+日付 でユニーク判定 |
 | 格納ルール | **確定情報のみ**。不確かなものは格納しない |
-| コースマップ | `course_map_url` で Supabase Storage のパスを保持。画像/PDF をアップロード |
+| コースマップ | `course_map_files` テーブルでサイト内にファイル保持。レース終了後も参照可能 |
+| 例年の申込日 | `entry_start_typical` / `entry_end_typical` は具体的な日付（YYYY-MM-DD）で保持。今年の申込開始の目安 |
+| トータル費用 | `total_cost_estimate` で申込+交通+宿泊の合計概算を表示 |
+| 過去開催 | `event_series_id` で同一レースの複数年版を紐付け。去年のコースマップ・料金・申込日を参照可能 |
 
 ### categories（カテゴリ）
 
