@@ -76,3 +76,4 @@ npm run deploy:watch
 - **検証環境**: `staging` ブランチにマージ/プッシュで検証へ反映
 - **本番環境**: ユーザーが「いいよ」と言ったら `main` にマージし本番へ反映
 - 検証で確認 → OK で本番、という流れを守る。詳細は `docs/SPEC_DEPLOYMENT.md`
+- **新規プロジェクト時**: `docs/DEPLOY_VERIFICATION_GUIDE.md` を参照。デプロイ方法・結果確認・やってはいけないことの指針あり

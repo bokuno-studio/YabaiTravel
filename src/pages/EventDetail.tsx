@@ -9,19 +9,19 @@ import './EventDetail.css'
  * 大会概要ページ: カテゴリ一覧を表示し、各カテゴリの詳細ページへリンク
  */
 function EventDetail() {
-  const { id } = useParams<{ id: string }>()
+  const { eventId } = useParams<{ eventId: string }>()
   const [event, setEvent] = useState<Event | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!id) return
+    if (!eventId) return
     async function fetchData() {
       try {
         const [eventRes, catRes] = await Promise.all([
-          supabase.from('events').select('*').eq('id', id).single(),
-          supabase.from('categories').select('*').eq('event_id', id).order('name'),
+          supabase.from('events').select('*').eq('id', eventId).single(),
+          supabase.from('categories').select('*').eq('event_id', eventId).order('name'),
         ])
 
         if (eventRes.error) throw eventRes.error
@@ -41,15 +41,15 @@ function EventDetail() {
       }
     }
     fetchData()
-  }, [id])
+  }, [eventId])
 
   if (loading) return <p className="event-detail-loading">読み込み中...</p>
   if (error) return <p className="event-detail-error">エラー: {error}</p>
   if (!event) return <p className="event-detail-error">大会が見つかりません</p>
 
   // カテゴリが1つのみの場合はその詳細へリダイレクト
-  if (categories.length === 1 && id) {
-    return <Navigate to={`/events/${id}/categories/${categories[0].id}`} replace />
+  if (categories.length === 1 && eventId) {
+    return <Navigate to={`/events/${eventId}/categories/${categories[0].id}`} replace />
   }
 
   return (
@@ -78,7 +78,7 @@ function EventDetail() {
           {categories.map((cat) => (
             <li key={cat.id}>
               <Link
-                to={`/events/${id}/categories/${cat.id}`}
+                to={`/events/${eventId}/categories/${cat.id}`}
                 className="category-list-link"
               >
                 <span className="category-list-name">{cat.name}</span>

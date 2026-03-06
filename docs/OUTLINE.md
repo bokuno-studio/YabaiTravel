@@ -34,6 +34,7 @@
 - [UI・画面仕様](./SPEC_UI.md) — 一覧・絞り込み、将来のAIチャット化
 - [データ取得元](./SPEC_DATA_SOURCES.md) — ランネット、各国公式、UTMB等、追加方針
 - [デプロイ・環境運用](./SPEC_DEPLOYMENT.md) — 検証/本番、ブランチ、スキーマ、デプロイフロー
+- [デプロイ・結果確認の手順書](./DEPLOY_VERIFICATION_GUIDE.md) — 新規プロジェクト向け、どうやると駄目か含む
 - [Supabase セットアップ](./SETUP_SUPABASE.md) — ハンズオン手順
 - [Vercel セットアップ](./SETUP_VERCEL.md) — ハンズオン手順
 - [開発ステップ概要（Phase 1〜）](./PLAN_PHASE1.md) — どの順番で実装を進めるかの概要
