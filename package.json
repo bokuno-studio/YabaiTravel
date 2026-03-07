@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "db:migrate": "node scripts/run-migration.js",
     "db:seed": "node scripts/seed-events.js",
+    "db:reset": "node scripts/reset-db.js",
     "extract:test": "node scripts/crawl-extract/run-extract.js",
     "crawl:run": "node scripts/crawl/run.js",
     "crawl:fetch-all": "node scripts/crawl/fetch-all-urls.js",
