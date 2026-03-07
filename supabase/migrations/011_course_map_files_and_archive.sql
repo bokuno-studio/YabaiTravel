@@ -25,11 +25,12 @@ create table if not exists course_map_files (
 create index if not exists idx_course_map_files_event_id on course_map_files(event_id);
 
 -- 例年の申込日を具体的な日付で保持するため date 型に戻す
+-- ::text にキャストしてから正規表現を使う（date 型は ~ 演算子不可）
 alter table events alter column entry_start_typical type date using (
-  case when entry_start_typical ~ '^\d{4}-\d{2}-\d{2}$' then entry_start_typical::date else null end
+  case when entry_start_typical::text ~ '^\d{4}-\d{2}-\d{2}$' then entry_start_typical::text::date else null end
 );
 alter table events alter column entry_end_typical type date using (
-  case when entry_end_typical ~ '^\d{4}-\d{2}-\d{2}$' then entry_end_typical::date else null end
+  case when entry_end_typical::text ~ '^\d{4}-\d{2}-\d{2}$' then entry_end_typical::text::date else null end
 );
 
 -- トータル費用概算（申込費+交通+宿泊の合計目安）
