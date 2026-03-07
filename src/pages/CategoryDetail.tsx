@@ -308,174 +308,96 @@ function CategoryDetail() {
           </dd>
         </dl>
 
-        {/* 公共交通機関で行けるか */}
-        {(outbound || returnRoute) && (
-          <>
-            <h2 className="section-title">公共交通機関で行けるか</h2>
-            <div className="access-summary">
-              {outbound && (
-                <div className="access-summary-item">
-                  <span className="access-summary-label">往路</span>
-                  <span>{outbound.total_time_estimate}</span>
-                  {outbound.cost_estimate && <span className="access-summary-cost">{outbound.cost_estimate}</span>}
-                </div>
-              )}
-              {returnRoute && (
-                <div className="access-summary-item">
-                  <span className="access-summary-label">復路</span>
-                  <span>{returnRoute.total_time_estimate}</span>
-                  {returnRoute.cost_estimate && <span className="access-summary-cost">{returnRoute.cost_estimate}</span>}
-                </div>
-              )}
-            </div>
-          </>
-        )}
+        {/* 公共交通機関で行けるか（常に表示 #30） */}
+        <h2 className="section-title">公共交通機関で行けるか</h2>
+        <div className="access-summary">
+          <div className="access-summary-item">
+            <span className="access-summary-label">往路</span>
+            <span className={outbound?.total_time_estimate ? '' : 'empty-value'}>{outbound?.total_time_estimate ?? '—'}</span>
+            {outbound?.cost_estimate && <span className="access-summary-cost">{outbound.cost_estimate}</span>}
+          </div>
+          <div className="access-summary-item">
+            <span className="access-summary-label">復路</span>
+            <span className={returnRoute?.total_time_estimate ? '' : 'empty-value'}>{returnRoute?.total_time_estimate ?? '—'}</span>
+            {returnRoute?.cost_estimate && <span className="access-summary-cost">{returnRoute.cost_estimate}</span>}
+          </div>
+        </div>
 
-        {/* 何日必要か（カテゴリの stay_status を優先） */}
-        {(stayStatus || accommodations.length > 0) && (
-          <>
-            <h2 className="section-title">何日必要か</h2>
-            <dl className="event-detail-dl">
-              {stayStatus && (
-                <>
-                  <dt>ステイタス</dt>
-                  <dd>{stayStatusLabel(stayStatus)}</dd>
-                </>
-              )}
-              {accommodations.some((a) => a.recommended_area) && (
-                <>
-                  <dt>前泊推奨地</dt>
-                  <dd>{accommodations.map((a) => a.recommended_area).filter(Boolean).join('、')}</dd>
-                </>
-              )}
-              {accommodations.some((a) => a.avg_cost_3star != null) && (
-                <>
-                  <dt>宿泊費用目安（星3）</dt>
-                  <dd>約{accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円</dd>
-                </>
-              )}
-            </dl>
-          </>
-        )}
+        {/* 何日必要か（常に表示 #30） */}
+        <h2 className="section-title">何日必要か</h2>
+        <dl className="event-detail-dl">
+          <dt>ステイタス</dt>
+          <dd className={stayStatus ? '' : 'empty-value'}>{stayStatus ? stayStatusLabel(stayStatus) : '—'}</dd>
+          <dt>前泊推奨地</dt>
+          <dd className={accommodations.some((a) => a.recommended_area) ? '' : 'empty-value'}>
+            {accommodations.some((a) => a.recommended_area)
+              ? accommodations.map((a) => a.recommended_area).filter(Boolean).join('、')
+              : '—'}
+          </dd>
+          <dt>宿泊費用目安（星3）</dt>
+          <dd className={accommodations.some((a) => a.avg_cost_3star != null) ? '' : 'empty-value'}>
+            {accommodations.some((a) => a.avg_cost_3star != null)
+              ? `約${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円`
+              : '—'}
+          </dd>
+        </dl>
 
-        {/* トータルコスト */}
-        {(event.total_cost_estimate || outbound?.cost_estimate || returnRoute?.cost_estimate || accommodations.some((a) => a.avg_cost_3star != null) || category.entry_fee != null) && (
-          <>
-            <h2 className="section-title">トータルコスト</h2>
-            {event.total_cost_estimate && (
-              <p className="total-cost-summary">{event.total_cost_estimate}</p>
-            )}
-            <dl className="event-detail-dl">
-              {outbound?.cost_estimate && (
-                <>
-                  <dt>往路交通費</dt>
-                  <dd>{outbound.cost_estimate}</dd>
-                </>
-              )}
-              {returnRoute?.cost_estimate && (
-                <>
-                  <dt>復路交通費</dt>
-                  <dd>{returnRoute.cost_estimate}</dd>
-                </>
-              )}
-              {accommodations.some((a) => a.avg_cost_3star != null) && (
-                <>
-                  <dt>宿泊</dt>
-                  <dd>約{accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円</dd>
-                </>
-              )}
-              {category.entry_fee != null && (
-                <>
-                  <dt>申込費</dt>
-                  <dd>{category.entry_fee.toLocaleString()}円</dd>
-                </>
-              )}
-            </dl>
-          </>
+        {/* トータルコスト（常に表示 #30） */}
+        <h2 className="section-title">トータルコスト</h2>
+        {event.total_cost_estimate && (
+          <p className="total-cost-summary">{event.total_cost_estimate}</p>
         )}
+        <dl className="event-detail-dl">
+          <dt>申込費</dt>
+          <dd className={category.entry_fee != null ? '' : 'empty-value'}>
+            {category.entry_fee != null ? `${category.entry_fee.toLocaleString()}円` : '—'}
+          </dd>
+          <dt>往路交通費</dt>
+          <dd className={outbound?.cost_estimate ? '' : 'empty-value'}>{outbound?.cost_estimate ?? '—'}</dd>
+          <dt>復路交通費</dt>
+          <dd className={returnRoute?.cost_estimate ? '' : 'empty-value'}>{returnRoute?.cost_estimate ?? '—'}</dd>
+          <dt>宿泊</dt>
+          <dd className={accommodations.some((a) => a.avg_cost_3star != null) ? '' : 'empty-value'}>
+            {accommodations.some((a) => a.avg_cost_3star != null)
+              ? `約${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円`
+              : '—'}
+          </dd>
+        </dl>
 
-        {/* アクセスの詳細 */}
-        {(outbound || returnRoute) && (
-          <>
-            <h2 className="section-title">アクセスの詳細</h2>
-            {outbound && (
-              <>
-                <h3 className="section-subtitle">往路</h3>
-                <dl className="event-detail-dl">
-                  {outbound.route_detail && (
-                    <>
-                      <dt>経路・乗り換え</dt>
-                      <dd className="multi-line">{outbound.route_detail}</dd>
-                    </>
-                  )}
-                  {outbound.total_time_estimate && (
-                    <>
-                      <dt>所要時間</dt>
-                      <dd>{outbound.total_time_estimate}</dd>
-                    </>
-                  )}
-                  {outbound.cost_estimate && (
-                    <>
-                      <dt>費用概算</dt>
-                      <dd>{outbound.cost_estimate}</dd>
-                    </>
-                  )}
-                  {outbound.cash_required && (
-                    <>
-                      <dt>現金必須</dt>
-                      <dd>あり</dd>
-                    </>
-                  )}
-                  {outbound.booking_url && (
-                    <>
-                      <dt>予約サイト</dt>
-                      <dd>
-                        <a href={outbound.booking_url} target="_blank" rel="noreferrer">{outbound.booking_url}</a>
-                      </dd>
-                    </>
-                  )}
-                  {outbound.shuttle_available && (
-                    <>
-                      <dt>シャトルバス</dt>
-                      <dd>{outbound.shuttle_available}</dd>
-                    </>
-                  )}
-                  {outbound.taxi_estimate && (
-                    <>
-                      <dt>タクシー</dt>
-                      <dd>{outbound.taxi_estimate}</dd>
-                    </>
-                  )}
-                </dl>
-              </>
-            )}
-            {returnRoute && (
-              <>
-                <h3 className="section-subtitle">復路</h3>
-                <dl className="event-detail-dl">
-                  {returnRoute.route_detail && (
-                    <>
-                      <dt>経路・乗り換え</dt>
-                      <dd className="multi-line">{returnRoute.route_detail}</dd>
-                    </>
-                  )}
-                  {returnRoute.total_time_estimate && (
-                    <>
-                      <dt>所要時間</dt>
-                      <dd>{returnRoute.total_time_estimate}</dd>
-                    </>
-                  )}
-                  {returnRoute.cost_estimate && (
-                    <>
-                      <dt>費用概算</dt>
-                      <dd>{returnRoute.cost_estimate}</dd>
-                    </>
-                  )}
-                </dl>
-              </>
-            )}
-          </>
-        )}
+        {/* アクセスの詳細（常に表示 #30） */}
+        <h2 className="section-title">アクセスの詳細</h2>
+        <h3 className="section-subtitle">往路</h3>
+        <dl className="event-detail-dl">
+          <dt>経路・乗り換え</dt>
+          <dd className={outbound?.route_detail ? 'multi-line' : 'empty-value'}>{outbound?.route_detail ?? '—'}</dd>
+          <dt>所要時間</dt>
+          <dd className={outbound?.total_time_estimate ? '' : 'empty-value'}>{outbound?.total_time_estimate ?? '—'}</dd>
+          <dt>費用概算</dt>
+          <dd className={outbound?.cost_estimate ? '' : 'empty-value'}>{outbound?.cost_estimate ?? '—'}</dd>
+          <dt>現金必須</dt>
+          <dd className={outbound?.cash_required != null ? '' : 'empty-value'}>
+            {outbound?.cash_required != null ? (outbound.cash_required ? 'あり' : 'なし') : '—'}
+          </dd>
+          <dt>予約サイト</dt>
+          <dd className={outbound?.booking_url ? '' : 'empty-value'}>
+            {outbound?.booking_url
+              ? <a href={outbound.booking_url} target="_blank" rel="noreferrer">{outbound.booking_url}</a>
+              : '—'}
+          </dd>
+          <dt>シャトルバス</dt>
+          <dd className={outbound?.shuttle_available ? '' : 'empty-value'}>{outbound?.shuttle_available ?? '—'}</dd>
+          <dt>タクシー</dt>
+          <dd className={outbound?.taxi_estimate ? '' : 'empty-value'}>{outbound?.taxi_estimate ?? '—'}</dd>
+        </dl>
+        <h3 className="section-subtitle">復路</h3>
+        <dl className="event-detail-dl">
+          <dt>経路・乗り換え</dt>
+          <dd className={returnRoute?.route_detail ? 'multi-line' : 'empty-value'}>{returnRoute?.route_detail ?? '—'}</dd>
+          <dt>所要時間</dt>
+          <dd className={returnRoute?.total_time_estimate ? '' : 'empty-value'}>{returnRoute?.total_time_estimate ?? '—'}</dd>
+          <dt>費用概算</dt>
+          <dd className={returnRoute?.cost_estimate ? '' : 'empty-value'}>{returnRoute?.cost_estimate ?? '—'}</dd>
+        </dl>
 
         {/* コースマップ（サイト内保持・レース終了後も参照可能） */}
         {(courseMapFiles.length > 0 || event.course_map_url) && (
