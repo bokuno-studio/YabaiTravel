@@ -53,7 +53,7 @@ export function extract(html) {
         official_url: officialUrl,
         entry_url: officialUrl,
         location: location ? `${location}, Netherlands` : 'Netherlands',
-        race_type: 'obstacle',
+        race_type: 'strong_viking',
       })
       return false
     }

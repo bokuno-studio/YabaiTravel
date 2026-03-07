@@ -76,3 +76,9 @@
   gap: 0.5rem;
   align-items: center;
 }
+
+.filter-more {
+  font-size: 0.85rem;
+  color: #64748b;
+  align-self: center;
+}

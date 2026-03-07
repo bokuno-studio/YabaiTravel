@@ -36,7 +36,7 @@ const SYSTEM_PROMPT = `あなたはレースイベントの情報抽出エキス
     "event_date": "YYYY-MM-DD（開催初日）",
     "location": "開催地（都市名, 国）",
     "country": "国名（日本語）",
-    "race_type": "spartan|trail|hyrox|obstacle|adventure|marathon|other のいずれか",
+    "race_type": "spartan|trail|hyrox|obstacle|adventure|marathon|devils_circuit|strong_viking|other のいずれか",
     "entry_url": "申込URL（あれば）",
     "entry_start": "YYYY-MM-DD（申込開始日、記載あれば）",
     "entry_end": "YYYY-MM-DD（申込終了日、記載あれば）",

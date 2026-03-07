@@ -146,13 +146,13 @@ function extractDevilsCircuit(html) {
       const city = cityMatch[1].trim()
       const displayCity = city.replace(/^DC\s+/, '') // DC Dubai → Dubai
       const location = /Dubai/i.test(city) ? 'Dubai, UAE' : city + ', India'
-      races.push({
+        races.push({
         name: `Devils Circuit ${displayCity}`,
         event_date: null,
         official_url: 'https://www.devilscircuit.com/',
         entry_url: 'https://www.devilscircuit.com/',
         location,
-        race_type: 'obstacle',
+        race_type: 'devils_circuit',
       })
       return false
     }

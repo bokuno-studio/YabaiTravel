@@ -21,6 +21,7 @@ export type Event = {
   id: string
   name: string
   event_date: string
+  event_date_end?: string | null
   location: string | null
   country: string | null
   official_url: string | null

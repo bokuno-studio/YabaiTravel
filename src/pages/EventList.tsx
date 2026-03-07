@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import type { EventWithCategories, Category } from '../types/event'
@@ -30,6 +30,7 @@ function EventList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [raceTypes, setRaceTypes] = useState<Set<string>>(new Set())
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
   const [month, setMonth] = useState<string>('')
   const [distanceMin, setDistanceMin] = useState<string>('')
   const [distanceMax, setDistanceMax] = useState<string>('')
@@ -61,11 +62,44 @@ function EventList() {
     fetchEvents()
   }, [])
 
+  /** DB に存在するレース種別を動的取得（#27） */
+  const availableRaceTypes = useMemo(() => {
+    const types = new Set<string>()
+    events.forEach((e) => {
+      if (e.race_type) types.add(e.race_type)
+    })
+    return [...types].sort()
+  }, [events])
+
+  /** 選択中のレース種別に応じたカテゴリ一覧（#28） */
+  const availableCategories = useMemo(() => {
+    const filtered =
+      raceTypes.size > 0
+        ? events.filter((e) => e.race_type && raceTypes.has(e.race_type))
+        : events
+    const names = new Set<string>()
+    filtered.forEach((e) => {
+      (e.categories ?? []).forEach((c) => {
+        if (c.name) names.add(c.name)
+      })
+    })
+    return [...names].sort()
+  }, [events, raceTypes])
+
   const toggleRaceType = (t: string) => {
     setRaceTypes((prev) => {
       const next = new Set(prev)
       if (next.has(t)) next.delete(t)
       else next.add(t)
+      return next
+    })
+  }
+
+  const toggleCategory = (name: string) => {
+    setSelectedCategories((prev) => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
       return next
     })
   }
@@ -86,6 +120,11 @@ function EventList() {
 
   const filtered = events.filter((event) => {
     if (raceTypes.size > 0 && (event.race_type == null || !raceTypes.has(event.race_type))) return false
+    if (selectedCategories.size > 0) {
+      const catNames = new Set((event.categories ?? []).map((c) => c.name))
+      const hasMatch = [...selectedCategories].some((name) => catNames.has(name))
+      if (!hasMatch) return false
+    }
     if (month && event.event_date) {
       const [y, m] = month.split('-')
       if (!event.event_date.startsWith(`${y}-${m}`)) return false
@@ -106,6 +145,10 @@ function EventList() {
       trail: 'トレラン',
       spartan: 'スパルタン',
       adventure: 'アドベンチャー',
+      hyrox: 'HYROX',
+      devils_circuit: 'Devils Circuit',
+      strong_viking: 'Strong Viking',
+      obstacle: 'オブスタクル',
     }
     return map[t] ?? t
   }
@@ -132,7 +175,7 @@ function EventList() {
         <div className="filter-group filter-race-types">
           <label>レース種別</label>
           <div className="filter-checkboxes">
-            {['marathon', 'trail', 'spartan', 'adventure', 'other'].map((t) => (
+            {availableRaceTypes.map((t) => (
               <label key={t} className="filter-checkbox">
                 <input
                   type="checkbox"
@@ -144,6 +187,26 @@ function EventList() {
             ))}
           </div>
         </div>
+        {availableCategories.length > 0 && (
+          <div className="filter-group filter-categories">
+            <label>カテゴリ</label>
+            <div className="filter-checkboxes filter-categories-inner">
+              {availableCategories.slice(0, 20).map((name) => (
+                <label key={name} className="filter-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={selectedCategories.has(name)}
+                    onChange={() => toggleCategory(name)}
+                  />
+                  <span>{name}</span>
+                </label>
+              ))}
+              {availableCategories.length > 20 && (
+                <span className="filter-more">他{availableCategories.length - 20}件</span>
+              )}
+            </div>
+          </div>
+        )}
         <div className="filter-group">
           <label htmlFor="month">開催月</label>
           <input
@@ -205,7 +268,11 @@ function EventList() {
                     <div className="event-main">
                       <h2>{event.name}</h2>
                     <p className="event-meta">
-                      <span>{event.event_date}</span>
+                      <span>
+                        {event.event_date_end && event.event_date_end !== event.event_date
+                          ? `${event.event_date}〜${event.event_date_end}`
+                          : event.event_date}
+                      </span>
                       {event.country && <span> / {event.country}</span>}
                       {event.location && <span> / {event.location}</span>}
                     </p>

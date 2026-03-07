@@ -90,6 +90,21 @@ function CategoryDetail() {
     return map[s]
   }
 
+  const raceTypeLabel = (t: string | null) => {
+    if (!t) return 'その他'
+    const map: Record<string, string> = {
+      marathon: 'マラソン',
+      trail: 'トレラン',
+      spartan: 'スパルタン',
+      adventure: 'アドベンチャー',
+      hyrox: 'HYROX',
+      devils_circuit: 'Devils Circuit',
+      strong_viking: 'Strong Viking',
+      obstacle: 'オブスタクル',
+    }
+    return map[t] ?? t
+  }
+
   const formatInterval = (v: string | null) => {
     if (!v) return null
     const hms = v.match(/^(\d+):(\d+):(\d+)/)
@@ -155,7 +170,11 @@ function CategoryDetail() {
         <div className="event-detail-basic">
           <dl className="event-detail-dl event-detail-dl-inline">
             <dt>日程</dt>
-            <dd>{event.event_date}</dd>
+            <dd>
+              {event.event_date_end && event.event_date_end !== event.event_date
+                ? `${event.event_date}〜${event.event_date_end}`
+                : event.event_date}
+            </dd>
             {event.location && (
               <>
                 <dt>場所</dt>
@@ -198,7 +217,7 @@ function CategoryDetail() {
           )}
           {event.race_type && (
             <span className={`badge badge-${event.race_type}`}>
-              {event.race_type === 'trail' ? 'トレラン' : event.race_type === 'marathon' ? 'マラソン' : event.race_type === 'spartan' ? 'スパルタン' : event.race_type === 'adventure' ? 'アドベンチャー' : event.race_type}
+              {raceTypeLabel(event.race_type)}
             </span>
           )}
         </div>
@@ -230,136 +249,64 @@ function CategoryDetail() {
           </div>
         )}
 
-        {/* レーススペック（このカテゴリのみ。常に表示） */}
+        {/* レーススペック（このカテゴリのみ。空欄も表示して視覚化 #30） */}
         <h2 className="section-title">レーススペック</h2>
         <dl className="event-detail-dl">
-          {category.start_time && (
-            <>
-              <dt>スタート時間</dt>
-              <dd>{category.start_time} スタート</dd>
-            </>
-          )}
-          {category.reception_end && (
-            <>
-              <dt>受付終了</dt>
-              <dd>{category.reception_end}</dd>
-            </>
-          )}
-          {(category.reception_place || event.reception_place) && (
-            <>
-              <dt>受付場所</dt>
-              <dd>{category.reception_place ?? event.reception_place}</dd>
-            </>
-          )}
-          {(category.start_place || event.start_place) && (
-            <>
-              <dt>スタート場所</dt>
-              <dd>{category.start_place ?? event.start_place}</dd>
-            </>
-          )}
-          {category.finish_rate != null && (
-            <>
-              <dt>完走率</dt>
-              <dd>{(category.finish_rate * 100).toFixed(1)}%</dd>
-            </>
-          )}
-          {formatCutoffTimes(category.cutoff_times) && (
-            <>
-              <dt>カットオフタイム</dt>
-              <dd className="multi-line">{formatCutoffTimes(category.cutoff_times)}</dd>
-            </>
-          )}
-          {category.required_pace && (
-            <>
-              <dt>必要ペース</dt>
-              <dd>{category.required_pace}</dd>
-            </>
-          )}
-          {category.required_climb_pace && (
-            <>
-              <dt>必要クライムペース</dt>
-              <dd>{category.required_climb_pace}</dd>
-            </>
-          )}
-          {category.mandatory_gear && (
-            <>
-              <dt>必携品</dt>
-              <dd className="multi-line">{category.mandatory_gear}</dd>
-            </>
-          )}
-          {category.recommended_gear && (
-            <>
-              <dt>携行推奨品</dt>
-              <dd className="multi-line">{category.recommended_gear}</dd>
-            </>
-          )}
-          {category.prohibited_items && (
-            <>
-              <dt>使用禁止品</dt>
-              <dd>{category.prohibited_items}</dd>
-            </>
-          )}
-          {category.poles_allowed != null && (
-            <>
-              <dt>ポール</dt>
-              <dd>{category.poles_allowed ? '可' : '不可'}</dd>
-            </>
-          )}
-          {category.entry_fee != null && (
-            <>
-              <dt>申込費</dt>
-              <dd>{category.entry_fee.toLocaleString()}円</dd>
-            </>
-          )}
+          <dt>スタート時間</dt>
+          <dd className={category.start_time ? '' : 'empty-value'}>{category.start_time ? `${category.start_time} スタート` : '—'}</dd>
+          <dt>受付終了</dt>
+          <dd className={category.reception_end ? '' : 'empty-value'}>{category.reception_end ?? '—'}</dd>
+          <dt>受付場所</dt>
+          <dd className={category.reception_place || event.reception_place ? '' : 'empty-value'}>{category.reception_place ?? event.reception_place ?? '—'}</dd>
+          <dt>スタート場所</dt>
+          <dd className={category.start_place || event.start_place ? '' : 'empty-value'}>{category.start_place ?? event.start_place ?? '—'}</dd>
+          <dt>完走率</dt>
+          <dd className={category.finish_rate != null ? '' : 'empty-value'}>{category.finish_rate != null ? `${(category.finish_rate * 100).toFixed(1)}%` : '—'}</dd>
+          <dt>カットオフタイム</dt>
+          <dd className={formatCutoffTimes(category.cutoff_times) ? '' : 'empty-value multi-line'}>{formatCutoffTimes(category.cutoff_times) ?? '—'}</dd>
+          <dt>必要ペース</dt>
+          <dd className={category.required_pace ? '' : 'empty-value'}>{category.required_pace ?? '—'}</dd>
+          <dt>必要クライムペース</dt>
+          <dd className={category.required_climb_pace ? '' : 'empty-value'}>{category.required_climb_pace ?? '—'}</dd>
+          <dt>必携品</dt>
+          <dd className={category.mandatory_gear ? '' : 'empty-value multi-line'}>{category.mandatory_gear ?? '—'}</dd>
+          <dt>携行推奨品</dt>
+          <dd className={category.recommended_gear ? '' : 'empty-value multi-line'}>{category.recommended_gear ?? '—'}</dd>
+          <dt>使用禁止品</dt>
+          <dd className={category.prohibited_items ? '' : 'empty-value'}>{category.prohibited_items ?? '—'}</dd>
+          <dt>ポール</dt>
+          <dd className={category.poles_allowed != null ? '' : 'empty-value'}>{category.poles_allowed != null ? (category.poles_allowed ? '可' : '不可') : '—'}</dd>
+          <dt>申込費</dt>
+          <dd className={category.entry_fee != null ? '' : 'empty-value'}>{category.entry_fee != null ? `${category.entry_fee.toLocaleString()}円` : '—'}</dd>
         </dl>
 
-        {/* 申込み */}
-        {(event.entry_start || event.entry_end || event.entry_start_typical || event.entry_end_typical || event.entry_type || event.required_qualification || category.itra_points) && (
-          <>
-            <h2 className="section-title">申込み</h2>
-            <dl className="event-detail-dl">
-              {event.entry_type && (
-                <>
-                  <dt>エントリ種別</dt>
-                  <dd>{event.entry_type === 'lottery' ? '抽選' : event.entry_type === 'first_come' ? '先着' : event.entry_type}</dd>
-                </>
-              )}
-              {event.required_qualification && (
-                <>
-                  <dt>参加資格</dt>
-                  <dd>{event.required_qualification}</dd>
-                </>
-              )}
-              {category.itra_points && (
-                <>
-                  <dt>ITRA</dt>
-                  <dd>{category.itra_points}</dd>
-                </>
-              )}
-              {event.entry_start && (
-                <>
-                  <dt>申込み開始</dt>
-                  <dd>{event.entry_start}</dd>
-                </>
-              )}
-              {event.entry_end && (
-                <>
-                  <dt>申込み終了</dt>
-                  <dd>{event.entry_end}</dd>
-                </>
-              )}
-              {event.entry_start_typical && (
-                <>
-                  <dt>例年の申込期間</dt>
-                  <dd>
-                    {formatDate(event.entry_start_typical)}〜{formatDate(event.entry_end_typical)}
-                    <span className="entry-typical-note">（今年の申込開始の目安）</span>
-                  </dd>
-                </>
-              )}
-            </dl>
-          </>
-        )}
+        {/* 申込み（空欄も表示 #30） */}
+        <h2 className="section-title">申込み</h2>
+        <dl className="event-detail-dl">
+          <dt>エントリ種別</dt>
+          <dd className={event.entry_type ? '' : 'empty-value'}>
+            {event.entry_type === 'lottery' ? '抽選' : event.entry_type === 'first_come' ? '先着' : event.entry_type ?? '—'}
+          </dd>
+          <dt>参加資格</dt>
+          <dd className={event.required_qualification ? '' : 'empty-value'}>{event.required_qualification ?? '—'}</dd>
+          <dt>ITRA</dt>
+          <dd className={category.itra_points ? '' : 'empty-value'}>{category.itra_points ?? '—'}</dd>
+          <dt>申込み開始</dt>
+          <dd className={event.entry_start ? '' : 'empty-value'}>{event.entry_start ?? '—'}</dd>
+          <dt>申込み終了</dt>
+          <dd className={event.entry_end ? '' : 'empty-value'}>{event.entry_end ?? '—'}</dd>
+          <dt>例年の申込期間</dt>
+          <dd className={event.entry_start_typical ? '' : 'empty-value'}>
+            {event.entry_start_typical && event.entry_end_typical ? (
+              <>
+                {formatDate(event.entry_start_typical)}〜{formatDate(event.entry_end_typical)}
+                <span className="entry-typical-note">（今年の申込開始の目安）</span>
+              </>
+            ) : (
+              '—'
+            )}
+          </dd>
+        </dl>
 
         {/* 公共交通機関で行けるか */}
         {(outbound || returnRoute) && (

@@ -124,34 +124,11 @@
   white-space: nowrap;
 }
 
-.badge-marathon {
-  background: #dbeafe;
-  color: #1d4ed8;
-  border-color: #93c5fd;
-}
-
-.badge-trail {
-  background: #d1fae5;
-  color: #047857;
-  border-color: #6ee7b7;
-}
-
-.badge-spartan {
-  background: #fee2e2;
-  color: #b91c1c;
-  border-color: #fca5a5;
-}
-
-.badge-adventure {
-  background: #fef3c7;
-  color: #b45309;
-  border-color: #fcd34d;
-}
-
-.badge-other {
-  background: #ede9fe;
-  color: #5b21b6;
-  border-color: #c4b5fd;
+/* レース種別・カテゴリは色分けせず統一装飾（#25） */
+.badge:not(.badge-stay) {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #e2e8f0;
 }
 
 .empty {

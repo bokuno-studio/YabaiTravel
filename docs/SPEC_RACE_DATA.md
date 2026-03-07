@@ -5,6 +5,20 @@
 
 **レースの種類**: 初期はランネット全件＋マラソン/トレラン/スパルタン（各国公式）＋UTMB/Golden Trail/ハイロックス/アドベンチャーレース。追加は Cursor への依頼で会話しながら行う。詳細は [データ取得元](./SPEC_DATA_SOURCES.md)。
 
+### race_type 一覧（DB 値）
+
+| 値 | 表示名 |
+|----|--------|
+| marathon | マラソン |
+| trail | トレラン |
+| spartan | スパルタン |
+| adventure | アドベンチャー |
+| hyrox | HYROX |
+| devils_circuit | Devils Circuit |
+| strong_viking | Strong Viking |
+| obstacle | オブスタクル |
+| other | その他 |
+
 ---
 
 ## スコープの整理
