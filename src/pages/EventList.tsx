@@ -118,6 +118,17 @@ function EventList() {
     return true
   }
 
+  /** フィルタ条件に合致するカテゴリを返す (#33) */
+  const getMatchingCategories = (event: EventWithCategories): Category[] => {
+    const cats = event.categories ?? []
+    return cats.filter((cat) => {
+      if (selectedCategories.size > 0 && !selectedCategories.has(cat.name)) return false
+      return categoryMatchesFilter(cat)
+    })
+  }
+
+  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || !!month || !!distanceMin || !!distanceMax || !!timeLimitMin
+
   const filtered = events.filter((event) => {
     if (raceTypes.size > 0 && (event.race_type == null || !raceTypes.has(event.race_type))) return false
     if (selectedCategories.size > 0) {
@@ -261,52 +272,63 @@ function EventList() {
           <p className="empty">条件に合う大会がありません。</p>
         ) : (
           <ul>
-            {filtered.map((event) => (
-              <li key={event.id} className="event-card">
-                <div className="event-card-inner">
-                  <Link to={`/events/${event.id}`} className="event-card-main">
-                    <div className="event-main">
-                      <h2>{event.name}</h2>
-                    <p className="event-meta">
-                      <span>
-                        {event.event_date_end && event.event_date_end !== event.event_date
-                          ? `${event.event_date}〜${event.event_date_end}`
-                          : event.event_date}
-                      </span>
-                      {event.country && <span> / {event.country}</span>}
-                      {event.location && <span> / {event.location}</span>}
-                    </p>
-                    {entryPeriodText(event) && (
-                      <p className="event-entry-period">申込: {entryPeriodText(event)}</p>
+            {filtered.map((event) => {
+              const matchingCats = getMatchingCategories(event)
+              // フィルタで1件に絞られた場合は直接カテゴリへ、それ以外はイベント詳細へ (#33)
+              const cardLink = hasAnyFilter && matchingCats.length === 1
+                ? `/events/${event.id}/categories/${matchingCats[0].id}`
+                : `/events/${event.id}`
+              // フィルタ適用中は合致するカテゴリチップのみ表示 (#33)
+              const chipsToShow = hasAnyFilter && matchingCats.length > 0
+                ? matchingCats
+                : (event.categories ?? [])
+              return (
+                <li key={event.id} className="event-card">
+                  <div className="event-card-inner">
+                    <Link to={cardLink} className="event-card-main">
+                      <div className="event-main">
+                        <h2>{event.name}</h2>
+                        <p className="event-meta">
+                          <span>
+                            {event.event_date_end && event.event_date_end !== event.event_date
+                              ? `${event.event_date}〜${event.event_date_end}`
+                              : event.event_date}
+                          </span>
+                          {event.country && <span> / {event.country}</span>}
+                          {event.location && <span> / {event.location}</span>}
+                        </p>
+                        {entryPeriodText(event) && (
+                          <p className="event-entry-period">申込: {entryPeriodText(event)}</p>
+                        )}
+                      </div>
+                      <div className="event-card-badges">
+                        <span className={`badge badge-${event.race_type ?? 'other'}`}>
+                          {raceTypeLabel(event.race_type)}
+                        </span>
+                      </div>
+                    </Link>
+                    {chipsToShow.length > 0 && (
+                      <div className="event-category-chips">
+                        {chipsToShow.map((cat) => (
+                          <Link
+                            key={cat.id}
+                            to={`/events/${event.id}/categories/${cat.id}`}
+                            className="category-chip"
+                            title={
+                              cat.distance_km != null || cat.elevation_gain != null
+                                ? `${cat.distance_km != null ? `${cat.distance_km}km` : ''} ${cat.elevation_gain != null ? `D+${cat.elevation_gain}m` : ''}`.trim()
+                                : undefined
+                            }
+                          >
+                            {cat.name}
+                          </Link>
+                        ))}
+                      </div>
                     )}
                   </div>
-                  <div className="event-card-badges">
-                    <span className={`badge badge-${event.race_type ?? 'other'}`}>
-                      {raceTypeLabel(event.race_type)}
-                    </span>
-                  </div>
-                </Link>
-                {(event.categories ?? []).length > 0 && (
-                  <div className="event-category-chips">
-                    {(event.categories ?? []).map((cat) => (
-                      <Link
-                        key={cat.id}
-                        to={`/events/${event.id}/categories/${cat.id}`}
-                        className="category-chip"
-                        title={
-                          cat.distance_km != null || cat.elevation_gain != null
-                            ? `${cat.distance_km != null ? `${cat.distance_km}km` : ''} ${cat.elevation_gain != null ? `D+${cat.elevation_gain}m` : ''}`.trim()
-                            : undefined
-                        }
-                      >
-                        {cat.name}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-                </div>
-              </li>
-            ))}
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>

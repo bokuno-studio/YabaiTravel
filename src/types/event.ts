@@ -61,6 +61,7 @@ export type AccessRoute = {
   booking_url: string | null
   shuttle_available: string | null
   taxi_estimate: string | null
+  transit_accessible: boolean | null
   updated_at: string | null
 }
 

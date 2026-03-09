@@ -310,6 +310,11 @@ function CategoryDetail() {
 
         {/* 公共交通機関で行けるか（常に表示 #30） */}
         <h2 className="section-title">公共交通機関で行けるか</h2>
+        {outbound?.transit_accessible != null && (
+          <p className={`transit-accessible transit-accessible--${outbound.transit_accessible ? 'yes' : 'no'}`}>
+            {outbound.transit_accessible ? '✅ 公共交通機関で行ける' : '❌ 公共交通機関では行きにくい（要車・要シャトル）'}
+          </p>
+        )}
         <div className="access-summary">
           <div className="access-summary-item">
             <span className="access-summary-label">往路</span>

@@ -31,6 +31,24 @@ function createCategoriesChain(res: { data: unknown; error: unknown }) {
   }
 }
 
+function createAccessRoutesChain(res: { data: unknown; error: unknown }) {
+  return {
+    select: () => ({
+      eq: () => ({
+        order: () => Promise.resolve(res),
+      }),
+    }),
+  }
+}
+
+function createAccommodationsChain(res: { data: unknown; error: unknown }) {
+  return {
+    select: () => ({
+      eq: () => Promise.resolve(res),
+    }),
+  }
+}
+
 function renderEventDetail(eventId: string) {
   return render(
     <MemoryRouter initialEntries={[`/events/${eventId}`]}>
@@ -51,18 +69,22 @@ describe('EventDetail', () => {
       if (table === 'categories') {
         return createCategoriesChain({ data: [], error: null }) as never
       }
+      if (table === 'access_routes') {
+        return createAccessRoutesChain({ data: [], error: null }) as never
+      }
+      if (table === 'accommodations') {
+        return createAccommodationsChain({ data: [], error: null }) as never
+      }
       return {} as never
     })
   })
 
   it('大会が存在しない場合（maybeSingle が null）に「大会が見つかりません」を表示する', async () => {
     vi.mocked(supabase.from).mockImplementation((table: string) => {
-      if (table === 'events') {
-        return createEventsChain({ data: null, error: null }) as never
-      }
-      if (table === 'categories') {
-        return createCategoriesChain({ data: [], error: null }) as never
-      }
+      if (table === 'events') return createEventsChain({ data: null, error: null }) as never
+      if (table === 'categories') return createCategoriesChain({ data: [], error: null }) as never
+      if (table === 'access_routes') return createAccessRoutesChain({ data: [], error: null }) as never
+      if (table === 'accommodations') return createAccommodationsChain({ data: [], error: null }) as never
       return {} as never
     })
 
@@ -87,12 +109,10 @@ describe('EventDetail', () => {
     ]
 
     vi.mocked(supabase.from).mockImplementation((table: string) => {
-      if (table === 'events') {
-        return createEventsChain({ data: mockEvent, error: null }) as never
-      }
-      if (table === 'categories') {
-        return createCategoriesChain({ data: mockCategories, error: null }) as never
-      }
+      if (table === 'events') return createEventsChain({ data: mockEvent, error: null }) as never
+      if (table === 'categories') return createCategoriesChain({ data: mockCategories, error: null }) as never
+      if (table === 'access_routes') return createAccessRoutesChain({ data: [], error: null }) as never
+      if (table === 'accommodations') return createAccommodationsChain({ data: [], error: null }) as never
       return {} as never
     })
 
@@ -105,12 +125,10 @@ describe('EventDetail', () => {
 
   it('Supabase エラー時にエラーメッセージを表示する', async () => {
     vi.mocked(supabase.from).mockImplementation((table: string) => {
-      if (table === 'events') {
-        return createEventsChain({ data: null, error: { message: 'DB接続エラー' } }) as never
-      }
-      if (table === 'categories') {
-        return createCategoriesChain({ data: [], error: null }) as never
-      }
+      if (table === 'events') return createEventsChain({ data: null, error: { message: 'DB接続エラー' } }) as never
+      if (table === 'categories') return createCategoriesChain({ data: [], error: null }) as never
+      if (table === 'access_routes') return createAccessRoutesChain({ data: [], error: null }) as never
+      if (table === 'accommodations') return createAccommodationsChain({ data: [], error: null }) as never
       return {} as never
     })
 
