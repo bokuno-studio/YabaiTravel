@@ -1,0 +1,336 @@
+/**
+ * ① レース名収集スクリプト
+ * CHECK_TARGET_URLS.md の全ソースからレース URL を収集し、events テーブルに投入
+ * collected_at = NULL でマーク（未エンリッチ）
+ *
+ * 使い方:
+ *   npm run crawl:collect               # 全件
+ *   npm run crawl:collect -- --dry-run  # DB更新なし
+ *   npm run crawl:collect -- --limit 5  # 最初の5件のみ
+ */
+import pg from 'pg'
+import { existsSync, readFileSync } from 'fs'
+import { resolve } from 'path'
+import * as cheerio from 'cheerio'
+import { extract as extractAExtremo } from '../crawl-extract/extract-a-extremo.js'
+import { extract as extractGoldenTrail } from '../crawl-extract/extract-golden-trail.js'
+import { extract as extractSpartan } from '../crawl-extract/extract-spartan.js'
+import { extract as extractUtmb } from '../crawl-extract/extract-utmb.js'
+import { extract as extractHyrox } from '../crawl-extract/extract-hyrox.js'
+import { extract as extractStrongViking } from '../crawl-extract/extract-strong-viking.js'
+
+const envPath = resolve(process.cwd(), '.env.local')
+if (existsSync(envPath)) {
+  readFileSync(envPath, 'utf8').split('\n').forEach((line) => {
+    const m = line.match(/^([^#=]+)=(.*)$/)
+    if (m) process.env[m[1].trim()] = m[2].trim().replace(/^["']|["']$/g, '')
+  })
+}
+
+const args = process.argv.slice(2)
+const DRY_RUN = args.includes('--dry-run')
+const limitIdx = args.indexOf('--limit')
+const LIMIT = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : Infinity
+
+// --- 共通ユーティリティ ---
+
+async function fetchHtml(url, timeoutMs = 15000) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'YabaiTravel-Crawl/1.0' },
+      redirect: 'follow',
+      signal: controller.signal,
+    })
+    clearTimeout(timer)
+    if (!res.ok) throw new Error(`${res.status}`)
+    return res.text()
+  } catch (e) {
+    clearTimeout(timer)
+    throw e
+  }
+}
+
+/** CHECK_TARGET_URLS.md から URL を抽出 */
+function parseCheckUrls() {
+  const path = resolve(process.cwd(), 'docs/data-sources/CHECK_TARGET_URLS.md')
+  const content = readFileSync(path, 'utf8')
+  const urls = []
+  for (const line of content.split('\n')) {
+    const m = line.match(/\|\s*(https:\/\/[^\s|]+)\s*\|/)
+    if (m) urls.push(m[1].trim())
+  }
+  return [...new Set(urls)]
+}
+
+// --- ジャンク除去 ---
+
+const JUNK_NAMES = /^(shopping_cart|Sign in|Orders|Online Shop|主催者の皆さまへ|大会主催者の方へ|エントリーガイド|OCR World Champs|SPARTAN TRAIL)$/i
+const JUNK_PATTERNS = [
+  /^エントリー\s*\d{4}\.\d{2}\.\d{2}/m,
+  /^【スポーツの話題はこちら】/,
+  /TICKET PRICES RISE.*REGISTER NOW/i,
+  /^プレスリリース$/i,
+]
+function isJunk(name) {
+  const t = name?.trim() ?? ''
+  return JUNK_NAMES.test(t) || JUNK_PATTERNS.some((p) => p.test(t))
+}
+
+// --- ソース別のレースURL収集 ---
+
+/** Spartan: find-race ページから各国の全レースURLを取得 */
+async function collectSpartanRaces(url) {
+  const base = url.replace(/\/$/, '')
+  const fetchUrl = base + (base.endsWith('/en') ? '/race/find-race' : '/en/race/find-race')
+  try {
+    const html = await fetchHtml(fetchUrl)
+    const { races } = extractSpartan(html, base)
+    return races.map((r) => ({ ...r, source: 'spartan' }))
+  } catch { return [] }
+}
+
+/** RUNNET: トレイル検索結果からレースURLを収集 */
+async function collectRunnetRaces() {
+  const races = []
+  try {
+    const html = await fetchHtml('https://runnet.jp/entry/runtes/user/pc/RaceSearchZZSDetailAction.do?command=search&available=1&distanceClass=6')
+    const $ = cheerio.load(html)
+    $('a[href*="competitionDetailAction"], a[href*="moshicomDetailAction"]').each((_, el) => {
+      const href = $(el).attr('href')
+      const name = $(el).text().trim()
+      if (!href || !name || name.length < 3) return
+      const officialUrl = href.startsWith('http') ? href : new URL(href, 'https://runnet.jp/').href
+      races.push({ name, official_url: officialUrl, entry_url: officialUrl, race_type: 'trail', source: 'runnet' })
+    })
+  } catch (e) { console.warn('  RUNNET collect error:', e.message) }
+  return races.slice(0, 5)
+}
+
+/** スポーツエントリー: トップページからレースURLを収集 */
+async function collectSportsEntryRaces() {
+  const races = []
+  try {
+    const html = await fetchHtml('https://www.sportsentry.ne.jp/')
+    const $ = cheerio.load(html)
+    $('a[href*="/event/"]').each((_, el) => {
+      const href = $(el).attr('href')
+      const name = $(el).text().trim()
+      if (!href || !name || name.length < 5 || name.length > 100) return
+      const officialUrl = href.startsWith('http') ? href : new URL(href, 'https://www.sportsentry.ne.jp/').href
+      races.push({ name, official_url: officialUrl, entry_url: officialUrl, race_type: 'other', source: 'sports-entry' })
+    })
+  } catch (e) { console.warn('  SportsEntry collect error:', e.message) }
+  return races.slice(0, 3)
+}
+
+/** LAWSON DO! SPORTS: トップからレースURLを収集 */
+async function collectLawsonRaces() {
+  const races = []
+  try {
+    const html = await fetchHtml('https://do.l-tike.com/')
+    const $ = cheerio.load(html)
+    $('a[href*="race/detail"]').each((_, el) => {
+      const href = $(el).attr('href')
+      const name = $(el).text().trim()
+      if (!href || !name || name.length < 5 || name.length > 100) return
+      const officialUrl = href.startsWith('http') ? href : new URL(href, 'https://do.l-tike.com/').href
+      races.push({ name, official_url: officialUrl, entry_url: officialUrl, race_type: 'other', source: 'lawson-do' })
+    })
+  } catch (e) { console.warn('  LAWSON DO collect error:', e.message) }
+  return races.slice(0, 3)
+}
+
+/** その他の専用ソース */
+async function collectOtherSourceRaces(url) {
+  try {
+    const html = await fetchHtml(url)
+    if (url.includes('a-extremo.com')) {
+      const { races } = extractAExtremo(html)
+      return races.map((r) => ({ ...r, source: 'a-extremo' }))
+    }
+    if (url.includes('goldentrailseries.com')) {
+      const { races } = extractGoldenTrail(html)
+      return races.map((r) => ({ ...r, source: 'golden-trail' }))
+    }
+    if (url.includes('utmb.world/utmb-world-series')) {
+      const { races } = extractUtmb(html)
+      return races.map((r) => ({ ...r, source: 'utmb' }))
+    }
+    if (url.includes('hyrox.com')) {
+      const { races } = extractHyrox(html)
+      return races.map((r) => ({ ...r, source: 'hyrox' }))
+    }
+    if (url.includes('strongviking.com')) {
+      const { races } = extractStrongViking(html)
+      return races.map((r) => ({ ...r, source: 'strong-viking' }))
+    }
+    if (url.includes('toughmudder.com')) {
+      const $ = cheerio.load(html)
+      const races = []
+      $('a[href*="/events/"]').each((_, el) => {
+        const href = $(el).attr('href')
+        const text = $(el).text().trim()
+        if (!href || !text || href.includes('season-pass') || text.includes('SEASON') || text.length < 3) return
+        const officialUrl = href.startsWith('http') ? href : new URL(href, 'https://toughmudder.com/').href
+        if (races.find((r) => r.official_url === officialUrl)) return
+        races.push({ name: `Tough Mudder ${text}`, official_url: officialUrl, entry_url: officialUrl, race_type: 'obstacle', source: 'tough-mudder' })
+      })
+      return races.slice(0, 3)
+    }
+    if (url.includes('devilscircuit.com')) {
+      const $ = cheerio.load(html)
+      const races = []
+      $('h2, h3').each((_, el) => {
+        const t = $(el).text().trim()
+        if (/^(Delhi|Mumbai|Bengaluru|Pune|Hyderabad|Kochi|Chennai|Guwahati|Jaipur|Lucknow|Indore|Ahmedabad|Dubai)/i.test(t)) {
+          races.push({ name: `Devils Circuit ${t}`, official_url: url, entry_url: url, location: `${t}, India`, race_type: 'devils_circuit', source: 'devils-circuit' })
+        }
+      })
+      return races.slice(0, 1)
+    }
+    if (url.includes('albatros-adventure-marathons.com')) {
+      const $ = cheerio.load(html)
+      const races = []
+      $('a[href]').each((_, el) => {
+        const href = $(el).attr('href')
+        const text = $(el).text().trim()
+        if (href && text && text.length > 5 && text.length < 80 && /marathon|ultra|trail/i.test(text)) {
+          const officialUrl = href.startsWith('http') ? href : new URL(href, url).href
+          races.push({ name: text, official_url: officialUrl, entry_url: officialUrl, race_type: 'adventure', source: 'albatros' })
+        }
+      })
+      return races.slice(0, 1)
+    }
+  } catch { return [] }
+  return []
+}
+
+// --- DB挿入 ---
+
+async function insertRace(client, race) {
+  const result = await client.query(
+    `INSERT INTO yabai_travel.events (name, event_date, location, country, race_type, official_url, entry_url, collected_at)
+     SELECT $1, $2, $3, $4, $5, $6, $7, NULL
+     WHERE NOT EXISTS (SELECT 1 FROM yabai_travel.events WHERE official_url = $6)
+     RETURNING id`,
+    [
+      race.name,
+      race.event_date || null,
+      race.location || null,
+      race.country || null,
+      race.race_type || 'other',
+      race.official_url,
+      race.entry_url || race.official_url,
+    ]
+  )
+  return result.rows[0]?.id || null
+}
+
+// --- メイン ---
+
+async function run() {
+  const client = DRY_RUN ? null : new pg.Client({ connectionString: process.env.DATABASE_URL })
+  if (client) await client.connect()
+
+  console.log(`=== レース名収集開始 (DRY_RUN: ${DRY_RUN}) ===\n`)
+
+  const allUrls = parseCheckUrls()
+  let allRaces = []
+
+  const spartanUrls = allUrls.filter((u) => u.includes('spartan.com'))
+  const otherUrls = allUrls.filter((u) => !u.includes('spartan.com'))
+
+  // Spartan: 各国から1件ずつ
+  for (const url of spartanUrls) {
+    const races = await collectSpartanRaces(url)
+    if (races.length) {
+      allRaces.push(races[0])
+      console.log(`  [spartan] ${url.slice(0, 35)} → ${races[0].name?.slice(0, 30)}`)
+    }
+  }
+
+  // RUNNET / スポーツエントリー / LAWSON DO!
+  const runnetRaces = await collectRunnetRaces()
+  console.log(`  [runnet] ${runnetRaces.length} races`)
+  allRaces.push(...runnetRaces)
+
+  const seRaces = await collectSportsEntryRaces()
+  console.log(`  [sports-entry] ${seRaces.length} races`)
+  allRaces.push(...seRaces)
+
+  const lawsonRaces = await collectLawsonRaces()
+  console.log(`  [lawson-do] ${lawsonRaces.length} races`)
+  allRaces.push(...lawsonRaces)
+
+  // その他ソース
+  for (const url of otherUrls) {
+    if (url.includes('runnet.jp') || url.includes('sportsentry.ne.jp') || url.includes('do.l-tike.com')) continue
+    if (url.includes('itra.run') || url.includes('ahotu.com')) continue
+    const races = await collectOtherSourceRaces(url)
+    if (races.length) {
+      allRaces.push(races[0])
+      console.log(`  [${races[0].source}] ${races[0].name?.slice(0, 40)}`)
+    }
+  }
+
+  // ジャンク除去・重複除去
+  allRaces = allRaces.filter((r) => !isJunk(r.name))
+  const seenUrls = new Set()
+  const seenNames = new Set()
+  allRaces = allRaces.filter((r) => {
+    if (r.official_url && seenUrls.has(r.official_url)) return false
+    if (r.name && seenNames.has(r.name)) return false
+    if (r.official_url) seenUrls.add(r.official_url)
+    if (r.name) seenNames.add(r.name)
+    return true
+  })
+
+  console.log(`\n収集完了: ${allRaces.length} races\n`)
+
+  const targets = allRaces.slice(0, LIMIT)
+  let inserted = 0
+  let skipped = 0
+  let errors = 0
+
+  for (let i = 0; i < targets.length; i++) {
+    const race = targets[i]
+    const label = `[${i + 1}/${targets.length}]`
+
+    if (!race.official_url) {
+      console.log(`${label} SKIP (no URL) ${race.name?.slice(0, 40)}`)
+      skipped++
+      continue
+    }
+
+    if (DRY_RUN) {
+      console.log(`${label} DRY ${race.name?.slice(0, 40)} | ${race.source} | ${race.official_url?.slice(0, 50)}`)
+      continue
+    }
+
+    try {
+      const id = await insertRace(client, race)
+      if (id) {
+        inserted++
+        console.log(`${label} OK  ${race.name?.slice(0, 40)} | ${race.source}`)
+      } else {
+        skipped++
+        console.log(`${label} DUP ${race.name?.slice(0, 40)}`)
+      }
+    } catch (e) {
+      errors++
+      console.log(`${label} ERR ${race.name?.slice(0, 40)} | ${e.message?.slice(0, 60)}`)
+    }
+  }
+
+  if (client) await client.end()
+
+  console.log(`\n=== 完了 ===`)
+  console.log(`Inserted: ${inserted}, Skipped: ${skipped}, Errors: ${errors}`)
+}
+
+run().catch((e) => {
+  console.error(e)
+  process.exit(1)
+})

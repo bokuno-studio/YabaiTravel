@@ -1,0 +1,41 @@
+# クロール自動実行（毎日 02:00 JST = 17:00 UTC）
+name: Crawl & Enrich
+
+on:
+  workflow_dispatch:   # 手動実行
+  schedule:
+    - cron: '0 17 * * *'  # 毎日 02:00 JST
+
+jobs:
+  collect-races:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: レース名収集
+        run: node scripts/crawl/collect-races.js
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  enrich:
+    needs: collect-races
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: 詳細・ロジ収集
+        run: node scripts/crawl/orchestrator.js
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_DIRECTIONS_API_KEY: ${{ secrets.GOOGLE_DIRECTIONS_API_KEY }}

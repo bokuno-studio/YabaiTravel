@@ -451,7 +451,7 @@ function CategoryDetail() {
             <p className="section-desc">去年のコースマップ・申込期間・料金の参考</p>
             <div className="past-editions">
               {pastEditions.map(({ event: pe, courseMaps, categories: pastCats }) => {
-                const year = pe.event_date.slice(0, 4)
+                const year = pe.event_date?.slice(0, 4)
                 const sameCat = pastCats.find((c) => c.name === category?.name)
                 return (
                   <div key={pe.id} className="past-edition-card">

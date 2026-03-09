@@ -16,6 +16,8 @@
     "db:reset": "node scripts/reset-db.js",
     "extract:test": "node scripts/crawl-extract/run-extract.js",
     "crawl:run": "node scripts/crawl/run.js",
+    "crawl:collect": "node scripts/crawl/collect-races.js",
+    "crawl:orchestrate": "node scripts/crawl/orchestrator.js",
     "crawl:fetch-all": "node scripts/crawl/fetch-all-urls.js",
     "crawl:fix-and-rerun": "node scripts/crawl/fix-and-rerun.js && npm run crawl:run",
     "deploy:watch": "sh scripts/watch-deploy.sh",
