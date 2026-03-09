@@ -277,7 +277,7 @@ function CategoryDetail() {
           <dt>ポール</dt>
           <dd className={category.poles_allowed != null ? '' : 'empty-value'}>{category.poles_allowed != null ? (category.poles_allowed ? '可' : '不可') : '—'}</dd>
           <dt>申込費</dt>
-          <dd className={category.entry_fee != null ? '' : 'empty-value'}>{category.entry_fee != null ? `${category.entry_fee.toLocaleString()}円` : '—'}</dd>
+          <dd className={category.entry_fee != null ? '' : 'empty-value'}>{category.entry_fee != null ? `${category.entry_fee.toLocaleString()} ${category.entry_fee_currency ?? '円'}` : '—'}</dd>
         </dl>
 
         {/* 申込み（空欄も表示 #30） */}
@@ -350,7 +350,7 @@ function CategoryDetail() {
         <dl className="event-detail-dl">
           <dt>申込費</dt>
           <dd className={category.entry_fee != null ? '' : 'empty-value'}>
-            {category.entry_fee != null ? `${category.entry_fee.toLocaleString()}円` : '—'}
+            {category.entry_fee != null ? `${category.entry_fee.toLocaleString()} ${category.entry_fee_currency ?? '円'}` : '—'}
           </dd>
           <dt>往路交通費</dt>
           <dd className={outbound?.cost_estimate ? '' : 'empty-value'}>{outbound?.cost_estimate ?? '—'}</dd>
@@ -466,7 +466,7 @@ function CategoryDetail() {
                       {sameCat?.entry_fee != null && (
                         <>
                           <dt>{sameCat.name} 申込費</dt>
-                          <dd>{sameCat.entry_fee.toLocaleString()}円</dd>
+                          <dd>{sameCat.entry_fee.toLocaleString()} {sameCat.entry_fee_currency ?? '円'}</dd>
                         </>
                       )}
                       {courseMaps.length > 0 && (

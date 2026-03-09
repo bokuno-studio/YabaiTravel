@@ -95,6 +95,7 @@ export type Category = {
   prohibited_items: string | null
   poles_allowed: boolean | null
   entry_fee: number | null
+  entry_fee_currency: string | null
   itra_points: string | null
   collected_at: string | null
   updated_at: string | null

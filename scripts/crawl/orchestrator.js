@@ -47,7 +47,7 @@ async function run() {
     `SELECT id, name, official_url, location, country
      FROM yabai_travel.events
      WHERE collected_at IS NULL
-     ORDER BY created_at ASC`
+     ORDER BY updated_at ASC`
   )
 
   await client.end()
@@ -71,37 +71,28 @@ async function run() {
 
     console.log(`--- バッチ ${batchNum}/${batches.length} (${batch.length} 件) ---`)
 
-    const results = await Promise.allSettled(
-      batch.flatMap((event) => [
-        enrichDetail(event, { dryRun: DRY_RUN }).catch((e) => ({ success: false, eventId: event.id, error: e.message })),
-        enrichLogi(event, { dryRun: DRY_RUN }).catch((e) => ({ success: false, eventId: event.id, error: e.message })),
-      ])
-    )
-
-    // 結果を集計（enrichDetail と enrichLogi が交互に並ぶ）
-    for (let i = 0; i < results.length; i++) {
-      const result = results[i].status === 'fulfilled' ? results[i].value : { success: false, error: results[i].reason?.message }
-      const isDetail = i % 2 === 0
-      const event = batch[Math.floor(i / 2)]
-
-      if (isDetail) {
-        if (result.success) {
+    await Promise.allSettled(
+      batch.map(async (event) => {
+        // detail → logi の順で直列実行（logi は detail が書いた location を使うため）
+        const detailResult = await enrichDetail(event, { dryRun: DRY_RUN }).catch((e) => ({ success: false, error: e.message }))
+        if (detailResult.success) {
           totalDetailOk++
           console.log(`  [detail] OK  ${event.name?.slice(0, 40)}`)
         } else {
           totalDetailErr++
-          console.log(`  [detail] ERR ${event.name?.slice(0, 40)} | ${result.error?.slice(0, 50)}`)
+          console.log(`  [detail] ERR ${event.name?.slice(0, 40)} | ${detailResult.error?.slice(0, 50)}`)
         }
-      } else {
-        if (result.success) {
+
+        const logiResult = await enrichLogi(event, { dryRun: DRY_RUN }).catch((e) => ({ success: false, error: e.message }))
+        if (logiResult.success) {
           totalLogiOk++
           console.log(`  [logi]   OK  ${event.name?.slice(0, 40)}`)
         } else {
           totalLogiErr++
-          console.log(`  [logi]   ERR ${event.name?.slice(0, 40)} | ${result.error?.slice(0, 50)}`)
+          console.log(`  [logi]   ERR ${event.name?.slice(0, 40)} | ${logiResult.error?.slice(0, 50)}`)
         }
-      }
-    }
+      })
+    )
 
     console.log()
 
