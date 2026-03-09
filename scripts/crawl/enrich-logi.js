@@ -79,6 +79,7 @@ async function fetchDomesticLogiWithLlm(anthropic, location) {
         content: `東京から「${location}」への公共交通機関での経路・所要時間・費用概算を教えてください。また、シャトルバスやタクシーの情報があれば合わせて教えてください。
 以下のJSON形式で回答してください：
 {
+  "transit_accessible": true または false（公共交通機関のみで会場付近まで行けるか。最寄り駅から徒歩圏内 or シャトルバスあれば true）,
   "route_detail": "経路の詳細（ステップごと）",
   "total_time_estimate": "所要時間（例: 約2時間30分）",
   "cost_estimate": "費用概算（例: 約3,000円〜5,000円）",
@@ -192,6 +193,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
     let returnRoute = null
     let shuttleAvailable = null
     let taxiEstimate = null
+    let transitAccessible = null
 
     if (isJapan) {
       // 国内: Google Directions API or LLM fallback
@@ -202,6 +204,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
 
           outboundRoute = parseGoogleDirections(outboundData)
           returnRoute = parseGoogleDirections(returnData)
+          if (outboundRoute) transitAccessible = true
         } catch (e) {
           console.warn(`  Google Directions API error: ${e.message}, falling back to LLM`)
         }
@@ -223,6 +226,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
           }
           shuttleAvailable = logiInfo.shuttle_available || null
           taxiEstimate = logiInfo.taxi_estimate || null
+          transitAccessible = typeof logiInfo.transit_accessible === 'boolean' ? logiInfo.transit_accessible : null
         }
       }
     } else {
@@ -252,8 +256,8 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
     if (outboundRoute) {
       await client.query(
         `INSERT INTO yabai_travel.access_routes
-          (event_id, direction, route_detail, total_time_estimate, cost_estimate, shuttle_available, taxi_estimate)
-         VALUES ($1, 'outbound', $2, $3, $4, $5, $6)`,
+          (event_id, direction, route_detail, total_time_estimate, cost_estimate, shuttle_available, taxi_estimate, transit_accessible)
+         VALUES ($1, 'outbound', $2, $3, $4, $5, $6, $7)`,
         [
           eventId,
           outboundRoute.route_detail || null,
@@ -261,6 +265,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
           outboundRoute.cost_estimate || null,
           shuttleAvailable,
           taxiEstimate,
+          transitAccessible,
         ]
       )
     }
@@ -268,8 +273,8 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
     if (returnRoute) {
       await client.query(
         `INSERT INTO yabai_travel.access_routes
-          (event_id, direction, route_detail, total_time_estimate, cost_estimate, shuttle_available, taxi_estimate)
-         VALUES ($1, 'return', $2, $3, $4, $5, $6)`,
+          (event_id, direction, route_detail, total_time_estimate, cost_estimate, shuttle_available, taxi_estimate, transit_accessible)
+         VALUES ($1, 'return', $2, $3, $4, $5, $6, $7)`,
         [
           eventId,
           returnRoute.route_detail || null,
@@ -277,6 +282,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
           returnRoute.cost_estimate || null,
           shuttleAvailable,
           taxiEstimate,
+          transitAccessible,
         ]
       )
     }
@@ -330,7 +336,7 @@ async function runCli() {
        FROM yabai_travel.events e
        LEFT JOIN yabai_travel.access_routes ar ON ar.event_id = e.id
        WHERE e.location IS NOT NULL AND ar.id IS NULL
-       ORDER BY e.created_at ASC
+       ORDER BY e.updated_at ASC
        LIMIT $1`,
       [LIMIT === Infinity ? 10000 : LIMIT]
     )
