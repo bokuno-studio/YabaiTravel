@@ -2,6 +2,12 @@
  * マイグレーション実行
  * DATABASE_URL が設定されている場合、supabase/migrations/*.sql を順に実行
  * schema_migrations テーブルで適用済みを追跡し、未適用分のみ実行する（冪等性確保）
+ *
+ * 環境変数:
+ *   DATABASE_URL      - PostgreSQL 接続文字列（必須）
+ *   SUPABASE_SCHEMA   - 対象スキーマ（デフォルト: yabai_travel）
+ *                       ステージングは yabai_travel_staging を指定
+ *
  * .env.local があれば読み込む（Vercel では DATABASE_URL を環境変数に設定）
  */
 import pg from 'pg';
@@ -9,13 +15,15 @@ import { existsSync, readdirSync, readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join, resolve } from 'path';
 
-// .env.local があれば読み込み（Vercel では DATABASE_URL を環境変数で設定）
-const envPath = resolve(process.cwd(), '.env.local');
-if (existsSync(envPath) && !process.env.DATABASE_URL) {
-  readFileSync(envPath, 'utf8').split('\n').forEach((line) => {
-    const m = line.match(/^([^#=]+)=(.*)$/);
-    if (m) process.env[m[1].trim()] = m[2].trim().replace(/^["']|["']$/g, '');
-  });
+// .env または .env.local を読み込む
+for (const envFile of ['.env', '.env.local']) {
+  const envPath = resolve(process.cwd(), envFile);
+  if (existsSync(envPath) && !process.env.DATABASE_URL) {
+    readFileSync(envPath, 'utf8').split('\n').forEach((line) => {
+      const m = line.match(/^([^#=]+)=(.*)$/);
+      if (m) process.env[m[1].trim()] = m[2].trim().replace(/^["']|["']$/g, '');
+    });
+  }
 }
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -36,6 +44,12 @@ if (!url) {
   process.exit(1);
 }
 
+// 対象スキーマ（デフォルト: yabai_travel）
+const TARGET_SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel';
+const SOURCE_SCHEMA = 'yabai_travel'; // マイグレーションファイル内のスキーマ名
+
+console.log(`マイグレーション対象スキーマ: ${TARGET_SCHEMA}`);
+
 const client = new pg.Client({ connectionString: url });
 
 async function run() {
@@ -44,7 +58,7 @@ async function run() {
 
     // 適用済みマイグレーションを追跡するテーブルを作成（初回のみ）
     await client.query(`
-      CREATE TABLE IF NOT EXISTS yabai_travel.schema_migrations (
+      CREATE TABLE IF NOT EXISTS ${TARGET_SCHEMA}.schema_migrations (
         filename TEXT PRIMARY KEY,
         applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )
@@ -52,7 +66,7 @@ async function run() {
 
     // 適用済みマイグレーション一覧を取得
     const { rows } = await client.query(
-      'SELECT filename FROM yabai_travel.schema_migrations'
+      `SELECT filename FROM ${TARGET_SCHEMA}.schema_migrations`
     );
     const applied = new Set(rows.map((r) => r.filename));
 
@@ -65,10 +79,16 @@ async function run() {
         console.log(`${file}: スキップ（適用済み）`);
         continue;
       }
-      const sql = readFileSync(join(migrationsDir, file), 'utf8');
+      let sql = readFileSync(join(migrationsDir, file), 'utf8');
+
+      // ターゲットスキーマが本番と異なる場合、SQL 内のスキーマ参照を置換
+      if (TARGET_SCHEMA !== SOURCE_SCHEMA) {
+        sql = sql.replaceAll(SOURCE_SCHEMA, TARGET_SCHEMA);
+      }
+
       await client.query(sql);
       await client.query(
-        'INSERT INTO yabai_travel.schema_migrations (filename) VALUES ($1)',
+        `INSERT INTO ${TARGET_SCHEMA}.schema_migrations (filename) VALUES ($1)`,
         [file]
       );
       console.log(`${file}: 実行完了`);
