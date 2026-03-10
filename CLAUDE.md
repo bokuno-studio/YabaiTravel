@@ -138,17 +138,18 @@ DATABASE_URL              # マイグレーション・クロール用（Postgre
 - 実装開始時に `in-progress` に変更する
 - 実装完了後、単体テストを実行してすべて通ることを確認する
 - `staging` ブランチにデプロイし、`npm run deploy:watch` 等でデプロイ完了を監視する
-- デプロイ完了・エラーなし確認後、`staging-deployed` に変更してユーザーに報告する
-
-**main デプロイ（staging-ok → done）**
-- ユーザーが「#XX main に出して」と指示したら、まずセキュリティスキャンを実行する
-- スキャンは以下の順で実行（指示なしで自動実行すること）:
+- staging デプロイ完了後、SAST・SCA を実行（指示なしで自動実行すること）:
   1. SAST: `gh workflow run sast-semgrep.yml` → アーティファクトからレポート取得・解析
   2. SCA: `gh workflow run sca-npm-audit.yml` → アーティファクトからレポート取得・解析
-  3. DAST: `gh workflow run dast-zap.yml` → アーティファクトからレポート取得・解析（対象: ステージング URL）
-- レポートを解析し、改善が必要な問題があれば Issue 化する
-- 新規 Issue が出なくなるまでスキャン → 対応 → 再スキャンを繰り返す
-- すべてのスキャンで新規 Issue なし → main デプロイ実行
+- レポートを解析し、改善が必要な問題があれば Issue 化 → 対応 → 再スキャンを繰り返す
+- すべてのスキャンで新規 Issue なし → `staging-deployed` に変更してユーザーに報告する
+
+**main デプロイ（staging-ok → done）**
+- ユーザーが「#XX main に出して」と指示したら main にデプロイする
+- デプロイ完了後、DAST を本番 URL で実行（指示なしで自動実行すること）:
+  - `gh workflow run dast-zap.yml --field target_url="https://yabai-travel.vercel.app"`
+  - ※ staging は Vercel パスワード保護により DAST 対象外（認証チャレンジしか見えないため）
+- レポートを解析し、改善が必要な問題があれば Issue 化する（FAIL は必須対応、WARN はチケット化して別途対応）
 - デプロイ完了・エラーなし確認後、`done` を付与してチケットをクローズする
 
 ### デプロイ
