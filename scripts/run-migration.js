@@ -1,6 +1,7 @@
 /**
  * マイグレーション実行
  * DATABASE_URL が設定されている場合、supabase/migrations/*.sql を順に実行
+ * schema_migrations テーブルで適用済みを追跡し、未適用分のみ実行する（冪等性確保）
  * .env.local があれば読み込む（Vercel では DATABASE_URL を環境変数に設定）
  */
 import pg from 'pg';
@@ -40,13 +41,36 @@ const client = new pg.Client({ connectionString: url });
 async function run() {
   try {
     await client.connect();
+
+    // 適用済みマイグレーションを追跡するテーブルを作成（初回のみ）
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS yabai_travel.schema_migrations (
+        filename TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+
+    // 適用済みマイグレーション一覧を取得
+    const { rows } = await client.query(
+      'SELECT filename FROM yabai_travel.schema_migrations'
+    );
+    const applied = new Set(rows.map((r) => r.filename));
+
     const files = readdirSync(migrationsDir)
       .filter((f) => f.endsWith('.sql'))
       .sort();
 
     for (const file of files) {
+      if (applied.has(file)) {
+        console.log(`${file}: スキップ（適用済み）`);
+        continue;
+      }
       const sql = readFileSync(join(migrationsDir, file), 'utf8');
       await client.query(sql);
+      await client.query(
+        'INSERT INTO yabai_travel.schema_migrations (filename) VALUES ($1)',
+        [file]
+      );
       console.log(`${file}: 実行完了`);
     }
   } finally {
