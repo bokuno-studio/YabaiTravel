@@ -1,0 +1,41 @@
+# DAST: OWASP ZAP ベースラインスキャン
+# workflow_dispatch で手動実行。対象はステージング URL
+name: DAST (OWASP ZAP)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "スキャン対象 URL"
+        required: true
+        default: "https://yabai-travel-git-staging-naokis-projects-335e8a6b.vercel.app"
+
+jobs:
+  dast:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare report directory
+        run: mkdir -p reports && chmod 777 reports
+
+      - name: ZAP Baseline Scan
+        run: |
+          docker run --rm -u root \
+            -v ${{ github.workspace }}/reports:/zap/wrk:rw \
+            -t ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t "${{ github.event.inputs.target_url }}" \
+            -r /zap/wrk/dast-report.html \
+            -J /zap/wrk/dast-report.json \
+            -w /zap/wrk/dast-report.md \
+            -m 1 \
+            -I
+        continue-on-error: true
+
+      - name: Upload DAST Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dast-report-${{ github.run_number }}
+          path: reports/

@@ -1,0 +1,31 @@
+# SAST: Semgrep 静的解析
+# workflow_dispatch で手動実行
+name: SAST (Semgrep)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  sast:
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Semgrep Scan
+        run: |
+          semgrep scan \
+            --config=p/owasp-top-ten \
+            --config=p/javascript \
+            --exclude='node_modules' \
+            --exclude='dist' \
+            --json \
+            . > sast-report.json 2>&1 || true
+
+      - name: Upload SAST Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-report-${{ github.run_number }}
+          path: sast-report.json
