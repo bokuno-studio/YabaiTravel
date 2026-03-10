@@ -22,6 +22,8 @@ if (existsSync(envPath)) {
   })
 }
 
+const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
+
 /** Google Directions API でルート情報を取得 */
 async function fetchGoogleDirections(origin, destination, apiKey) {
   const params = new URLSearchParams({
@@ -179,7 +181,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
 
     // 既存の access_routes チェック
     const existing = await client.query(
-      'SELECT id FROM yabai_travel.access_routes WHERE event_id = $1',
+      `SELECT id FROM ${SCHEMA}.access_routes WHERE event_id = $1`,
       [eventId]
     )
     if (existing.rows.length > 0) {
@@ -255,7 +257,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
     // access_routes 挿入
     if (outboundRoute) {
       await client.query(
-        `INSERT INTO yabai_travel.access_routes
+        `INSERT INTO ${SCHEMA}.access_routes
           (event_id, direction, route_detail, total_time_estimate, cost_estimate, shuttle_available, taxi_estimate, transit_accessible)
          VALUES ($1, 'outbound', $2, $3, $4, $5, $6, $7)`,
         [
@@ -272,7 +274,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
 
     if (returnRoute) {
       await client.query(
-        `INSERT INTO yabai_travel.access_routes
+        `INSERT INTO ${SCHEMA}.access_routes
           (event_id, direction, route_detail, total_time_estimate, cost_estimate, shuttle_available, taxi_estimate, transit_accessible)
          VALUES ($1, 'return', $2, $3, $4, $5, $6, $7)`,
         [
@@ -291,7 +293,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
     const accomInfo = await fetchAccommodationWithLlm(anthropic, location)
     if (accomInfo) {
       await client.query(
-        `INSERT INTO yabai_travel.accommodations (event_id, recommended_area, avg_cost_3star)
+        `INSERT INTO ${SCHEMA}.accommodations (event_id, recommended_area, avg_cost_3star)
          VALUES ($1, $2, $3)`,
         [
           eventId,
@@ -326,15 +328,15 @@ async function runCli() {
 
   if (EVENT_ID) {
     const { rows } = await client.query(
-      'SELECT id, name, location, country FROM yabai_travel.events WHERE id = $1',
+      `SELECT id, name, location, country FROM ${SCHEMA}.events WHERE id = $1`,
       [EVENT_ID]
     )
     targets = rows
   } else {
     const { rows } = await client.query(
       `SELECT e.id, e.name, e.location, e.country
-       FROM yabai_travel.events e
-       LEFT JOIN yabai_travel.access_routes ar ON ar.event_id = e.id
+       FROM ${SCHEMA}.events e
+       LEFT JOIN ${SCHEMA}.access_routes ar ON ar.event_id = e.id
        WHERE e.location IS NOT NULL AND ar.id IS NULL
        ORDER BY e.updated_at ASC
        LIMIT $1`,

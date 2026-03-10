@@ -28,6 +28,8 @@ const ONCE = args.includes('--once')
 const concurrencyIdx = args.indexOf('--concurrency')
 const CONCURRENCY = concurrencyIdx >= 0 ? parseInt(args[concurrencyIdx + 1], 10) : 5
 
+const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
+
 /** 配列を chunk サイズに分割 */
 function chunkArray(arr, size) {
   const chunks = []
@@ -45,7 +47,7 @@ async function run() {
 
   const { rows: pendingEvents } = await client.query(
     `SELECT id, name, official_url, location, country
-     FROM yabai_travel.events
+     FROM ${SCHEMA}.events
      WHERE collected_at IS NULL
      ORDER BY updated_at ASC`
   )

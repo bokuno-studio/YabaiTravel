@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - フロント: React 19 + TypeScript + Vite（Vercel デプロイ）
 - DB: Supabase（スキーマ: `yabai_travel`）
 - クロール: Node.js スクリプト群 + Anthropic SDK（LLM 抽出）
-- チケット管理: GitHub Issues（ラベル駆動）
+- チケット管理: **GitHub Issues のみ**（Linear・Notion 等の外部ツールは使わない）
 
 ## Commands
 
@@ -150,6 +150,7 @@ await updatePostgrest(['yabai_travel', 'yabai_travel_staging'])
 ### 各ステップのルール
 
 **チケット作成（pending-review）**
+- チケットは必ず **GitHub Issues** で管理する。Linear・Notion 等の外部ツールは使わない
 - ユーザーがやりたいことを伝えたら内容を整理してチケットを作成する
 - 五月雨に伝えられた場合もまとめてチケット化してよい
 - 実装指示があってもチケットが存在しない場合は、先にチケットを作成してから実装する

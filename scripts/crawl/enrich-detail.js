@@ -24,6 +24,8 @@ if (existsSync(envPath)) {
   })
 }
 
+const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
+
 const LLM_SYSTEM_PROMPT = `あなたはレースイベントの情報抽出エキスパートです。
 与えられた公式ページの内容から、以下の JSON 形式で情報を抽出してください。
 
@@ -359,7 +361,7 @@ export async function enrichDetail(event, opts = { dryRun: false }) {
 
     // events テーブル更新（COALESCE で null フィールドのみ更新）
     await client.query(
-      `UPDATE yabai_travel.events SET
+      `UPDATE ${SCHEMA}.events SET
         name            = COALESCE(name, $1),
         event_date      = COALESCE(event_date, $2),
         location        = COALESCE(location, $3),
@@ -390,13 +392,13 @@ export async function enrichDetail(event, opts = { dryRun: false }) {
     for (const cat of extracted.categories || []) {
       if (!cat.name) continue
       const exists = await client.query(
-        'SELECT id FROM yabai_travel.categories WHERE event_id = $1 AND name = $2',
+        `SELECT id FROM ${SCHEMA}.categories WHERE event_id = $1 AND name = $2`,
         [eventId, cat.name]
       )
       if (exists.rows.length > 0) continue
 
       await client.query(
-        `INSERT INTO yabai_travel.categories
+        `INSERT INTO ${SCHEMA}.categories
           (event_id, name, distance_km, elevation_gain, entry_fee, entry_fee_currency,
            start_time, reception_end, time_limit, cutoff_times, mandatory_gear, poles_allowed, itra_points)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
@@ -420,7 +422,7 @@ export async function enrichDetail(event, opts = { dryRun: false }) {
 
     // collected_at を更新（処理済みマーク）
     await client.query(
-      'UPDATE yabai_travel.events SET collected_at = NOW() WHERE id = $1',
+      `UPDATE ${SCHEMA}.events SET collected_at = NOW() WHERE id = $1`,
       [eventId]
     )
 
@@ -451,19 +453,19 @@ async function runCli() {
 
   if (EVENT_ID) {
     const { rows } = await client.query(
-      'SELECT id, name, official_url, location, country FROM yabai_travel.events WHERE id = $1',
+      `SELECT id, name, official_url, location, country FROM ${SCHEMA}.events WHERE id = $1`,
       [EVENT_ID]
     )
     targets = rows
   } else if (URL_ARG) {
     const { rows } = await client.query(
-      'SELECT id, name, official_url, location, country FROM yabai_travel.events WHERE official_url = $1',
+      `SELECT id, name, official_url, location, country FROM ${SCHEMA}.events WHERE official_url = $1`,
       [URL_ARG]
     )
     targets = rows
   } else {
     const { rows } = await client.query(
-      'SELECT id, name, official_url, location, country FROM yabai_travel.events WHERE collected_at IS NULL ORDER BY updated_at ASC LIMIT $1',
+      `SELECT id, name, official_url, location, country FROM ${SCHEMA}.events WHERE collected_at IS NULL ORDER BY updated_at ASC LIMIT $1`,
       [LIMIT === Infinity ? 10000 : LIMIT]
     )
     targets = rows

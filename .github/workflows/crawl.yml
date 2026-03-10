@@ -3,8 +3,21 @@ name: Crawl & Enrich
 
 on:
   workflow_dispatch:   # 手動実行
+    inputs:
+      schema:
+        description: '対象スキーマ（デフォルト: yabai_travel）'
+        required: false
+        default: 'yabai_travel'
+      collect_limit:
+        description: 'collect-races の最大件数（デフォルト: 無制限）'
+        required: false
+        default: ''
+      enrich_limit:
+        description: 'enrich の最大件数（デフォルト: 無制限）'
+        required: false
+        default: ''
   schedule:
-    - cron: '0 17 * * *'  # 毎日 02:00 JST
+    - cron: '0 17 * * *'  # 毎日 02:00 JST（yabai_travel のみ）
 
 jobs:
   collect-races:
@@ -18,9 +31,14 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - name: レース名収集
-        run: node scripts/crawl/collect-races.js
+        run: |
+          ARGS=""
+          if [ -n "$COLLECT_LIMIT" ]; then ARGS="--limit $COLLECT_LIMIT"; fi
+          node scripts/crawl/collect-races.js $ARGS
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_SCHEMA: ${{ github.event.inputs.schema || 'yabai_travel' }}
+          COLLECT_LIMIT: ${{ github.event.inputs.collect_limit }}
 
   enrich:
     needs: collect-races
@@ -34,8 +52,13 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - name: 詳細・ロジ収集
-        run: node scripts/crawl/orchestrator.js
+        run: |
+          ARGS=""
+          if [ -n "$ENRICH_LIMIT" ]; then ARGS="--once --concurrency $ENRICH_LIMIT"; fi
+          node scripts/crawl/orchestrator.js $ARGS
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_SCHEMA: ${{ github.event.inputs.schema || 'yabai_travel' }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOOGLE_DIRECTIONS_API_KEY: ${{ secrets.GOOGLE_DIRECTIONS_API_KEY }}
+          ENRICH_LIMIT: ${{ github.event.inputs.enrich_limit }}

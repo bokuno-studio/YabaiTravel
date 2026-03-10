@@ -32,6 +32,8 @@ const DRY_RUN = args.includes('--dry-run')
 const limitIdx = args.indexOf('--limit')
 const LIMIT = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : Infinity
 
+const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
+
 // --- 共通ユーティリティ ---
 
 async function fetchHtml(url, timeoutMs = 15000) {
@@ -211,9 +213,9 @@ async function collectOtherSourceRaces(url) {
 
 async function insertRace(client, race) {
   const result = await client.query(
-    `INSERT INTO yabai_travel.events (name, event_date, location, country, race_type, official_url, entry_url, collected_at)
+    `INSERT INTO ${SCHEMA}.events (name, event_date, location, country, race_type, official_url, entry_url, collected_at)
      SELECT $1, $2, $3, $4, $5, $6, $7, NULL
-     WHERE NOT EXISTS (SELECT 1 FROM yabai_travel.events WHERE official_url = $6)
+     WHERE NOT EXISTS (SELECT 1 FROM ${SCHEMA}.events WHERE official_url = $6)
      RETURNING id`,
     [
       race.name,
