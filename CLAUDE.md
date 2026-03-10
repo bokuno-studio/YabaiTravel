@@ -141,7 +141,14 @@ DATABASE_URL              # マイグレーション・クロール用（Postgre
 - デプロイ完了・エラーなし確認後、`staging-deployed` に変更してユーザーに報告する
 
 **main デプロイ（staging-ok → done）**
-- ユーザーが「#XX main に出して」と指示したら main にデプロイする
+- ユーザーが「#XX main に出して」と指示したら、まずセキュリティスキャンを実行する
+- スキャンは以下の順で実行（指示なしで自動実行すること）:
+  1. SAST: `gh workflow run sast-semgrep.yml` → アーティファクトからレポート取得・解析
+  2. SCA: `gh workflow run sca-npm-audit.yml` → アーティファクトからレポート取得・解析
+  3. DAST: `gh workflow run dast-zap.yml` → アーティファクトからレポート取得・解析（対象: ステージング URL）
+- レポートを解析し、改善が必要な問題があれば Issue 化する
+- 新規 Issue が出なくなるまでスキャン → 対応 → 再スキャンを繰り返す
+- すべてのスキャンで新規 Issue なし → main デプロイ実行
 - デプロイ完了・エラーなし確認後、`done` を付与してチケットをクローズする
 
 ### デプロイ
