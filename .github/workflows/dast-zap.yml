@@ -21,12 +21,14 @@ jobs:
         run: mkdir -p reports && chmod 777 reports
 
       - name: ZAP Baseline Scan
+        env:
+          TARGET_URL: ${{ github.event.inputs.target_url }}
         run: |
           docker run --rm -u root \
-            -v ${{ github.workspace }}/reports:/zap/wrk:rw \
+            -v "${{ github.workspace }}/reports":/zap/wrk:rw \
             -t ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
-            -t "${{ github.event.inputs.target_url }}" \
+            -t "$TARGET_URL" \
             -r /zap/wrk/dast-report.html \
             -J /zap/wrk/dast-report.json \
             -w /zap/wrk/dast-report.md \
