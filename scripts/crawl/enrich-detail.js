@@ -234,6 +234,24 @@ function findMatchingCategory(categories, targetName) {
   return null
 }
 
+/** Tavily で Web 検索して関連コンテンツを取得 */
+async function fetchTavilySearch(query) {
+  const apiKey = process.env.TAVILY_API_KEY
+  if (!apiKey) return []
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, max_results: 3, search_depth: 'basic' }),
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data.results || []).map((r) => r.content || '').filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
 /** 高優先度フィールドが欠けているか判定 */
 function hasMissingFields(categories) {
   if (!categories || categories.length === 0) return true
@@ -350,6 +368,61 @@ export async function enrichDetail(event, opts = { dryRun: false }) {
           }
         }
       } catch { /* 追加ページ失敗は無視 */ }
+    }
+
+    // Pass 3: 欠落フィールドが残っている場合のみ Tavily で Web 検索して補完
+    if (hasMissingFields(extracted.categories)) {
+      const query = `${name} エントリー料金 距離 開催日 制限時間`
+      const searchResults = await fetchTavilySearch(query)
+      for (const content of searchResults) {
+        if (content.length < 50) continue
+        try {
+          const searchExtracted = await callLlm(anthropic, content, name)
+          totalTokens += (searchExtracted._usage?.input_tokens || 0) + (searchExtracted._usage?.output_tokens || 0)
+
+          const ae = searchExtracted.event || {}
+          const e = extracted.event || {}
+          extracted.event = {
+            name:            e.name            ?? ae.name,
+            event_date:      e.event_date      ?? ae.event_date,
+            event_date_end:  e.event_date_end  ?? ae.event_date_end,
+            location:        e.location        ?? ae.location,
+            country:         e.country         ?? ae.country,
+            race_type:       e.race_type       ?? ae.race_type,
+            entry_url:       e.entry_url       ?? ae.entry_url,
+            entry_start:     e.entry_start     ?? ae.entry_start,
+            entry_end:       e.entry_end       ?? ae.entry_end,
+            reception_place: e.reception_place ?? ae.reception_place,
+            start_place:     e.start_place     ?? ae.start_place,
+          }
+
+          if (searchExtracted.categories?.length > 0) {
+            if (!extracted.categories || extracted.categories.length === 0) {
+              extracted.categories = searchExtracted.categories
+            } else {
+              for (const addCat of searchExtracted.categories) {
+                const existing = findMatchingCategory(extracted.categories, addCat.name)
+                if (existing) {
+                  existing.distance_km        = existing.distance_km        ?? addCat.distance_km
+                  existing.elevation_gain     = existing.elevation_gain     ?? addCat.elevation_gain
+                  existing.entry_fee          = existing.entry_fee          ?? addCat.entry_fee
+                  existing.entry_fee_currency = existing.entry_fee_currency ?? addCat.entry_fee_currency
+                  existing.start_time         = existing.start_time         ?? addCat.start_time
+                  existing.reception_end      = existing.reception_end      ?? addCat.reception_end
+                  existing.time_limit         = existing.time_limit         ?? addCat.time_limit
+                  existing.cutoff_times       = (existing.cutoff_times?.length > 0) ? existing.cutoff_times : addCat.cutoff_times
+                  existing.mandatory_gear     = existing.mandatory_gear     ?? addCat.mandatory_gear
+                  existing.poles_allowed      = existing.poles_allowed      ?? addCat.poles_allowed
+                  existing.itra_points        = existing.itra_points        ?? addCat.itra_points
+                }
+              }
+            }
+          }
+        } catch { /* 検索結果の処理失敗は無視 */ }
+      }
+      if (searchResults.length > 0) {
+        console.log(`  [tavily] ${name?.slice(0, 40)} | ${searchResults.length}件`)
+      }
     }
 
     if (dryRun) {
