@@ -76,12 +76,34 @@ npx vitest run src/pages/EventDetail.test.tsx
 
 ### 環境変数
 
+認証情報は `.env`（gitignore 済み）に記載する。`.env.example` を参照。
+
 ```
+# フロントエンド（VITE_ プレフィックス必須）
 VITE_SUPABASE_URL
 VITE_SUPABASE_ANON_KEY
+VITE_SUPABASE_SCHEMA      # 本番: yabai_travel / ステージング: yabai_travel_staging
+
+# サーバーサイド
+SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_ACCESS_TOKEN     # Management API 用（スキーマ作成・PostgREST設定など）
+SUPABASE_PROJECT_REF      # Management API 用（Supabase プロジェクト ref）
 ANTHROPIC_API_KEY         # クロールスクリプトの LLM 抽出用
 GOOGLE_DIRECTIONS_API_KEY # ロジ収集用
 DATABASE_URL              # マイグレーション・クロール用（PostgreSQL 直接接続）
+```
+
+### Supabase 操作ルール
+
+- **スキーマ作成・PostgREST 設定変更など DDL 操作**: `scripts/supabase-api.js` の Management API 経由で自動実行する。ダッシュボードでの手動操作・SQL コピペは禁止。
+- **データ操作（INSERT/UPDATE）**: クロールスクリプトから `DATABASE_URL` 経由で実行。
+- **スキーマ分離**: 本番 `yabai_travel` / ステージング `yabai_travel_staging` を同一 Supabase プロジェクト内で管理する。
+
+```bash
+# Management API で SQL 実行する例
+import { queryManagementAPI, updatePostgrest } from './scripts/supabase-api.js'
+await queryManagementAPI('CREATE SCHEMA IF NOT EXISTS yabai_travel_staging')
+await updatePostgrest(['yabai_travel', 'yabai_travel_staging'])
 ```
 
 ## 開発ワークフロー
