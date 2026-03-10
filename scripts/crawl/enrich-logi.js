@@ -24,23 +24,28 @@ if (existsSync(envPath)) {
 
 const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
 
-/** Google Directions API でルート情報を取得 */
+/** Routes API でルート情報を取得（Directions API Legacy の後継） */
 async function fetchGoogleDirections(origin, destination, apiKey) {
-  const params = new URLSearchParams({
-    origin,
-    destination,
-    mode: 'transit',
-    language: 'ja',
-    key: apiKey,
-  })
-  const url = `https://maps.googleapis.com/maps/api/directions/json?${params}`
-
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 15000)
   try {
-    const res = await fetch(url, { signal: controller.signal })
+    const res = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+      method: 'POST',
+      headers: {
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'routes.duration,routes.legs.duration,routes.legs.steps.navigationInstruction,routes.legs.steps.transitDetails',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        origin: { address: origin },
+        destination: { address: destination },
+        travelMode: 'TRANSIT',
+        languageCode: 'ja',
+      }),
+      signal: controller.signal,
+    })
     clearTimeout(timer)
-    if (!res.ok) throw new Error(`Google Directions API: ${res.status}`)
+    if (!res.ok) throw new Error(`Google Routes API: ${res.status}`)
     return res.json()
   } catch (e) {
     clearTimeout(timer)
@@ -48,7 +53,19 @@ async function fetchGoogleDirections(origin, destination, apiKey) {
   }
 }
 
-/** Google Directions レスポンスからルート情報を抽出 */
+/** 秒数文字列（例: "5400s"）を日本語表記に変換 */
+function formatDuration(durationStr) {
+  if (!durationStr) return null
+  const secs = parseInt(durationStr, 10)
+  if (isNaN(secs)) return null
+  const h = Math.floor(secs / 3600)
+  const m = Math.floor((secs % 3600) / 60)
+  if (h > 0 && m > 0) return `約${h}時間${m}分`
+  if (h > 0) return `約${h}時間`
+  return `約${m}分`
+}
+
+/** Routes API レスポンスからルート情報を抽出 */
 function parseGoogleDirections(data) {
   if (!data.routes || data.routes.length === 0) return null
 
@@ -56,15 +73,14 @@ function parseGoogleDirections(data) {
   const leg = route.legs?.[0]
   if (!leg) return null
 
-  const totalTime = leg.duration?.text || null
+  const totalTime = formatDuration(route.duration)
   const steps = (leg.steps || [])
-    .map((s) => s.html_instructions?.replace(/<[^>]+>/g, '') || '')
+    .map((s) => s.navigationInstruction?.instructions || '')
     .filter(Boolean)
     .join(' → ')
 
-  // 概算費用（Directions API では提供されないため null）
   return {
-    route_detail: steps || leg.summary || null,
+    route_detail: steps || null,
     total_time_estimate: totalTime,
     cost_estimate: null,
   }
