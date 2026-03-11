@@ -85,7 +85,10 @@ async function run() {
           console.log(`  [detail] ERR ${event.name?.slice(0, 40)} | ${detailResult.error?.slice(0, 50)}`)
         }
 
-        const logiResult = await enrichLogi(event, { dryRun: DRY_RUN }).catch((e) => ({ success: false, error: e.message }))
+        // enrichDetail が書き込んだ location を反映してから logi を呼ぶ
+        const enrichedEvent = detailResult.location ? { ...event, location: detailResult.location } : event
+
+        const logiResult = await enrichLogi(enrichedEvent, { dryRun: DRY_RUN }).catch((e) => ({ success: false, error: e.message }))
         if (logiResult.success) {
           totalLogiOk++
           console.log(`  [logi]   OK  ${event.name?.slice(0, 40)}`)

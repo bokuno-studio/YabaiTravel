@@ -86,7 +86,7 @@ function parseGoogleDirections(data) {
   }
 }
 
-/** LLM で国内アクセス情報を取得 */
+/** LLM で国内アクセス情報を取得（タクシー除外） */
 async function fetchDomesticLogiWithLlm(anthropic, location) {
   const msg = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -94,15 +94,15 @@ async function fetchDomesticLogiWithLlm(anthropic, location) {
     messages: [
       {
         role: 'user',
-        content: `東京から「${location}」への公共交通機関での経路・所要時間・費用概算を教えてください。また、シャトルバスやタクシーの情報があれば合わせて教えてください。
+        content: `東京から「${location}」への経路を教えてください。
+飛行機・電車・路線バス・フェリーのみを使った経路にしてください。タクシーは経路に含めないでください。
 以下のJSON形式で回答してください：
 {
-  "transit_accessible": true または false（公共交通機関のみで会場付近まで行けるか。最寄り駅から徒歩圏内 or シャトルバスあれば true）,
-  "route_detail": "経路の詳細（ステップごと）",
+  "transit_accessible": true または false（飛行機・電車・路線バス・フェリーのみで会場付近まで行けるか）,
+  "route_detail": "公共交通のみの経路詳細（タクシー不使用）",
   "total_time_estimate": "所要時間（例: 約2時間30分）",
-  "cost_estimate": "費用概算（例: 約3,000円〜5,000円）",
-  "shuttle_available": "シャトルバス情報（あれば）",
-  "taxi_estimate": "タクシー概算費用（あれば）"
+  "cost_estimate": "費用概算（公共交通のみ。例: 約3,000円〜5,000円）",
+  "taxi_estimate": "transit_accessible が false の場合のみ、最寄りの公共交通アクセス地点からのタクシー費用概算。transit_accessible が true なら必ず null"
 }
 JSONのみ返してください。`,
       },
@@ -113,6 +113,38 @@ JSONのみ返してください。`,
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) return null
   return JSON.parse(jsonMatch[0])
+}
+
+/** 公式ページからシャトルバス情報を抽出（大会公式情報のみ） */
+async function extractOfficialShuttle(officialUrl) {
+  if (!officialUrl) return null
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 10000)
+    const res = await fetch(officialUrl, {
+      headers: { 'User-Agent': 'YabaiTravel-Crawl/1.0' },
+      signal: controller.signal,
+    })
+    clearTimeout(timer)
+    if (!res.ok) return null
+    const html = await res.text()
+    // HTMLタグを除去してテキスト化
+    const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ')
+    // シャトルバスキーワードの前後を抽出
+    const patterns = [
+      /シャトルバス.{0,100}/,
+      /シャトル運行.{0,100}/,
+      /大会シャトル.{0,100}/,
+      /shuttle\s*bus.{0,100}/i,
+    ]
+    for (const pattern of patterns) {
+      const match = text.match(pattern)
+      if (match) return match[0].replace(/\s+/g, ' ').trim().slice(0, 200)
+    }
+    return null
+  } catch {
+    return null
+  }
 }
 
 /** LLM で国際アクセス情報を取得 */
@@ -189,7 +221,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
   try {
     await client.connect()
 
-    const { id: eventId, name, location, country } = event
+    const { id: eventId, name, location, country, official_url: officialUrl } = event
 
     if (!location) {
       return { success: false, eventId, error: 'no location' }
@@ -212,6 +244,9 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
     let shuttleAvailable = null
     let taxiEstimate = null
     let transitAccessible = null
+
+    // 公式ページからシャトルバス情報を抽出（大会公式情報のみ）
+    shuttleAvailable = await extractOfficialShuttle(officialUrl)
 
     if (isJapan) {
       // 国内: Google Directions API or LLM fallback
@@ -242,9 +277,9 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
             total_time_estimate: logiInfo.total_time_estimate,
             cost_estimate: logiInfo.cost_estimate,
           }
-          shuttleAvailable = logiInfo.shuttle_available || null
-          taxiEstimate = logiInfo.taxi_estimate || null
           transitAccessible = typeof logiInfo.transit_accessible === 'boolean' ? logiInfo.transit_accessible : null
+          // タクシー情報は公共交通で行けない場合のみ
+          taxiEstimate = transitAccessible === false ? (logiInfo.taxi_estimate || null) : null
         }
       }
     } else {
@@ -344,13 +379,13 @@ async function runCli() {
 
   if (EVENT_ID) {
     const { rows } = await client.query(
-      `SELECT id, name, location, country FROM ${SCHEMA}.events WHERE id = $1`,
+      `SELECT id, name, location, country, official_url FROM ${SCHEMA}.events WHERE id = $1`,
       [EVENT_ID]
     )
     targets = rows
   } else {
     const { rows } = await client.query(
-      `SELECT e.id, e.name, e.location, e.country
+      `SELECT e.id, e.name, e.location, e.country, e.official_url
        FROM ${SCHEMA}.events e
        LEFT JOIN ${SCHEMA}.access_routes ar ON ar.event_id = e.id
        WHERE e.location IS NOT NULL AND ar.id IS NULL
