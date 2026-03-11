@@ -491,46 +491,86 @@ export async function enrichDetail(event, opts = { dryRun: false }) {
       ]
     )
 
-    // categories 挿入（event_id + name で重複チェック）
+    // categories: 既存は空フィールドのみ COALESCE UPDATE、新規は INSERT
     for (const cat of extracted.categories || []) {
       if (!cat.name) continue
       const exists = await client.query(
         `SELECT id FROM ${SCHEMA}.categories WHERE event_id = $1 AND name = $2`,
         [eventId, cat.name]
       )
-      if (exists.rows.length > 0) continue
 
-      await client.query(
-        `INSERT INTO ${SCHEMA}.categories
-          (event_id, name, distance_km, elevation_gain, entry_fee, entry_fee_currency,
-           start_time, reception_end, time_limit, cutoff_times, mandatory_gear, poles_allowed, itra_points)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-        [
-          eventId,
-          cat.name,
-          cat.distance_km        ?? null,
-          cat.elevation_gain     ?? null,
-          cat.entry_fee != null  ? parseInt(cat.entry_fee, 10) : null,
-          cat.entry_fee_currency || null,
-          cat.start_time         || null,
-          cat.reception_end      || null,
-          cat.time_limit         || null,
-          cat.cutoff_times?.length > 0 ? JSON.stringify(cat.cutoff_times) : null,
-          cat.mandatory_gear     || null,
-          cat.poles_allowed      ?? null,
-          cat.itra_points        ?? null,
-        ]
-      )
+      if (exists.rows.length > 0) {
+        // 既存カテゴリ: 空フィールドのみ補完
+        await client.query(
+          `UPDATE ${SCHEMA}.categories SET
+            distance_km        = COALESCE(distance_km, $2),
+            elevation_gain     = COALESCE(elevation_gain, $3),
+            entry_fee          = COALESCE(entry_fee, $4),
+            entry_fee_currency = COALESCE(entry_fee_currency, $5),
+            start_time         = COALESCE(start_time, $6),
+            reception_end      = COALESCE(reception_end, $7),
+            time_limit         = COALESCE(time_limit, $8),
+            cutoff_times       = CASE WHEN cutoff_times IS NULL OR cutoff_times = '[]'::jsonb THEN $9 ELSE cutoff_times END,
+            mandatory_gear     = COALESCE(mandatory_gear, $10),
+            poles_allowed      = COALESCE(poles_allowed, $11),
+            itra_points        = COALESCE(itra_points, $12)
+           WHERE id = $1`,
+          [
+            exists.rows[0].id,
+            cat.distance_km        ?? null,
+            cat.elevation_gain     ?? null,
+            cat.entry_fee != null  ? parseInt(cat.entry_fee, 10) : null,
+            cat.entry_fee_currency || null,
+            cat.start_time         || null,
+            cat.reception_end      || null,
+            cat.time_limit         || null,
+            cat.cutoff_times?.length > 0 ? JSON.stringify(cat.cutoff_times) : null,
+            cat.mandatory_gear     || null,
+            cat.poles_allowed      ?? null,
+            cat.itra_points        ?? null,
+          ]
+        )
+      } else {
+        // 新規カテゴリ: INSERT
+        await client.query(
+          `INSERT INTO ${SCHEMA}.categories
+            (event_id, name, distance_km, elevation_gain, entry_fee, entry_fee_currency,
+             start_time, reception_end, time_limit, cutoff_times, mandatory_gear, poles_allowed, itra_points)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+          [
+            eventId,
+            cat.name,
+            cat.distance_km        ?? null,
+            cat.elevation_gain     ?? null,
+            cat.entry_fee != null  ? parseInt(cat.entry_fee, 10) : null,
+            cat.entry_fee_currency || null,
+            cat.start_time         || null,
+            cat.reception_end      || null,
+            cat.time_limit         || null,
+            cat.cutoff_times?.length > 0 ? JSON.stringify(cat.cutoff_times) : null,
+            cat.mandatory_gear     || null,
+            cat.poles_allowed      ?? null,
+            cat.itra_points        ?? null,
+          ]
+        )
+      }
     }
 
-    // collected_at を更新（処理済みマーク）
+    // collected_at と last_attempted_at を更新
     await client.query(
-      `UPDATE ${SCHEMA}.events SET collected_at = NOW() WHERE id = $1`,
+      `UPDATE ${SCHEMA}.events SET collected_at = NOW(), last_attempted_at = NOW() WHERE id = $1`,
       [eventId]
     )
 
     return { success: true, eventId, location: e.location || null }
   } catch (e) {
+    // 失敗時も last_attempted_at を更新してループを防ぐ
+    try {
+      await client.query(
+        `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW() WHERE id = $1`,
+        [event.id]
+      )
+    } catch { /* ignore */ }
     return { success: false, eventId: event.id, error: e.message }
   } finally {
     try { await client.end() } catch { /* ignore */ }

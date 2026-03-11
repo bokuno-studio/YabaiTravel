@@ -1,6 +1,6 @@
 /**
  * ④ オーケストレータ
- * collected_at IS NULL の全イベントを並列5件で処理
+ * 未処理 or 空フィールドあり（7日以内に再試行済みを除く）のイベントを並列5件で処理
  *
  * 使い方:
  *   node scripts/crawl/orchestrator.js              # 全件
@@ -48,13 +48,22 @@ async function run() {
   const { rows: pendingEvents } = await client.query(
     `SELECT id, name, official_url, location, country
      FROM ${SCHEMA}.events
-     WHERE collected_at IS NULL
-     ORDER BY updated_at ASC`
+     WHERE (
+       collected_at IS NULL
+       OR event_date IS NULL
+       OR location IS NULL
+       OR country IS NULL
+       OR race_type IS NULL
+     )
+     AND (last_attempted_at IS NULL OR last_attempted_at < NOW() - INTERVAL '7 days')
+     ORDER BY
+       CASE WHEN collected_at IS NULL THEN 0 ELSE 1 END,
+       updated_at ASC`
   )
 
   await client.end()
 
-  console.log(`未処理イベント: ${pendingEvents.length} 件\n`)
+  console.log(`処理対象イベント: ${pendingEvents.length} 件\n`)
 
   if (pendingEvents.length === 0) {
     console.log('処理対象なし。終了します。')

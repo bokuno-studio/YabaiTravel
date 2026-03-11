@@ -243,14 +243,13 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
       return { success: false, eventId, error: 'no location' }
     }
 
-    // 既存の access_routes チェック
-    const existing = await client.query(
-      `SELECT id FROM ${SCHEMA}.access_routes WHERE event_id = $1`,
+    // 既存の access_routes を direction 別に確認
+    const existingRoutes = await client.query(
+      `SELECT id, direction FROM ${SCHEMA}.access_routes WHERE event_id = $1`,
       [eventId]
     )
-    if (existing.rows.length > 0) {
-      return { success: true, eventId, error: 'already exists' }
-    }
+    const existingDirections = new Set(existingRoutes.rows.map((r) => r.direction))
+    const existingIds = Object.fromEntries(existingRoutes.rows.map((r) => [r.direction, r.id]))
 
     const isJapan = !country || country === '日本' || country.toLowerCase() === 'japan'
     const apiKey = process.env.GOOGLE_DIRECTIONS_API_KEY
@@ -321,53 +320,72 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
       return { success: true, eventId }
     }
 
-    // access_routes 挿入
-    if (outboundRoute) {
-      await client.query(
-        `INSERT INTO ${SCHEMA}.access_routes
-          (event_id, direction, route_detail, total_time_estimate, cost_estimate, shuttle_available, taxi_estimate, transit_accessible)
-         VALUES ($1, 'outbound', $2, $3, $4, $5, $6, $7)`,
-        [
-          eventId,
-          outboundRoute.route_detail || null,
-          outboundRoute.total_time_estimate || null,
-          outboundRoute.cost_estimate || null,
-          shuttleAvailable,
-          taxiEstimate,
-          transitAccessible,
-        ]
-      )
+    // access_routes: 方向ごとに INSERT or COALESCE UPDATE
+    const upsertRoute = async (direction, route) => {
+      if (!route) return
+      const params = [
+        route.route_detail || null,
+        route.total_time_estimate || null,
+        route.cost_estimate || null,
+        shuttleAvailable,
+        taxiEstimate,
+        transitAccessible,
+      ]
+      if (existingDirections.has(direction)) {
+        await client.query(
+          `UPDATE ${SCHEMA}.access_routes SET
+            route_detail        = COALESCE(route_detail, $2),
+            total_time_estimate = COALESCE(total_time_estimate, $3),
+            cost_estimate       = COALESCE(cost_estimate, $4),
+            shuttle_available   = COALESCE(shuttle_available, $5),
+            taxi_estimate       = COALESCE(taxi_estimate, $6),
+            transit_accessible  = COALESCE(transit_accessible, $7)
+           WHERE id = $1`,
+          [existingIds[direction], ...params]
+        )
+      } else {
+        await client.query(
+          `INSERT INTO ${SCHEMA}.access_routes
+            (event_id, direction, route_detail, total_time_estimate, cost_estimate, shuttle_available, taxi_estimate, transit_accessible)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [eventId, direction, ...params]
+        )
+      }
     }
 
-    if (returnRoute) {
-      await client.query(
-        `INSERT INTO ${SCHEMA}.access_routes
-          (event_id, direction, route_detail, total_time_estimate, cost_estimate, shuttle_available, taxi_estimate, transit_accessible)
-         VALUES ($1, 'return', $2, $3, $4, $5, $6, $7)`,
-        [
-          eventId,
-          returnRoute.route_detail || null,
-          returnRoute.total_time_estimate || null,
-          returnRoute.cost_estimate || null,
-          shuttleAvailable,
-          taxiEstimate,
-          transitAccessible,
-        ]
-      )
-    }
+    await upsertRoute('outbound', outboundRoute)
+    await upsertRoute('return', returnRoute)
 
-    // accommodations 挿入
+    // accommodations: なければ INSERT、あれば空フィールド補完
     const accomInfo = await fetchAccommodationWithLlm(anthropic, location)
     if (accomInfo) {
-      await client.query(
-        `INSERT INTO ${SCHEMA}.accommodations (event_id, recommended_area, avg_cost_3star)
-         VALUES ($1, $2, $3)`,
-        [
-          eventId,
-          accomInfo.recommended_area || null,
-          accomInfo.avg_cost_3star != null ? parseInt(accomInfo.avg_cost_3star, 10) : null,
-        ]
+      const existingAccom = await client.query(
+        `SELECT id FROM ${SCHEMA}.accommodations WHERE event_id = $1`,
+        [eventId]
       )
+      if (existingAccom.rows.length > 0) {
+        await client.query(
+          `UPDATE ${SCHEMA}.accommodations SET
+            recommended_area = COALESCE(recommended_area, $2),
+            avg_cost_3star   = COALESCE(avg_cost_3star, $3)
+           WHERE id = $1`,
+          [
+            existingAccom.rows[0].id,
+            accomInfo.recommended_area || null,
+            accomInfo.avg_cost_3star != null ? parseInt(accomInfo.avg_cost_3star, 10) : null,
+          ]
+        )
+      } else {
+        await client.query(
+          `INSERT INTO ${SCHEMA}.accommodations (event_id, recommended_area, avg_cost_3star)
+           VALUES ($1, $2, $3)`,
+          [
+            eventId,
+            accomInfo.recommended_area || null,
+            accomInfo.avg_cost_3star != null ? parseInt(accomInfo.avg_cost_3star, 10) : null,
+          ]
+        )
+      }
     }
 
     return { success: true, eventId }
