@@ -1,4 +1,4 @@
-# クロール自動実行（毎日 02:00 JST = 17:00 UTC）
+# クロール自動実行（6時間おき: 00:00/06:00/12:00/18:00 JST）
 name: Crawl & Enrich
 
 on:
@@ -17,7 +17,7 @@ on:
         required: false
         default: ''
   schedule:
-    - cron: '0 17 * * *'  # 毎日 02:00 JST（yabai_travel のみ）
+    - cron: '0 */6 * * *'  # 6時間おき（15:00/21:00/03:00/09:00 UTC = 00:00/06:00/12:00/18:00 JST）
 
 jobs:
   collect-races:

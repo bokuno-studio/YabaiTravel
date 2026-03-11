@@ -85,20 +85,27 @@ const AGGREGATOR_DOMAINS = [
 ]
 
 async function fetchHtml(url, timeoutMs = 15000) {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'YabaiTravel-Crawl/1.0' },
-      redirect: 'follow',
-      signal: controller.signal,
-    })
-    clearTimeout(timer)
-    if (!res.ok) throw new Error(`${res.status}`)
-    return res.text()
-  } catch (e) {
-    clearTimeout(timer)
-    throw e
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'YabaiTravel-Crawl/1.0' },
+        redirect: 'follow',
+        signal: controller.signal,
+      })
+      clearTimeout(timer)
+      if (!res.ok) throw new Error(`${res.status}`)
+      return res.text()
+    } catch (e) {
+      clearTimeout(timer)
+      // タイムアウト・接続エラーは1回リトライ（3秒待機）
+      if (attempt === 0 && (e.name === 'AbortError' || e.code === 'ECONNREFUSED' || e.code === 'ECONNRESET')) {
+        await new Promise((r) => setTimeout(r, 3000))
+        continue
+      }
+      throw e
+    }
   }
 }
 
@@ -186,11 +193,17 @@ async function callLlm(anthropic, pageContent, raceName) {
       return { ...JSON.parse(jsonMatch[0]), _usage: msg.usage }
     } catch (e) {
       lastError = e
-      // APIエラーのクレジット切れ判定
+      // クレジット残高不足
       if (e.status === 400 && e.error?.error?.message?.includes('credit')) {
         throw new Error(`Anthropic クレジット残高不足: ${e.error.error.message}`)
       }
-      // JSONパースエラーのみリトライ（APIエラーはリトライしない）
+      // レート制限: 60秒待機してリトライ
+      if (attempt === 0 && e.status === 429) {
+        console.warn(`  [LLM] 429 rate limit、60秒待機してリトライ...`)
+        await new Promise((r) => setTimeout(r, 60000))
+        continue
+      }
+      // JSONパースエラー: 即リトライ
       if (attempt === 0 && (e.message?.includes('JSON') || e.message?.includes('parse') || e instanceof SyntaxError)) {
         continue
       }

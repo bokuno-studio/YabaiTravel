@@ -86,9 +86,25 @@ function parseGoogleDirections(data) {
   }
 }
 
+/** LLM 呼び出しのラッパー（429時に60秒待機してリトライ） */
+async function callLlmWithRetry(anthropic, params) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await anthropic.messages.create(params)
+    } catch (e) {
+      if (attempt === 0 && e.status === 429) {
+        console.warn(`  [LLM] 429 rate limit、60秒待機してリトライ...`)
+        await new Promise((r) => setTimeout(r, 60000))
+        continue
+      }
+      throw e
+    }
+  }
+}
+
 /** LLM で国内アクセス情報を取得（タクシー除外） */
 async function fetchDomesticLogiWithLlm(anthropic, location) {
-  const msg = await anthropic.messages.create({
+  const msg = await callLlmWithRetry(anthropic, {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
     messages: [
@@ -149,7 +165,7 @@ async function extractOfficialShuttle(officialUrl) {
 
 /** LLM で国際アクセス情報を取得 */
 async function fetchInternationalLogiWithLlm(anthropic, location, country) {
-  const msg = await anthropic.messages.create({
+  const msg = await callLlmWithRetry(anthropic, {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
     messages: [
@@ -182,7 +198,7 @@ JSONのみ返してください。`,
 
 /** LLM で宿泊情報を取得 */
 async function fetchAccommodationWithLlm(anthropic, location) {
-  const msg = await anthropic.messages.create({
+  const msg = await callLlmWithRetry(anthropic, {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 512,
     messages: [
