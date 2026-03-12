@@ -33,6 +33,12 @@ const limitIdx = args.indexOf('--limit')
 const LIMIT = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : Infinity
 
 const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
+const IS_STAGING = SCHEMA !== 'yabai_travel'
+
+/** ステージングでは件数を絞り、本番では全件取得 */
+function limitForEnv(arr, stagingLimit) {
+  return IS_STAGING ? arr.slice(0, stagingLimit) : arr
+}
 
 // --- 共通ユーティリティ ---
 
@@ -117,7 +123,7 @@ async function collectRunnetRaces() {
       races.push({ name, official_url: officialUrl, entry_url: officialUrl, race_type: 'trail', source: 'runnet' })
     })
   } catch (e) { console.warn('  RUNNET collect error:', e.message) }
-  return races.slice(0, 5)
+  return limitForEnv(races, 5)
 }
 
 /** スポーツエントリー: トップページからレースURLを収集 */
@@ -134,7 +140,7 @@ async function collectSportsEntryRaces() {
       races.push({ name, official_url: officialUrl, entry_url: officialUrl, race_type: 'other', source: 'sports-entry' })
     })
   } catch (e) { console.warn('  SportsEntry collect error:', e.message) }
-  return races.slice(0, 3)
+  return limitForEnv(races, 3)
 }
 
 /** LAWSON DO! SPORTS: トップからレースURLを収集 */
@@ -151,7 +157,7 @@ async function collectLawsonRaces() {
       races.push({ name, official_url: officialUrl, entry_url: officialUrl, race_type: 'other', source: 'lawson-do' })
     })
   } catch (e) { console.warn('  LAWSON DO collect error:', e.message) }
-  return races.slice(0, 3)
+  return limitForEnv(races, 3)
 }
 
 /** その他の専用ソース */
@@ -189,7 +195,7 @@ async function collectOtherSourceRaces(url) {
         if (races.find((r) => r.official_url === officialUrl)) return
         races.push({ name: `Tough Mudder ${text}`, official_url: officialUrl, entry_url: officialUrl, race_type: 'obstacle', source: 'tough-mudder' })
       })
-      return races.slice(0, 3)
+      return limitForEnv(races, 3)
     }
     if (url.includes('devilscircuit.com')) {
       const $ = cheerio.load(html)
@@ -200,7 +206,7 @@ async function collectOtherSourceRaces(url) {
           races.push({ name: `Devils Circuit ${t}`, official_url: url, entry_url: url, location: `${t}, India`, race_type: 'devils_circuit', source: 'devils-circuit' })
         }
       })
-      return races.slice(0, 1)
+      return limitForEnv(races, 1)
     }
     if (url.includes('albatros-adventure-marathons.com')) {
       const $ = cheerio.load(html)
@@ -213,7 +219,7 @@ async function collectOtherSourceRaces(url) {
           races.push({ name: text, official_url: officialUrl, entry_url: officialUrl, race_type: 'adventure', source: 'albatros' })
         }
       })
-      return races.slice(0, 1)
+      return limitForEnv(races, 1)
     }
   } catch { return [] }
   return []
@@ -254,12 +260,13 @@ async function run() {
   const spartanUrls = allUrls.filter((u) => u.includes('spartan.com'))
   const otherUrls = allUrls.filter((u) => !u.includes('spartan.com'))
 
-  // Spartan: 各国から1件ずつ
+  // Spartan: 各国からレース収集
   for (const url of spartanUrls) {
     const races = await collectSpartanRaces(url)
-    if (races.length) {
-      allRaces.push(races[0])
-      console.log(`  [spartan] ${url.slice(0, 35)} → ${races[0].name?.slice(0, 30)}`)
+    const limited = limitForEnv(races, 1)
+    if (limited.length) {
+      allRaces.push(...limited)
+      console.log(`  [spartan] ${url.slice(0, 35)} → ${limited.length} races`)
     }
   }
 
@@ -281,9 +288,10 @@ async function run() {
     if (url.includes('runnet.jp') || url.includes('sportsentry.ne.jp') || url.includes('do.l-tike.com')) continue
     if (url.includes('itra.run') || url.includes('ahotu.com')) continue
     const races = await collectOtherSourceRaces(url)
-    if (races.length) {
-      allRaces.push(races[0])
-      console.log(`  [${races[0].source}] ${races[0].name?.slice(0, 40)}`)
+    const limited = limitForEnv(races, 1)
+    if (limited.length) {
+      allRaces.push(...limited)
+      console.log(`  [${limited[0].source}] ${limited.length} races`)
     }
   }
 

@@ -61,7 +61,9 @@ npx vitest run src/pages/EventDetail.test.tsx
 | `scripts/crawl/enrich-logi.js` | ③ アクセス・宿泊情報収集（東京起点） |
 | `scripts/crawl/orchestrator.js` | ④ ②③を並列5件で全未処理を消化する司令塔 |
 
-オーケストレータは GitHub Actions（`.github/workflows/crawl.yml`）で毎日 02:00 JST に自動実行。
+GitHub Actions で自動実行（2つのワークフローに分離）:
+- `crawl-collect.yml`: レース名収集（1日1回 06:00 JST）
+- `crawl-enrich.yml`: 詳細・ロジ収集（3時間おき）
 
 ### DB スキーマ（`yabai_travel`）
 

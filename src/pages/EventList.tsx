@@ -57,6 +57,7 @@ function EventList() {
         const { data, error: err } = await supabase
           .from('events')
           .select('*, categories(*)')
+          .not('collected_at', 'is', null)
           .order('event_date', { ascending: true, nullsFirst: false })
 
         if (err) throw err

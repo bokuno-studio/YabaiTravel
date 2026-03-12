@@ -1,0 +1,37 @@
+# レース名収集（1日1回 06:00 JST）
+name: Collect Races
+
+on:
+  workflow_dispatch:
+    inputs:
+      schema:
+        description: '対象スキーマ（デフォルト: yabai_travel）'
+        required: false
+        default: 'yabai_travel'
+      collect_limit:
+        description: 'collect-races の最大件数（デフォルト: 無制限）'
+        required: false
+        default: ''
+  schedule:
+    - cron: '0 21 * * *'  # 1日1回（UTC 21:00 = JST 06:00）
+
+jobs:
+  collect-races:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: レース名収集
+        run: |
+          ARGS=""
+          if [ -n "$COLLECT_LIMIT" ]; then ARGS="--limit $COLLECT_LIMIT"; fi
+          node scripts/crawl/collect-races.js $ARGS
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_SCHEMA: ${{ github.event.inputs.schema || 'yabai_travel' }}
+          COLLECT_LIMIT: ${{ github.event.inputs.collect_limit }}
