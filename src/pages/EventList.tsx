@@ -25,6 +25,19 @@ function parseIntervalHours(v: string | null): number | null {
   return hours > 0 ? hours : null
 }
 
+/** 日付文字列に曜日を付与（例: "2026-05-16" → "2026-05-16（土）"） */
+function formatDateWithDay(dateStr: string): string {
+  const days = ['日', '月', '火', '水', '木', '金', '土']
+  const d = new Date(dateStr + 'T00:00:00')
+  if (isNaN(d.getTime())) return dateStr
+  return `${dateStr}（${days[d.getDay()]}）`
+}
+
+/** timestamptz を JST 表示に変換 */
+function formatJST(ts: string): string {
+  return new Date(ts).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })
+}
+
 function EventList() {
   const [events, setEvents] = useState<EventWithCategories[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,6 +48,8 @@ function EventList() {
   const [distanceMin, setDistanceMin] = useState<string>('')
   const [distanceMax, setDistanceMax] = useState<string>('')
   const [timeLimitMin, setTimeLimitMin] = useState<string>('')
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
+  const [weeklyNewCount, setWeeklyNewCount] = useState<number>(0)
 
   useEffect(() => {
     async function fetchEvents() {
@@ -42,7 +57,7 @@ function EventList() {
         const { data, error: err } = await supabase
           .from('events')
           .select('*, categories(*)')
-          .order('event_date', { ascending: true })
+          .order('event_date', { ascending: true, nullsFirst: false })
 
         if (err) throw err
         setEvents(data ?? [])
@@ -59,7 +74,26 @@ function EventList() {
         setLoading(false)
       }
     }
+
+    async function fetchStats() {
+      const { data: lastRow } = await supabase
+        .from('events')
+        .select('collected_at')
+        .not('collected_at', 'is', null)
+        .order('collected_at', { ascending: false })
+        .limit(1)
+      if (lastRow?.[0]?.collected_at) setLastUpdated(lastRow[0].collected_at)
+
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      const { count } = await supabase
+        .from('events')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', weekAgo)
+      setWeeklyNewCount(count ?? 0)
+    }
+
     fetchEvents()
+    fetchStats()
   }, [])
 
   /** DB に存在するレース種別を動的取得（#27） */
@@ -180,6 +214,10 @@ function EventList() {
           <Link to="/">yabai.travel</Link>
         </h1>
         <p className="app-subtitle">エンデュランスレース一覧</p>
+        <p className="app-stats">
+          {lastUpdated && <span>最終更新: {formatJST(lastUpdated)}</span>}
+          {weeklyNewCount > 0 && <span>今週の新着: {weeklyNewCount}件</span>}
+        </p>
       </header>
 
       <section className="filters">
@@ -291,8 +329,8 @@ function EventList() {
                         <p className="event-meta">
                           <span>
                             {event.event_date_end && event.event_date_end !== event.event_date
-                              ? `${event.event_date}〜${event.event_date_end}`
-                              : event.event_date}
+                              ? `${formatDateWithDay(event.event_date)}〜${formatDateWithDay(event.event_date_end)}`
+                              : event.event_date ? formatDateWithDay(event.event_date) : null}
                           </span>
                           {event.country && <span> / {event.country}</span>}
                           {event.location && <span> / {event.location}</span>}
