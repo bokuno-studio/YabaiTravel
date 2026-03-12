@@ -328,7 +328,7 @@ function EventList() {
                         <h2>{event.name}</h2>
                         <p className="event-meta">
                           <span>
-                            {event.event_date_end && event.event_date_end !== event.event_date
+                            {event.event_date_end && event.event_date && event.event_date_end !== event.event_date
                               ? `${formatDateWithDay(event.event_date)}〜${formatDateWithDay(event.event_date_end)}`
                               : event.event_date ? formatDateWithDay(event.event_date) : null}
                           </span>
