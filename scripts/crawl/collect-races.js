@@ -66,6 +66,16 @@ function parseCheckUrls() {
   return [...new Set(urls)]
 }
 
+// --- 名前クリーニング ---
+
+/** 先頭の日付パターンを除去（例: "2026/5/16(土) 野辺山マラソン" → "野辺山マラソン"） */
+function cleanEventName(name) {
+  return (name || '')
+    .replace(/^\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}[\(（][月火水木金土日][\)）]?\s*/, '')
+    .replace(/^\d{4}年\d{1,2}月\d{1,2}日[\(（][月火水木金土日][\)）]?\s*/, '')
+    .trim()
+}
+
 // --- ジャンク除去 ---
 
 const JUNK_NAMES = /^(shopping_cart|Sign in|Orders|Online Shop|主催者の皆さまへ|大会主催者の方へ|エントリーガイド|OCR World Champs|SPARTAN TRAIL)$/i
@@ -135,7 +145,7 @@ async function collectLawsonRaces() {
     const $ = cheerio.load(html)
     $('a[href*="race/detail"]').each((_, el) => {
       const href = $(el).attr('href')
-      const name = $(el).text().trim()
+      const name = cleanEventName($(el).text().trim())
       if (!href || !name || name.length < 5 || name.length > 100) return
       const officialUrl = href.startsWith('http') ? href : new URL(href, 'https://do.l-tike.com/').href
       races.push({ name, official_url: officialUrl, entry_url: officialUrl, race_type: 'other', source: 'lawson-do' })

@@ -79,7 +79,7 @@ const RELEVANT_URL_PATTERNS = [
 
 // アグリゲータ・SNS 等の外部リンクは公式サイトとして扱わない
 const AGGREGATOR_DOMAINS = [
-  'runnet.jp', 'sports-entry.com', 'lawson-do.jp', 'facebook.com',
+  'runnet.jp', 'sports-entry.com', 'lawson-do.jp', 'l-tike.com', 'facebook.com',
   'twitter.com', 'x.com', 'instagram.com', 'youtube.com', 'adobe.com',
   'apple.com', 'google.com', 'line.me', 'amazon.co.jp',
 ]
