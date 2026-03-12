@@ -17,7 +17,7 @@ on:
         required: false
         default: ''
   schedule:
-    - cron: '0 */6 * * *'  # 6時間おき（15:00/21:00/03:00/09:00 UTC = 00:00/06:00/12:00/18:00 JST）
+    - cron: '0 */3 * * *'  # 3時間おき（UTC 0/3/6/9/12/15/18/21 = JST 9/12/15/18/21/0/3/6）
 
 jobs:
   collect-races:
