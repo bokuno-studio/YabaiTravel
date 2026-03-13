@@ -121,8 +121,8 @@ async function collectRunnetRaces() {
       const href = $(el).attr('href')
       const name = $(el).text().trim()
       if (!href || !name || name.length < 3) return
-      const officialUrl = href.startsWith('http') ? href : new URL(href, 'https://runnet.jp/').href
-      races.push({ name, official_url: officialUrl, entry_url: officialUrl, race_type: 'trail', source: 'runnet' })
+      const entryUrl = href.startsWith('http') ? href : new URL(href, 'https://runnet.jp/').href
+      races.push({ name, official_url: null, entry_url: entryUrl, race_type: 'trail', source: 'runnet' })
     })
   } catch (e) { console.warn('  RUNNET collect error:', e.message) }
   return limitForEnv(races, 5)
@@ -138,8 +138,8 @@ async function collectSportsEntryRaces() {
       const href = $(el).attr('href')
       const name = $(el).text().trim()
       if (!href || !name || name.length < 5 || name.length > 100) return
-      const officialUrl = href.startsWith('http') ? href : new URL(href, 'https://www.sportsentry.ne.jp/').href
-      races.push({ name, official_url: officialUrl, entry_url: officialUrl, race_type: 'other', source: 'sports-entry' })
+      const entryUrl = href.startsWith('http') ? href : new URL(href, 'https://www.sportsentry.ne.jp/').href
+      races.push({ name, official_url: null, entry_url: entryUrl, race_type: 'other', source: 'sports-entry' })
     })
   } catch (e) { console.warn('  SportsEntry collect error:', e.message) }
   return limitForEnv(races, 3)
@@ -155,8 +155,8 @@ async function collectLawsonRaces() {
       const href = $(el).attr('href')
       const name = cleanEventName($(el).text().trim())
       if (!href || !name || name.length < 5 || name.length > 100) return
-      const officialUrl = href.startsWith('http') ? href : new URL(href, 'https://do.l-tike.com/').href
-      races.push({ name, official_url: officialUrl, entry_url: officialUrl, race_type: 'other', source: 'lawson-do' })
+      const entryUrl = href.startsWith('http') ? href : new URL(href, 'https://do.l-tike.com/').href
+      races.push({ name, official_url: null, entry_url: entryUrl, race_type: 'other', source: 'lawson-do' })
     })
   } catch (e) { console.warn('  LAWSON DO collect error:', e.message) }
   return limitForEnv(races, 3)
@@ -236,10 +236,14 @@ async function collectOtherSourceRaces(url) {
 // --- DB挿入 ---
 
 async function insertRace(client, race) {
+  // official_url がある場合は official_url で重複チェック、なければ name で重複チェック
+  const dupCheck = race.official_url
+    ? `WHERE NOT EXISTS (SELECT 1 FROM ${SCHEMA}.events WHERE official_url = $6)`
+    : `WHERE NOT EXISTS (SELECT 1 FROM ${SCHEMA}.events WHERE name = $1)`
   const result = await client.query(
     `INSERT INTO ${SCHEMA}.events (name, event_date, location, country, race_type, official_url, entry_url, collected_at)
      SELECT $1, $2, $3, $4, $5, $6, $7, NULL
-     WHERE NOT EXISTS (SELECT 1 FROM ${SCHEMA}.events WHERE official_url = $6)
+     ${dupCheck}
      RETURNING id`,
     [
       race.name,
@@ -247,8 +251,8 @@ async function insertRace(client, race) {
       race.location || null,
       race.country || null,
       race.race_type || 'other',
-      race.official_url,
-      race.entry_url || race.official_url,
+      race.official_url || null,
+      race.entry_url || race.official_url || null,
     ]
   )
   return result.rows[0]?.id || null
@@ -326,8 +330,8 @@ async function run() {
     const race = targets[i]
     const label = `[${i + 1}/${targets.length}]`
 
-    if (!race.official_url) {
-      console.log(`${label} SKIP (no URL) ${race.name?.slice(0, 40)}`)
+    if (!race.official_url && !race.name) {
+      console.log(`${label} SKIP (no URL/name) ${race.name?.slice(0, 40)}`)
       skipped++
       continue
     }
