@@ -300,6 +300,97 @@ function hasMissingFields(categories) {
   )
 }
 
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || `https://${process.env.SUPABASE_PROJECT_REF || 'wzkjnmowrlfgvkuzyiio'}.supabase.co`
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+
+/** コースマップ画像/PDFのURLパターン */
+const COURSE_MAP_PATTERNS = /course[-_]?map|コースマップ|コース図|course[-_]?profile|elevation[-_]?profile|高低図|標高図/i
+const COURSE_MAP_FILE_EXT = /\.(png|jpe?g|gif|webp|pdf|svg)(\?|$)/i
+
+/** HTMLからコースマップのURLを検出し、Supabase Storageに保存 */
+async function extractAndSaveCourseMap(html, baseUrl, eventId, dbClient) {
+  if (!SUPABASE_SERVICE_KEY) return
+
+  const $ = cheerio.load(html)
+  const candidates = new Set()
+
+  // img タグからコースマップを検出
+  $('img[src]').each((_, el) => {
+    const src = $(el).attr('src') || ''
+    const alt = $(el).attr('alt') || ''
+    const parentText = $(el).parent().text() || ''
+    if (COURSE_MAP_PATTERNS.test(src) || COURSE_MAP_PATTERNS.test(alt) || COURSE_MAP_PATTERNS.test(parentText)) {
+      if (COURSE_MAP_FILE_EXT.test(src)) {
+        const url = src.startsWith('http') ? src : new URL(src, baseUrl).href
+        candidates.add(url)
+      }
+    }
+  })
+
+  // a タグからコースマップPDF/画像リンクを検出
+  $('a[href]').each((_, el) => {
+    const href = $(el).attr('href') || ''
+    const text = $(el).text() || ''
+    if (COURSE_MAP_PATTERNS.test(href) || COURSE_MAP_PATTERNS.test(text)) {
+      if (COURSE_MAP_FILE_EXT.test(href)) {
+        const url = href.startsWith('http') ? href : new URL(href, baseUrl).href
+        candidates.add(url)
+      }
+    }
+  })
+
+  if (candidates.size === 0) return
+
+  // 既存レコード確認
+  const existing = await dbClient.query(
+    `SELECT file_path FROM ${SCHEMA}.course_map_files WHERE event_id = $1`,
+    [eventId]
+  )
+  if (existing.rows.length > 0) return // 既にある場合はスキップ
+
+  let saved = 0
+  for (const mapUrl of [...candidates].slice(0, 3)) {
+    try {
+      const res = await fetch(mapUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' },
+        redirect: 'follow',
+      })
+      if (!res.ok) continue
+
+      const contentType = res.headers.get('content-type') || ''
+      if (!/(image|pdf)/i.test(contentType)) continue
+
+      const buffer = Buffer.from(await res.arrayBuffer())
+      if (buffer.length < 1000 || buffer.length > 10 * 1024 * 1024) continue // 1KB〜10MB
+
+      const ext = mapUrl.match(/\.(png|jpe?g|gif|webp|pdf|svg)/i)?.[1]?.toLowerCase() || 'png'
+      const storagePath = `${eventId}/${Date.now()}.${ext}`
+
+      // Supabase Storage にアップロード
+      const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/course-maps/${storagePath}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+          apikey: SUPABASE_SERVICE_KEY,
+          'Content-Type': contentType,
+        },
+        body: buffer,
+      })
+      if (!uploadRes.ok) continue
+
+      // DB にレコード保存
+      const year = new Date().getFullYear()
+      const displayName = new URL(mapUrl).pathname.split('/').pop() || `course-map.${ext}`
+      await dbClient.query(
+        `INSERT INTO ${SCHEMA}.course_map_files (event_id, file_path, year, display_name) VALUES ($1, $2, $3, $4)`,
+        [eventId, storagePath, year, displayName]
+      )
+      saved++
+      console.log(`  [course-map] OK ${storagePath}`)
+    } catch { /* ignore individual failures */ }
+  }
+}
+
 /**
  * 単一イベントをエンリッチする
  * @param {object} event - {id, name, official_url, location, country}
@@ -644,6 +735,15 @@ export async function enrichDetail(event, opts = { dryRun: false }) {
             cat.itra_points        ?? null,
           ]
         )
+      }
+    }
+
+    // コースマップの検出・保存（HTMLが取得できている場合のみ）
+    if (!fetchFailed && html) {
+      try {
+        await extractAndSaveCourseMap(html, officialUrl, eventId, client)
+      } catch (err) {
+        console.log(`  [course-map] ERR ${name?.slice(0, 40)} | ${err.message?.slice(0, 50)}`)
       }
     }
 
