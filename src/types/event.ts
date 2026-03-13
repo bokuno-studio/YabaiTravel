@@ -23,7 +23,9 @@ export type Event = {
   event_date: string | null
   event_date_end?: string | null
   location: string | null
+  location_en: string | null
   country: string | null
+  country_en: string | null
   official_url: string | null
   entry_url: string | null
   race_type: string | null
@@ -54,6 +56,9 @@ export type AccessRoute = {
   id: string
   event_id: string
   direction: 'outbound' | 'return'
+  origin_type: 'tokyo' | 'nearest_airport'
+  origin_name: string | null
+  origin_airport_code: string | null
   route_detail: string | null
   total_time_estimate: string | null
   cost_estimate: string | null
@@ -70,6 +75,7 @@ export type Accommodation = {
   id: string
   event_id: string
   recommended_area: string | null
+  recommended_area_en: string | null
   avg_cost_3star: number | null
   updated_at: string | null
 }
