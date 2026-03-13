@@ -194,6 +194,9 @@ function EventList() {
       devils_circuit: 'Devils Circuit',
       strong_viking: 'Strong Viking',
       obstacle: 'オブスタクル',
+      tough_mudder: 'タフマダー',
+      triathlon: 'トライアスロン',
+      aquathlon: 'アクアスロン',
     }
     return map[t] ?? t
   }
