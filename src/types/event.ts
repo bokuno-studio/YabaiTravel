@@ -47,6 +47,9 @@ export type Event = {
   entry_type: string | null
   required_qualification: string | null
   previous_edition_url: string | null
+  visa_info: string | null
+  recovery_facilities: string | null
+  photo_spots: string | null
   collected_at: string | null
   updated_at: string | null
 }

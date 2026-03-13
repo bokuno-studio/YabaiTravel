@@ -494,22 +494,44 @@ function CategoryDetail() {
           </>
         )}
 
-        {(event.weather_forecast || event.weather_history != null || event.prohibited_items || event.furusato_nozei_url) && (
+        {event.weather_forecast && (
+          <>
+            <h2 className="section-title">天候</h2>
+            <p className="section-text">{event.weather_forecast}</p>
+          </>
+        )}
+
+        {(event.recovery_facilities || event.photo_spots) && (
+          <>
+            <h2 className="section-title">周辺情報</h2>
+            <dl className="event-detail-dl">
+              {event.recovery_facilities && (
+                <>
+                  <dt>リカバリー施設・温泉</dt>
+                  <dd>{event.recovery_facilities}</dd>
+                </>
+              )}
+              {event.photo_spots && (
+                <>
+                  <dt>フォトスポット</dt>
+                  <dd>{event.photo_spots}</dd>
+                </>
+              )}
+            </dl>
+          </>
+        )}
+
+        {event.visa_info && (
+          <>
+            <h2 className="section-title">ビザ情報</h2>
+            <p className="section-text">{event.visa_info}</p>
+          </>
+        )}
+
+        {(event.prohibited_items || event.furusato_nozei_url) && (
           <>
             <h2 className="section-title">その他</h2>
             <dl className="event-detail-dl">
-              {event.weather_forecast && (
-                <>
-                  <dt>天気予報</dt>
-                  <dd>{event.weather_forecast}</dd>
-                </>
-              )}
-              {event.weather_history != null && event.weather_history !== '' && (
-                <>
-                  <dt>例年の天気</dt>
-                  <dd>{typeof event.weather_history === 'object' ? JSON.stringify(event.weather_history) : String(event.weather_history)}</dd>
-                </>
-              )}
               {event.prohibited_items && (
                 <>
                   <dt>使用禁止品</dt>

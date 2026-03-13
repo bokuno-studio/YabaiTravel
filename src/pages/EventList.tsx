@@ -48,6 +48,7 @@ function EventList() {
   const [distanceMin, setDistanceMin] = useState<string>('')
   const [distanceMax, setDistanceMax] = useState<string>('')
   const [timeLimitMin, setTimeLimitMin] = useState<string>('')
+  const [entryStatus, setEntryStatus] = useState<string>('')
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
   const [weeklyNewCount, setWeeklyNewCount] = useState<number>(0)
 
@@ -161,7 +162,7 @@ function EventList() {
     })
   }
 
-  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || !!month || !!distanceMin || !!distanceMax || !!timeLimitMin
+  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || !!month || !!distanceMin || !!distanceMax || !!timeLimitMin || !!entryStatus
 
   const filtered = events.filter((event) => {
     if (raceTypes.size > 0 && (event.race_type == null || !raceTypes.has(event.race_type))) return false
@@ -173,6 +174,17 @@ function EventList() {
     if (month && event.event_date) {
       const [y, m] = month.split('-')
       if (!event.event_date.startsWith(`${y}-${m}`)) return false
+    }
+    if (entryStatus) {
+      const today = new Date().toISOString().slice(0, 10)
+      if (entryStatus === 'open') {
+        if (!event.entry_start || !event.entry_end) return false
+        if (event.entry_start > today || event.entry_end < today) return false
+      } else if (entryStatus === 'upcoming') {
+        if (!event.entry_start || event.entry_start <= today) return false
+      } else if (entryStatus === 'closed') {
+        if (!event.entry_end || event.entry_end >= today) return false
+      }
     }
     const categories = event.categories ?? []
     const hasCategoryFilter = distanceMin || distanceMax || timeLimitMin
@@ -304,6 +316,19 @@ function EventList() {
             <option value="12">12時間以上</option>
             <option value="24">24時間以上</option>
             <option value="36">36時間以上</option>
+          </select>
+        </div>
+        <div className="filter-group">
+          <label htmlFor="entryStatus">エントリ状況</label>
+          <select
+            id="entryStatus"
+            value={entryStatus}
+            onChange={(e) => setEntryStatus(e.target.value)}
+          >
+            <option value="">指定なし</option>
+            <option value="open">受付中</option>
+            <option value="upcoming">申込前</option>
+            <option value="closed">締切済</option>
           </select>
         </div>
       </section>

@@ -143,6 +143,13 @@
   margin-top: 0;
 }
 
+.section-text {
+  margin: 0 0 1rem;
+  color: #475569;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
 .section-subtitle {
   margin: 1rem 0 0.5rem;
   font-size: 0.95rem;
