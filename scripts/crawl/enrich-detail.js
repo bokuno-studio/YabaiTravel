@@ -399,6 +399,10 @@ export async function enrichDetail(event, opts = { dryRun: false }) {
     }
 
     // Pass 2: 関連ページ探索（同一ドメインのサブページ + 外部公式サイトとそのサブページ）
+    // Tavilyフォールバック時はHTMLが無いためスキップ
+    if (fetchFailed) {
+      // Pass 2/3 をスキップして直接DB更新へ
+    } else {
     const internalLinks = extractRelevantLinks(html, officialUrl)
 
     // 外部公式サイト（runnet等から race 公式サイトへのリンク）とそのサブページを追加
@@ -520,6 +524,7 @@ export async function enrichDetail(event, opts = { dryRun: false }) {
         console.log(`  [tavily] ${name?.slice(0, 40)} | ${searchResults.length}件`)
       }
     }
+    } // end of !fetchFailed block
 
     if (dryRun) {
       console.log(`  DRY enrichDetail: ${name?.slice(0, 40)} | cats:${extracted.categories?.length ?? 0} | tokens:${totalTokens}`)
