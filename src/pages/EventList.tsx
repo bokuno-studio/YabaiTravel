@@ -57,7 +57,6 @@ function EventList() {
         const { data, error: err } = await supabase
           .from('events')
           .select('*, categories(*)')
-          .not('collected_at', 'is', null)
           .order('event_date', { ascending: true, nullsFirst: false })
 
         if (err) throw err
@@ -321,9 +320,12 @@ function EventList() {
               const chipsToShow = hasAnyFilter && matchingCats.length > 0
                 ? matchingCats
                 : (event.categories ?? [])
+              // enrich未完了: location が未設定のイベント (#63)
+              const isEnriched = event.location != null
               return (
-                <li key={event.id} className="event-card">
+                <li key={event.id} className={`event-card${isEnriched ? '' : ' event-card--pending'}`}>
                   <div className="event-card-inner">
+                    {isEnriched ? (
                     <Link to={cardLink} className="event-card-main">
                       <div className="event-main">
                         <h2>{event.name}</h2>
@@ -346,7 +348,28 @@ function EventList() {
                         </span>
                       </div>
                     </Link>
-                    {chipsToShow.length > 0 && (
+                    ) : (
+                    <div className="event-card-main event-card-main--disabled">
+                      <div className="event-main">
+                        <h2>{event.name}</h2>
+                        <p className="event-meta">
+                          <span>
+                            {event.event_date_end && event.event_date && event.event_date_end !== event.event_date
+                              ? `${formatDateWithDay(event.event_date)}〜${formatDateWithDay(event.event_date_end)}`
+                              : event.event_date ? formatDateWithDay(event.event_date) : null}
+                          </span>
+                          {event.country && <span> / {event.country}</span>}
+                        </p>
+                      </div>
+                      <div className="event-card-badges">
+                        <span className={`badge badge-${event.race_type ?? 'other'}`}>
+                          {raceTypeLabel(event.race_type)}
+                        </span>
+                        <span className="badge badge-pending">詳細調査中</span>
+                      </div>
+                    </div>
+                    )}
+                    {isEnriched && chipsToShow.length > 0 && (
                       <div className="event-category-chips">
                         {chipsToShow.map((cat) => (
                           <Link
