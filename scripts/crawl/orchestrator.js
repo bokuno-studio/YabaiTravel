@@ -124,6 +124,66 @@ async function run() {
   console.log('=== サマリー ===')
   console.log(`詳細エンリッチ: OK ${totalDetailOk} / ERR ${totalDetailErr}`)
   console.log(`ロジエンリッチ: OK ${totalLogiOk} / ERR ${totalLogiErr}`)
+
+  // 失敗率が50%以上の場合、GitHub Issue を自動起票 (#74)
+  const totalProcessed = totalDetailOk + totalDetailErr
+  if (totalProcessed > 0 && totalDetailErr / totalProcessed >= 0.5) {
+    await createAlertIssue({
+      totalProcessed,
+      detailOk: totalDetailOk,
+      detailErr: totalDetailErr,
+      logiOk: totalLogiOk,
+      logiErr: totalLogiErr,
+    })
+  }
+}
+
+/** GitHub Issue を起票してenrich失敗をアラートする */
+async function createAlertIssue({ totalProcessed, detailOk, detailErr, logiOk, logiErr }) {
+  const token = process.env.GITHUB_TOKEN
+  if (!token) {
+    console.log('[alert] GITHUB_TOKEN が未設定のため Issue 起票をスキップ')
+    return
+  }
+
+  const repo = process.env.GITHUB_REPOSITORY || 'bokunon/YabaiTravel'
+  const failRate = Math.round((detailErr / totalProcessed) * 100)
+  const now = new Date().toISOString().slice(0, 10)
+
+  const title = `[自動検知] enrich失敗率 ${failRate}%（${now}）`
+  const body = [
+    '## enrich ジョブ失敗アラート',
+    '',
+    `| 項目 | 成功 | 失敗 |`,
+    `|------|------|------|`,
+    `| 詳細エンリッチ | ${detailOk} | ${detailErr} |`,
+    `| ロジエンリッチ | ${logiOk} | ${logiErr} |`,
+    '',
+    `**失敗率: ${failRate}%**（閾値: 50%）`,
+    '',
+    `[Actions ログ](https://github.com/${repo}/actions)で詳細を確認してください。`,
+    '',
+    '_このIssueはオーケストレータにより自動起票されました。_',
+  ].join('\n')
+
+  try {
+    const res = await fetch(`https://api.github.com/repos/${repo}/issues`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ title, body, labels: ['enrich-alert'] }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      console.log(`[alert] Issue 起票: ${data.html_url}`)
+    } else {
+      console.log(`[alert] Issue 起票失敗: ${res.status} ${await res.text()}`)
+    }
+  } catch (e) {
+    console.log(`[alert] Issue 起票エラー: ${e.message}`)
+  }
 }
 
 run().catch((e) => {
