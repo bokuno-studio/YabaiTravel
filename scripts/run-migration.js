@@ -82,8 +82,10 @@ async function run() {
       let sql = readFileSync(join(migrationsDir, file), 'utf8');
 
       // ターゲットスキーマが本番と異なる場合、SQL 内のスキーマ参照を置換
+      // 単純な replaceAll だと yabai_travel_staging 内の yabai_travel も置換されるため正規表現で境界マッチ
       if (TARGET_SCHEMA !== SOURCE_SCHEMA) {
-        sql = sql.replaceAll(SOURCE_SCHEMA, TARGET_SCHEMA);
+        const schemaRegex = new RegExp(`(?<![a-zA-Z0-9_])${SOURCE_SCHEMA}(?![a-zA-Z0-9_])`, 'g');
+        sql = sql.replace(schemaRegex, TARGET_SCHEMA);
       }
 
       await client.query(sql);
