@@ -318,19 +318,85 @@ export async function enrichDetail(event, opts = { dryRun: false }) {
 
     // Pass 1: 公式ページ取得 + LLM 抽出
     let html
+    let fetchFailed = false
     try {
       html = await fetchHtml(officialUrl)
     } catch (e) {
-      return { success: false, eventId, error: `fetch failed: ${e.message}` }
+      const status = parseInt(e.message, 10)
+      // 403/404 等の場合は Tavily フォールバックへ
+      if (status === 403 || status === 404 || status === 429) {
+        fetchFailed = true
+        console.log(`  [fallback] ${name?.slice(0, 40)} | ${e.message} → Tavily検索`)
+      } else {
+        return { success: false, eventId, error: `fetch failed: ${e.message}` }
+      }
     }
 
-    const content = extractRelevantContent(html)
-    if (content.length < 50) {
-      return { success: false, eventId, error: 'page content too short' }
-    }
+    let extracted = { event: {}, categories: [] }
+    let totalTokens = 0
 
-    let extracted = await callLlm(anthropic, content, name)
-    let totalTokens = (extracted._usage?.input_tokens || 0) + (extracted._usage?.output_tokens || 0)
+    if (!fetchFailed) {
+      const content = extractRelevantContent(html)
+      if (content.length < 50) {
+        return { success: false, eventId, error: 'page content too short' }
+      }
+      extracted = await callLlm(anthropic, content, name)
+      totalTokens = (extracted._usage?.input_tokens || 0) + (extracted._usage?.output_tokens || 0)
+    } else {
+      // Tavily フォールバック: レース名で検索して LLM 抽出
+      const query = `${name} 公式サイト エントリー 開催日 距離`
+      const searchResults = await fetchTavilySearch(query)
+      if (searchResults.length === 0) {
+        return { success: false, eventId, error: `fetch failed (fallback: no search results)` }
+      }
+      for (const content of searchResults) {
+        if (content.length < 50) continue
+        try {
+          const searchExtracted = await callLlm(anthropic, content, name)
+          totalTokens += (searchExtracted._usage?.input_tokens || 0) + (searchExtracted._usage?.output_tokens || 0)
+
+          const ae = searchExtracted.event || {}
+          const e = extracted.event || {}
+          extracted.event = {
+            name:            e.name            ?? ae.name,
+            event_date:      e.event_date      ?? ae.event_date,
+            event_date_end:  e.event_date_end  ?? ae.event_date_end,
+            location:        e.location        ?? ae.location,
+            country:         e.country         ?? ae.country,
+            race_type:       e.race_type       ?? ae.race_type,
+            entry_url:       e.entry_url       ?? ae.entry_url,
+            entry_start:     e.entry_start     ?? ae.entry_start,
+            entry_end:       e.entry_end       ?? ae.entry_end,
+            reception_place: e.reception_place ?? ae.reception_place,
+            start_place:     e.start_place     ?? ae.start_place,
+          }
+
+          if (searchExtracted.categories?.length > 0) {
+            if (!extracted.categories || extracted.categories.length === 0) {
+              extracted.categories = searchExtracted.categories
+            } else {
+              for (const addCat of searchExtracted.categories) {
+                const existing = findMatchingCategory(extracted.categories, addCat.name)
+                if (existing) {
+                  existing.distance_km        = existing.distance_km        ?? addCat.distance_km
+                  existing.elevation_gain     = existing.elevation_gain     ?? addCat.elevation_gain
+                  existing.entry_fee          = existing.entry_fee          ?? addCat.entry_fee
+                  existing.entry_fee_currency = existing.entry_fee_currency ?? addCat.entry_fee_currency
+                  existing.start_time         = existing.start_time         ?? addCat.start_time
+                  existing.reception_end      = existing.reception_end      ?? addCat.reception_end
+                  existing.time_limit         = existing.time_limit         ?? addCat.time_limit
+                  existing.cutoff_times       = (existing.cutoff_times?.length > 0) ? existing.cutoff_times : addCat.cutoff_times
+                  existing.mandatory_gear     = existing.mandatory_gear     ?? addCat.mandatory_gear
+                  existing.poles_allowed      = existing.poles_allowed      ?? addCat.poles_allowed
+                  existing.itra_points        = existing.itra_points        ?? addCat.itra_points
+                }
+              }
+            }
+          }
+        } catch { /* 検索結果の処理失敗は無視 */ }
+      }
+      console.log(`  [fallback] ${name?.slice(0, 40)} | Tavily ${searchResults.length}件で補完`)
+    }
 
     // Pass 2: 関連ページ探索（同一ドメインのサブページ + 外部公式サイトとそのサブページ）
     const internalLinks = extractRelevantLinks(html, officialUrl)

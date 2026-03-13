@@ -213,13 +213,19 @@ async function collectOtherSourceRaces(url) {
     if (url.includes('albatros-adventure-marathons.com')) {
       const $ = cheerio.load(html)
       const races = []
+      // 各レースはカード/セクション内にタイトルとリンクがある構造
+      // 「〇〇の詳細を見る」リンクラベルを除外し、見出し/タイトル要素からイベント名を取得
       $('a[href]').each((_, el) => {
         const href = $(el).attr('href')
         const text = $(el).text().trim()
-        if (href && text && text.length > 5 && text.length < 80 && /marathon|ultra|trail/i.test(text)) {
-          const officialUrl = href.startsWith('http') ? href : new URL(href, url).href
-          races.push({ name: text, official_url: officialUrl, entry_url: officialUrl, race_type: 'adventure', source: 'albatros' })
-        }
+        // 「の詳細を見る」で終わるリンクラベルはスキップ
+        if (!href || !text || text.includes('の詳細を見る')) return
+        if (text.length < 5 || text.length > 80) return
+        if (!/marathon|ultra|trail/i.test(text)) return
+        // /german 等の言語別パスは除外し、実際のレースページURLのみ取得
+        const officialUrl = href.startsWith('http') ? href : new URL(href, url).href
+        if (/\/(german|french|spanish|italian)\b/i.test(officialUrl)) return
+        races.push({ name: text, official_url: officialUrl, entry_url: officialUrl, race_type: 'adventure', source: 'albatros' })
       })
       return limitForEnv(races, 1)
     }
