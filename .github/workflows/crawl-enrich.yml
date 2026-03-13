@@ -12,8 +12,12 @@ on:
         description: 'enrich の最大件数（デフォルト: 無制限）'
         required: false
         default: ''
+      event_id:
+        description: '特定イベントIDを再enrich（洗替）する場合に指定'
+        required: false
+        default: ''
   schedule:
-    - cron: '0 */3 * * *'  # 3時間おき（UTC 0/3/6/9/12/15/18/21 = JST 9/12/15/18/21/0/3/6）
+    - cron: '0 * * * *'  # 1時間おき (#70)
 
 jobs:
   enrich:
@@ -28,9 +32,15 @@ jobs:
       - run: npm ci
       - name: 詳細・ロジ収集
         run: |
-          ARGS=""
-          if [ -n "$ENRICH_LIMIT" ]; then ARGS="--once --concurrency $ENRICH_LIMIT"; fi
-          node scripts/crawl/orchestrator.js $ARGS
+          if [ -n "$EVENT_ID" ]; then
+            echo "=== 特定イベント再enrich: $EVENT_ID ==="
+            node scripts/crawl/enrich-detail.js --event-id "$EVENT_ID"
+            node scripts/crawl/enrich-logi.js --event-id "$EVENT_ID"
+          else
+            ARGS=""
+            if [ -n "$ENRICH_LIMIT" ]; then ARGS="--once --concurrency $ENRICH_LIMIT"; fi
+            node scripts/crawl/orchestrator.js $ARGS
+          fi
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_SCHEMA: ${{ github.event.inputs.schema || 'yabai_travel' }}
@@ -38,3 +48,4 @@ jobs:
           GOOGLE_DIRECTIONS_API_KEY: ${{ secrets.GOOGLE_DIRECTIONS_API_KEY }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           ENRICH_LIMIT: ${{ github.event.inputs.enrich_limit }}
+          EVENT_ID: ${{ github.event.inputs.event_id }}

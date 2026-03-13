@@ -104,8 +104,8 @@ describe('EventDetail', () => {
     }
     // カテゴリが2つ以上ある場合のみ一覧表示（1つの場合は詳細へリダイレクト）
     const mockCategories = [
-      { id: 'cat-1', name: '100km', event_id: 'ev-123' },
-      { id: 'cat-2', name: '50km', event_id: 'ev-123' },
+      { id: 'cat-1', name: '100km', event_id: 'ev-123', distance_km: 100 },
+      { id: 'cat-2', name: '50km', event_id: 'ev-123', distance_km: 50 },
     ]
 
     vi.mocked(supabase.from).mockImplementation((table: string) => {

@@ -31,6 +31,9 @@ const JUNK_PATTERNS = [
   /^ARE YOU READY\? SAY OORAH$/i,
 ]
 
+/** エンデュランス系ではないイベントを除外するキーワード (#67) */
+const NON_ENDURANCE_KEYWORDS = /スカッシュ|バドミントン|テニス|ゴルフ|卓球|ボウリング|ダーツ|ビリヤード|ゲートボール|クリケット|カーリング|アーチェリー|射撃|フェンシング|レスリング|柔道|空手|剣道|弓道|相撲|ボクシング|ラグビー|サッカー|フットサル|バレーボール|バスケ|ハンドボール|野球|ソフトボール|ホッケー|クリテリウム|ヒルクライム|サイクリング|自転車[旅競]|ロードレース(?!.*ラン)|エンデューロ(?!.*ラン)|練習会|走行会|トーナメント|選手権(?!.*マラソン|.*トレイル|.*トライアスロン|.*ラン)|プロアマ|グラベル/i
+
 async function run() {
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
   await client.connect()
@@ -39,7 +42,10 @@ async function run() {
     'SELECT id, name, official_url FROM yabai_travel.events'
   )
 
-  const toDelete = rows.filter((r) => JUNK_PATTERNS.some((p) => p.test(r.name?.trim() ?? '')))
+  const toDelete = rows.filter((r) => {
+    const t = r.name?.trim() ?? ''
+    return JUNK_PATTERNS.some((p) => p.test(t)) || NON_ENDURANCE_KEYWORDS.test(t)
+  })
   console.log(`ゴミ候補: ${toDelete.length} 件`)
   toDelete.forEach((r) => console.log(`  - ${r.name?.slice(0, 50)}... (${r.official_url})`))
 

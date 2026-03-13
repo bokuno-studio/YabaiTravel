@@ -323,8 +323,11 @@ function EventList() {
               const chipsToShow = hasAnyFilter && matchingCats.length > 0
                 ? matchingCats
                 : (event.categories ?? [])
-              // enrich未完了: location が未設定のイベント (#63)
-              const isEnriched = event.location != null
+              // enrich完了判定: location + カテゴリ充足度 (#63, #71)
+              const cats = event.categories ?? []
+              const isEnriched = event.location != null && (
+                cats.length === 0 || cats.some(c => c.distance_km != null || c.elevation_gain != null)
+              )
               return (
                 <li key={event.id} className={`event-card${isEnriched ? '' : ' event-card--pending'}`}>
                   <div className="event-card-inner">

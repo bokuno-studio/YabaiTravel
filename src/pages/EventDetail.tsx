@@ -54,8 +54,9 @@ function EventDetail() {
   if (error) return <p className="event-detail-error">エラー: {error}</p>
   if (!event) return <p className="event-detail-error">大会が見つかりません</p>
 
-  // enrich未完了のイベントは一覧へリダイレクト (#63)
-  if (event.location == null) return <Navigate to="/" replace />
+  // enrich未完了のイベントは一覧へリダイレクト (#63, #71)
+  const hasEnrichedCategories = categories.length === 0 || categories.some(c => c.distance_km != null || c.elevation_gain != null)
+  if (event.location == null || !hasEnrichedCategories) return <Navigate to="/" replace />
 
   // カテゴリが1つのみの場合はその詳細へリダイレクト
   if (categories.length === 1 && eventId) {

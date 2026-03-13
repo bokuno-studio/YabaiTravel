@@ -138,7 +138,7 @@ async function extractOfficialShuttle(officialUrl) {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 10000)
     const res = await fetch(officialUrl, {
-      headers: { 'User-Agent': 'YabaiTravel-Crawl/1.0' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' },
       signal: controller.signal,
     })
     clearTimeout(timer)

@@ -114,6 +114,11 @@ async function run() {
       console.log('--once フラグにより1バッチで終了します。')
       break
     }
+
+    // バッチ間ウェイト: Anthropic API レートリミット対策 (#69)
+    if (batchIdx < batches.length - 1) {
+      await new Promise((r) => setTimeout(r, 3000))
+    }
   }
 
   console.log('=== サマリー ===')

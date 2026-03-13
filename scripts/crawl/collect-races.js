@@ -47,7 +47,7 @@ async function fetchHtml(url, timeoutMs = 15000) {
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'YabaiTravel-Crawl/1.0' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' },
       redirect: 'follow',
       signal: controller.signal,
     })
@@ -91,9 +91,11 @@ const JUNK_PATTERNS = [
   /TICKET PRICES RISE.*REGISTER NOW/i,
   /^プレスリリース$/i,
 ]
+/** エンデュランス系ではないイベントを除外するキーワード (#67) */
+const NON_ENDURANCE_KEYWORDS = /スカッシュ|バドミントン|テニス|ゴルフ|卓球|ボウリング|ダーツ|ビリヤード|ゲートボール|クリケット|カーリング|アーチェリー|射撃|フェンシング|レスリング|柔道|空手|剣道|弓道|相撲|ボクシング|ラグビー|サッカー|フットサル|バレーボール|バスケ|ハンドボール|野球|ソフトボール|ホッケー|クリテリウム|ヒルクライム|サイクリング|自転車[旅競]|ロードレース(?!.*ラン)|エンデューロ(?!.*ラン)|練習会|走行会|トーナメント|選手権(?!.*マラソン|.*トレイル|.*トライアスロン|.*ラン)|プロアマ|グラベル/i
 function isJunk(name) {
   const t = name?.trim() ?? ''
-  return JUNK_NAMES.test(t) || JUNK_PATTERNS.some((p) => p.test(t))
+  return JUNK_NAMES.test(t) || JUNK_PATTERNS.some((p) => p.test(t)) || NON_ENDURANCE_KEYWORDS.test(t)
 }
 
 // --- ソース別のレースURL収集 ---
