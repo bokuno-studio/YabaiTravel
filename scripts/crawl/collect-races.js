@@ -18,6 +18,7 @@ import { extract as extractSpartan } from '../crawl-extract/extract-spartan.js'
 import { extract as extractUtmb } from '../crawl-extract/extract-utmb.js'
 import { extract as extractHyrox } from '../crawl-extract/extract-hyrox.js'
 import { extract as extractStrongViking } from '../crawl-extract/extract-strong-viking.js'
+import { extract as extractHardrock, extractFromCsv as extractHardrockCsv } from '../crawl-extract/extract-hardrock.js'
 
 const envPath = resolve(process.cwd(), '.env.local')
 if (existsSync(envPath)) {
@@ -185,6 +186,21 @@ async function collectOtherSourceRaces(url) {
     if (url.includes('strongviking.com')) {
       const { races } = extractStrongViking(html)
       return races.map((r) => ({ ...r, source: 'strong-viking' }))
+    }
+    if (url.includes('hardrock100.com')) {
+      // Hardrock: iframe 内の Google Spreadsheet から CSV を取得
+      const { _csvUrl } = extractHardrock(html)
+      if (_csvUrl) {
+        try {
+          const csvRes = await fetch(_csvUrl, { redirect: 'follow' })
+          if (csvRes.ok) {
+            const csvText = await csvRes.text()
+            const races = extractHardrockCsv(csvText)
+            return races.map((r) => ({ ...r, source: 'hardrock' }))
+          }
+        } catch (e) { console.warn('  Hardrock CSV fetch error:', e.message) }
+      }
+      return []
     }
     if (url.includes('toughmudder.com')) {
       const $ = cheerio.load(html)

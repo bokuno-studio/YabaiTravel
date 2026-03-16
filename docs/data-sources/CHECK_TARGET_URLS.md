@@ -164,6 +164,16 @@
 
 ---
 
+## Hardrock 100 Qualifying Races
+
+| 種別 | URL |
+|------|-----|
+| Qualifying Races | https://hardrock100.com/hardrock-qualify.php |
+
+Hardrock 100 Endurance Run の予選対象レース一覧。世界各地のウルトラトレイルレース36件。Google Spreadsheet（iframe 埋め込み）から CSV エクスポートで取得。
+
+---
+
 ## Ahotu（持久系スポーツカレンダー）
 
 | 種別 | URL |
