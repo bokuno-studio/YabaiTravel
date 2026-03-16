@@ -19,6 +19,9 @@ import { extract as extractUtmb } from '../crawl-extract/extract-utmb.js'
 import { extract as extractHyrox } from '../crawl-extract/extract-hyrox.js'
 import { extract as extractStrongViking } from '../crawl-extract/extract-strong-viking.js'
 import { extract as extractHardrock, extractFromCsv as extractHardrockCsv } from '../crawl-extract/extract-hardrock.js'
+import { extract as extractNisekoExpedition } from '../crawl-extract/extract-niseko-expedition.js'
+import { extract as extractARWorldSeries } from '../crawl-extract/extract-ar-world-series.js'
+import { extract as extractAdventure1 } from '../crawl-extract/extract-adventure1.js'
 
 const envPath = resolve(process.cwd(), '.env.local')
 if (existsSync(envPath)) {
@@ -186,6 +189,18 @@ async function collectOtherSourceRaces(url) {
     if (url.includes('strongviking.com')) {
       const { races } = extractStrongViking(html)
       return races.map((r) => ({ ...r, source: 'strong-viking' }))
+    }
+    if (url.includes('nisekoexpedition.jp')) {
+      const { races } = extractNisekoExpedition(html)
+      return races.map((r) => ({ ...r, source: 'niseko-expedition' }))
+    }
+    if (url.includes('arworldseries.com')) {
+      const { races } = extractARWorldSeries(html)
+      return races.map((r) => ({ ...r, source: 'ar-world-series' }))
+    }
+    if (url.includes('adventure1series.com')) {
+      const { races } = extractAdventure1(html)
+      return races.map((r) => ({ ...r, source: 'adventure1' }))
     }
     if (url.includes('hardrock100.com')) {
       // Hardrock: iframe 内の Google Spreadsheet から CSV を取得

@@ -16,6 +16,9 @@ const SOURCES = [
   { name: 'Devils Circuit', url: 'https://www.devilscircuit.com/', types: 'obstacle' },
   { name: 'A-Extremo', url: 'https://www.a-extremo.com/', types: 'adventure' },
   { name: 'Albatros Adventure Marathons', url: 'https://albatros-adventure-marathons.com/', types: 'marathon' },
+  { name: 'Niseko Expedition', url: 'https://nisekoexpedition.jp/', types: 'adventure' },
+  { name: 'AR World Series', url: 'https://arworldseries.com/races', types: 'adventure' },
+  { name: 'Adventure1 Series', url: 'https://adventure1series.com/a1/', types: 'adventure' },
 ]
 
 function Sources() {

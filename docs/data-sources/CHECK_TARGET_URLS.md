@@ -159,8 +159,11 @@
 |------|-----|
 | エクストリームシリーズ（有限会社エクストレモ） | https://www.a-extremo.com/event/extreme/ |
 | Albatros Adventure Marathons（日本語） | https://albatros-adventure-marathons.com/jp/ |
+| ニセコエクスペディション | https://nisekoexpedition.jp/ |
+| AR World Series | https://arworldseries.com/races |
+| Adventure1 Series | https://adventure1series.com/a1/ |
 
-那珂川・奥多摩・福島ならは・奥大井・尾瀬檜枝岐の5大会。
+国内外のアドベンチャーレース。
 
 ---
 
