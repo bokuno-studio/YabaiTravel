@@ -51,6 +51,8 @@ export type Event = {
   recovery_facilities: string | null
   photo_spots: string | null
   description: string | null
+  latitude: number | null
+  longitude: number | null
   collected_at: string | null
   updated_at: string | null
   enrich_attempt_count?: number

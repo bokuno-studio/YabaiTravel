@@ -132,6 +132,23 @@
   border-color: #3b82f6;
 }
 
+.app-footer {
+  margin-top: 2rem;
+  padding: 1rem 0;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.app-footer a {
+  color: #64748b;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.app-footer a:hover {
+  color: #3b82f6;
+}
+
 .event-description {
   margin: 0.5rem 0 0;
   font-size: 0.9rem;

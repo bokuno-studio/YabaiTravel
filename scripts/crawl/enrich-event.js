@@ -42,7 +42,9 @@ const EVENT_SYSTEM_PROMPT = `あなたはレースイベントの情報抽出エ
     "visa_info": "海外レースのビザ情報。日本国内はnull",
     "recovery_facilities": "会場周辺のリカバリー施設",
     "photo_spots": "周辺のフォトスポット・観光名所",
-    "description": "大会の紹介文（140文字以内。特徴・魅力・コースの概要を簡潔に。公式サイトの情報がなければWebで検索して補完してよい）"
+    "description": "大会の紹介文（140文字以内。特徴・魅力・コースの概要を簡潔に。公式サイトの情報がなければWebで検索して補完してよい）",
+    "latitude": "開催地の緯度（小数。例: 35.6762）",
+    "longitude": "開催地の経度（小数。例: 139.6503）"
   },
   "courses": [
     { "name": "コース名", "distance_km": 数値 }
@@ -258,7 +260,9 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
         recovery_facilities  = COALESCE(recovery_facilities, $13),
         photo_spots          = COALESCE(photo_spots, $14),
         official_url    = ${isPortalReplace ? 'COALESCE($15, official_url)' : 'COALESCE(official_url, $15)'},
-        description          = COALESCE(description, $17)
+        description          = COALESCE(description, $17),
+        latitude             = COALESCE(latitude, $18),
+        longitude            = COALESCE(longitude, $19)
        WHERE id = $16`,
       [
         e.name || null, e.event_date || null, e.location || null, e.country || null,
@@ -266,6 +270,8 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
         e.reception_place || null, e.start_place || null, e.weather_forecast || null,
         e.visa_info || null, e.recovery_facilities || null, e.photo_spots || null,
         newOfficialUrl, eventId, e.description || null,
+        e.latitude != null ? parseFloat(e.latitude) : null,
+        e.longitude != null ? parseFloat(e.longitude) : null,
       ]
     )
 

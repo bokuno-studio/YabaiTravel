@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import EventList from './pages/EventList'
 import EventDetail from './pages/EventDetail'
 import CategoryDetail from './pages/CategoryDetail'
+import Sources from './pages/Sources'
 
 /** パスの :lang から i18n 言語を設定し、子ルートを描画 */
 function LangLayout() {
@@ -37,6 +38,7 @@ function App() {
           <Route index element={<EventList />} />
           <Route path="events/:eventId" element={<EventDetail />} />
           <Route path="events/:eventId/categories/:categoryId" element={<CategoryDetail />} />
+          <Route path="sources" element={<Sources />} />
         </Route>
         <Route path="/" element={<DefaultRedirect />} />
         {/* 旧URL互換 */}

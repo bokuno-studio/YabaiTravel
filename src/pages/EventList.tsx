@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabaseClient'
 import type { EventWithCategories, Category } from '../types/event'
+import EventMap from '../components/EventMap'
 import '../App.css'
 import './EventList.css'
 
@@ -108,13 +109,22 @@ function EventList() {
     fetchStats()
   }, [])
 
-  /** DB に存在するレース種別を動的取得（#27） */
+  /** DB に存在するレース種別を定義順で取得（#154） */
+  const RACE_TYPE_ORDER = [
+    'marathon', 'trail',
+    'triathlon', 'duathlon',
+    'spartan', 'hyrox', 'obstacle',
+    'cycling',
+    'rogaining', 'adventure',
+    'devils_circuit', 'strong_viking',
+    'other',
+  ]
   const availableRaceTypes = useMemo(() => {
     const types = new Set<string>()
     events.forEach((e) => {
       if (e.race_type) types.add(e.race_type)
     })
-    return [...types].sort()
+    return RACE_TYPE_ORDER.filter((t) => types.has(t))
   }, [events])
 
   /** 選択中のレース種別に応じたカテゴリ一覧（#28） */
@@ -393,6 +403,8 @@ function EventList() {
         </div>
       </section>
 
+      <EventMap events={filtered} langPrefix={langPrefix} raceTypeLabel={raceTypeLabel} />
+
       <section className="event-list">
         {filtered.length === 0 ? (
           <p className="empty">{t('event.empty')}</p>
@@ -485,6 +497,10 @@ function EventList() {
           </ul>
         )}
       </section>
+
+      <footer className="app-footer">
+        <Link to={`${langPrefix}/sources`}>{lang === 'en' ? 'Data Sources' : '情報取得元'}</Link>
+      </footer>
     </div>
   )
 }
