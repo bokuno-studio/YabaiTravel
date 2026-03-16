@@ -1,0 +1,80 @@
+{
+  "site": {
+    "title": "yabai.travel",
+    "subtitle": "エンデュランスレース一覧"
+  },
+  "stats": {
+    "lastUpdated": "最終更新",
+    "weeklyNew": "今週の新着"
+  },
+  "filter": {
+    "raceType": "レース種別",
+    "category": "カテゴリ",
+    "month": "開催月",
+    "distance": "距離",
+    "timeLimit": "制限時間（h）以上",
+    "entryStatus": "エントリ状況",
+    "showPast": "過去のイベントも表示",
+    "noLimit": "指定なし",
+    "hoursOrMore": "{{hours}}時間以上",
+    "entryActive": "受付中・受付前",
+    "entryOpen": "受付中のみ",
+    "entryUpcoming": "受付前のみ",
+    "entryClosed": "締切済",
+    "entryAll": "すべて"
+  },
+  "raceType": {
+    "marathon": "マラソン",
+    "trail": "トレラン",
+    "spartan": "スパルタン",
+    "adventure": "アドベンチャー",
+    "hyrox": "HYROX",
+    "devils_circuit": "Devils Circuit",
+    "strong_viking": "Strong Viking",
+    "obstacle": "オブスタクル",
+    "tough_mudder": "タフマダー",
+    "triathlon": "トライアスロン",
+    "aquathlon": "アクアスロン",
+    "cycling": "サイクリング",
+    "duathlon": "デュアスロン",
+    "rogaining": "ロゲイニング",
+    "other": "その他"
+  },
+  "event": {
+    "entry": "申込",
+    "pending": "詳細調査中",
+    "empty": "条件に合う大会がありません。"
+  },
+  "detail": {
+    "overview": "大会概要",
+    "categories": "カテゴリ一覧",
+    "distance": "距離",
+    "elevationGain": "累積標高",
+    "entryFee": "参加費",
+    "startTime": "スタート時間",
+    "receptionEnd": "受付終了",
+    "timeLimit": "制限時間",
+    "cutoffTimes": "関門",
+    "mandatoryGear": "必携品",
+    "recommendedGear": "推奨装備",
+    "prohibitedItems": "禁止事項",
+    "polesAllowed": "ポール",
+    "itraPoints": "ITRA ポイント",
+    "access": "アクセス",
+    "outbound": "往路",
+    "return": "復路",
+    "accommodation": "宿泊",
+    "recommendedArea": "推奨エリア",
+    "avgCost": "平均費用（3つ星）",
+    "weather": "天候",
+    "visa": "ビザ情報",
+    "recovery": "リカバリー施設",
+    "photoSpots": "フォトスポット",
+    "courseMap": "コースマップ",
+    "yes": "可",
+    "no": "不可",
+    "officialSite": "公式サイト",
+    "entryPage": "申込ページ",
+    "backToList": "一覧に戻る"
+  }
+}

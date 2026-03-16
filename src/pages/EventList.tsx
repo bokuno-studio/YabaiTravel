@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabaseClient'
 import type { EventWithCategories, Category } from '../types/event'
 import '../App.css'
@@ -235,25 +236,13 @@ function EventList() {
     return true
   })
 
-  const raceTypeLabel = (t: string | null) => {
-    if (!t) return 'その他'
-    const map: Record<string, string> = {
-      marathon: 'マラソン',
-      trail: 'トレラン',
-      spartan: 'スパルタン',
-      adventure: 'アドベンチャー',
-      hyrox: 'HYROX',
-      devils_circuit: 'Devils Circuit',
-      strong_viking: 'Strong Viking',
-      obstacle: 'オブスタクル',
-      tough_mudder: 'タフマダー',
-      triathlon: 'トライアスロン',
-      aquathlon: 'アクアスロン',
-      cycling: 'サイクリング',
-      duathlon: 'デュアスロン',
-      rogaining: 'ロゲイニング',
-    }
-    return map[t] ?? t
+  const { t } = useTranslation()
+  const { lang } = useParams<{ lang: string }>()
+  const langPrefix = `/${lang || 'ja'}`
+
+  const raceTypeLabel = (type: string | null) => {
+    if (!type) return t('raceType.other')
+    return t(`raceType.${type}`, type)
   }
 
   const entryPeriodText = (e: EventWithCategories) => {
@@ -269,18 +258,24 @@ function EventList() {
     <div className="event-list-page">
       <header className="app-header">
         <h1>
-          <Link to="/">yabai.travel</Link>
+          <Link to={langPrefix}>{t('site.title')}</Link>
         </h1>
-        <p className="app-subtitle">エンデュランスレース一覧</p>
+        <div className="app-header-row">
+          <p className="app-subtitle">{t('site.subtitle')}</p>
+          <div className="lang-switcher">
+            <Link to={`/ja${window.location.pathname.replace(/^\/(ja|en)/, '')}`} className={lang === 'ja' ? 'active' : ''}>JA</Link>
+            <Link to={`/en${window.location.pathname.replace(/^\/(ja|en)/, '')}`} className={lang === 'en' ? 'active' : ''}>EN</Link>
+          </div>
+        </div>
         <p className="app-stats">
-          {lastUpdated && <span>最終更新: {formatJST(lastUpdated)}</span>}
-          {weeklyNewCount > 0 && <span>今週の新着: {weeklyNewCount}件</span>}
+          {lastUpdated && <span>{t('stats.lastUpdated')}: {formatJST(lastUpdated)}</span>}
+          {weeklyNewCount > 0 && <span>{t('stats.weeklyNew')}: {weeklyNewCount}</span>}
         </p>
       </header>
 
       <section className="filters">
         <div className="filter-group filter-race-types">
-          <label>レース種別</label>
+          <label>{t('filter.raceType')}</label>
           <div className="filter-checkboxes">
             {availableRaceTypes.map((t) => (
               <label key={t} className="filter-checkbox">
@@ -296,7 +291,7 @@ function EventList() {
         </div>
         {availableCategories.length > 0 && (
           <div className="filter-group filter-categories">
-            <label>カテゴリ</label>
+            <label>{t('filter.category')}</label>
             <div className="filter-checkboxes filter-categories-inner">
               {availableCategories.slice(0, 20).map((name) => (
                 <label key={name} className="filter-checkbox">
@@ -315,7 +310,7 @@ function EventList() {
           </div>
         )}
         <div className="filter-group filter-months">
-          <label>開催月</label>
+          <label>{t('filter.month')}</label>
           <div className="filter-chips">
             {availableMonths.map((ym) => {
               const m = parseInt(ym.slice(5, 7), 10)
@@ -333,7 +328,7 @@ function EventList() {
           </div>
         </div>
         <div className="filter-group filter-distance">
-          <label>距離</label>
+          <label>{t('filter.distance')}</label>
           <div className="filter-chips">
             {DISTANCE_RANGES.map((range, idx) => (
               <button
@@ -348,31 +343,31 @@ function EventList() {
           </div>
         </div>
         <div className="filter-group">
-          <label htmlFor="timeLimitMin">制限時間（h）以上</label>
+          <label htmlFor="timeLimitMin">{t('filter.timeLimit')}</label>
           <select
             id="timeLimitMin"
             value={timeLimitMin}
             onChange={(e) => setTimeLimitMin(e.target.value)}
           >
-            <option value="">指定なし</option>
-            <option value="6">6時間以上</option>
-            <option value="12">12時間以上</option>
-            <option value="24">24時間以上</option>
-            <option value="36">36時間以上</option>
+            <option value="">{t('filter.noLimit')}</option>
+            <option value="6">{t('filter.hoursOrMore', { hours: 6 })}</option>
+            <option value="12">{t('filter.hoursOrMore', { hours: 12 })}</option>
+            <option value="24">{t('filter.hoursOrMore', { hours: 24 })}</option>
+            <option value="36">{t('filter.hoursOrMore', { hours: 36 })}</option>
           </select>
         </div>
         <div className="filter-group">
-          <label htmlFor="entryStatus">エントリ状況</label>
+          <label htmlFor="entryStatus">{t('filter.entryStatus')}</label>
           <select
             id="entryStatus"
             value={entryStatus}
             onChange={(e) => setEntryStatus(e.target.value)}
           >
-            <option value="active">受付中・受付前</option>
-            <option value="open">受付中のみ</option>
-            <option value="upcoming">受付前のみ</option>
-            <option value="closed">締切済</option>
-            <option value="">すべて</option>
+            <option value="active">{t('filter.entryActive')}</option>
+            <option value="open">{t('filter.entryOpen')}</option>
+            <option value="upcoming">{t('filter.entryUpcoming')}</option>
+            <option value="closed">{t('filter.entryClosed')}</option>
+            <option value="">{t('filter.entryAll')}</option>
           </select>
         </div>
         <div className="filter-group">
@@ -382,22 +377,22 @@ function EventList() {
               checked={showPastEvents}
               onChange={(e) => setShowPastEvents(e.target.checked)}
             />
-            <span>過去のイベントも表示</span>
+            <span>{t('filter.showPast')}</span>
           </label>
         </div>
       </section>
 
       <section className="event-list">
         {filtered.length === 0 ? (
-          <p className="empty">条件に合う大会がありません。</p>
+          <p className="empty">{t('event.empty')}</p>
         ) : (
           <ul>
             {filtered.map((event) => {
               const matchingCats = getMatchingCategories(event)
               // フィルタで1件に絞られた場合は直接カテゴリへ、それ以外はイベント詳細へ (#33)
               const cardLink = hasAnyFilter && matchingCats.length === 1
-                ? `/events/${event.id}/categories/${matchingCats[0].id}`
-                : `/events/${event.id}`
+                ? `${langPrefix}/events/${event.id}/categories/${matchingCats[0].id}`
+                : `${langPrefix}/events/${event.id}`
               // フィルタ適用中は合致するカテゴリチップのみ表示 (#33)
               const chipsToShow = hasAnyFilter && matchingCats.length > 0
                 ? matchingCats
@@ -424,7 +419,7 @@ function EventList() {
                           {event.location && <span> / {event.location}</span>}
                         </p>
                         {entryPeriodText(event) && (
-                          <p className="event-entry-period">申込: {entryPeriodText(event)}</p>
+                          <p className="event-entry-period">{t('event.entry')}: {entryPeriodText(event)}</p>
                         )}
                       </div>
                       <div className="event-card-badges">
@@ -450,7 +445,7 @@ function EventList() {
                         <span className={`badge badge-${event.race_type ?? 'other'}`}>
                           {raceTypeLabel(event.race_type)}
                         </span>
-                        <span className="badge badge-pending">詳細調査中</span>
+                        <span className="badge badge-pending">{t('event.pending')}</span>
                       </div>
                     </div>
                     )}
@@ -459,7 +454,7 @@ function EventList() {
                         {chipsToShow.map((cat) => (
                           <Link
                             key={cat.id}
-                            to={`/events/${event.id}/categories/${cat.id}`}
+                            to={`${langPrefix}/events/${event.id}/categories/${cat.id}`}
                             className="category-chip"
                             title={
                               cat.distance_km != null || cat.elevation_gain != null

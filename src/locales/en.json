@@ -1,0 +1,80 @@
+{
+  "site": {
+    "title": "yabai.travel",
+    "subtitle": "Endurance Race Directory"
+  },
+  "stats": {
+    "lastUpdated": "Last updated",
+    "weeklyNew": "New this week"
+  },
+  "filter": {
+    "raceType": "Race Type",
+    "category": "Category",
+    "month": "Month",
+    "distance": "Distance",
+    "timeLimit": "Time Limit (h) min",
+    "entryStatus": "Entry Status",
+    "showPast": "Show past events",
+    "noLimit": "Any",
+    "hoursOrMore": "{{hours}}h+",
+    "entryActive": "Open / Upcoming",
+    "entryOpen": "Open only",
+    "entryUpcoming": "Upcoming only",
+    "entryClosed": "Closed",
+    "entryAll": "All"
+  },
+  "raceType": {
+    "marathon": "Marathon",
+    "trail": "Trail Running",
+    "spartan": "Spartan",
+    "adventure": "Adventure",
+    "hyrox": "HYROX",
+    "devils_circuit": "Devils Circuit",
+    "strong_viking": "Strong Viking",
+    "obstacle": "OCR",
+    "tough_mudder": "Tough Mudder",
+    "triathlon": "Triathlon",
+    "aquathlon": "Aquathlon",
+    "cycling": "Cycling",
+    "duathlon": "Duathlon",
+    "rogaining": "Rogaining",
+    "other": "Other"
+  },
+  "event": {
+    "entry": "Entry",
+    "pending": "Details pending",
+    "empty": "No events match your criteria."
+  },
+  "detail": {
+    "overview": "Overview",
+    "categories": "Categories",
+    "distance": "Distance",
+    "elevationGain": "Elevation Gain",
+    "entryFee": "Entry Fee",
+    "startTime": "Start Time",
+    "receptionEnd": "Check-in Deadline",
+    "timeLimit": "Time Limit",
+    "cutoffTimes": "Cutoff Times",
+    "mandatoryGear": "Mandatory Gear",
+    "recommendedGear": "Recommended Gear",
+    "prohibitedItems": "Prohibited Items",
+    "polesAllowed": "Poles",
+    "itraPoints": "ITRA Points",
+    "access": "Access",
+    "outbound": "Getting There",
+    "return": "Getting Back",
+    "accommodation": "Accommodation",
+    "recommendedArea": "Recommended Area",
+    "avgCost": "Avg Cost (3-star)",
+    "weather": "Weather",
+    "visa": "Visa Info",
+    "recovery": "Recovery Facilities",
+    "photoSpots": "Photo Spots",
+    "courseMap": "Course Map",
+    "yes": "Allowed",
+    "no": "Not allowed",
+    "officialSite": "Official Site",
+    "entryPage": "Entry Page",
+    "backToList": "Back to list"
+  }
+}

@@ -54,6 +54,17 @@ export type Event = {
   updated_at: string | null
   enrich_attempt_count?: number
   enrich_quality?: string | null
+  // _en columns
+  name_en?: string | null
+  weather_forecast_en?: string | null
+  reception_place_en?: string | null
+  start_place_en?: string | null
+  prohibited_items_en?: string | null
+  total_cost_estimate_en?: string | null
+  required_qualification_en?: string | null
+  visa_info_en?: string | null
+  recovery_facilities_en?: string | null
+  photo_spots_en?: string | null
 }
 
 /** yabai_travel.access_routes テーブルの型 */
@@ -73,6 +84,10 @@ export type AccessRoute = {
   taxi_estimate: string | null
   transit_accessible: boolean | null
   updated_at: string | null
+  // _en columns
+  route_detail_en?: string | null
+  shuttle_available_en?: string | null
+  origin_name_en?: string | null
 }
 
 /** yabai_travel.accommodations テーブルの型 */
@@ -111,4 +126,13 @@ export type Category = {
   itra_points: string | null
   collected_at: string | null
   updated_at: string | null
+  // _en columns
+  name_en?: string | null
+  reception_place_en?: string | null
+  start_place_en?: string | null
+  required_pace_en?: string | null
+  required_climb_pace_en?: string | null
+  mandatory_gear_en?: string | null
+  recommended_gear_en?: string | null
+  prohibited_items_en?: string | null
 }

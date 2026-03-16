@@ -105,6 +105,33 @@
   cursor: default;
 }
 
+.app-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.lang-switcher {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.lang-switcher a {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  text-decoration: none;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.lang-switcher a.active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+
 .badge-pending {
   background: #fbbf24;
   color: #78350f;

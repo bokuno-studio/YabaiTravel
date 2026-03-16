@@ -14,6 +14,7 @@ import { resolve } from 'path'
 import { enrichEvent } from './enrich-event.js'
 import { enrichCategoryDetail } from './enrich-category-detail.js'
 import { enrichLogi } from './enrich-logi.js'
+import { translateEvent } from './enrich-translate.js'
 
 const envPath = resolve(process.cwd(), '.env.local')
 if (existsSync(envPath)) {
@@ -165,6 +166,14 @@ async function run() {
         } else {
           totalLogiErr++
           console.log(`  [logi]   ERR ${event.name?.slice(0, 40)} | ${logiResult.error?.slice(0, 50)}`)
+        }
+
+        // ⑤: 翻訳（name_en が未設定の場合のみ）
+        const transResult = await translateEvent(event, { dryRun: DRY_RUN }).catch((e) => ({ success: false, error: e.message }))
+        if (transResult.success) {
+          console.log(`  [trans]  OK  ${event.name?.slice(0, 40)}`)
+        } else {
+          console.log(`  [trans]  ERR ${event.name?.slice(0, 40)} | ${transResult.error?.slice(0, 50)}`)
         }
       })
     )
