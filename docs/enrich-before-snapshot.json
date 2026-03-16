@@ -1,0 +1,448 @@
+{
+  "taken_at": "2026-03-16T05:43:46.199Z",
+  "note": "Before snapshot for #144 report. 旧パイプライン（enrich-detail.js）で処理された状態。",
+  "overall": {
+    "total_events": 189,
+    "enriched_events": 186,
+    "total_categories": 1044,
+    "has_distance": 779,
+    "has_fee": 658,
+    "has_start": 479,
+    "has_limit": 357,
+    "has_elev": 101,
+    "has_gear": 141
+  },
+  "examples": [
+    {
+      "note": "マラソン: 26カテゴリで参加費・制限時間・開始時間が全て空",
+      "event": {
+        "id": "a32d09d1-2bca-42a8-bbb7-289a22b85db1",
+        "name": "KITA！SENJU（北千住）マラソン【3月22日（日）開催】",
+        "official_url": "https://event-ia.com/ja/e/032HaNtljZGqVEp9ECX3kW",
+        "race_type": "marathon"
+      },
+      "categories": [
+        {
+          "name": "フルマラソン：18歳以上",
+          "distance_km": "42.195",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "フルマラソン（18歳以上）",
+          "distance_km": "42.195",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "30km：18歳以上",
+          "distance_km": "30",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "30km（18歳以上）",
+          "distance_km": "30",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "ハーフマラソン（18歳以上）",
+          "distance_km": "21.0975",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "ハーフマラソン（21.0975km）：18歳以上",
+          "distance_km": "21.0975",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "20kmリレー：一般チーム",
+          "distance_km": "20",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "20kmリレー（一般チーム）",
+          "distance_km": "20",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "20kmリレー（高校生のみのチーム）",
+          "distance_km": "20",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "20kmリレー：高校生のみのチーム",
+          "distance_km": "20",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "15km：18歳以上",
+          "distance_km": "15",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "15km（18歳以上）",
+          "distance_km": "15",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "15km（高校生）",
+          "distance_km": "15",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "15km：高校生",
+          "distance_km": "15",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "10km（18歳以上）",
+          "distance_km": "10",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "10km：高校生",
+          "distance_km": "10",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "10km（高校生）",
+          "distance_km": "10",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "10km：18歳以上",
+          "distance_km": "10",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "5km：中・高校生",
+          "distance_km": "5",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "5km（18歳以上）",
+          "distance_km": "5",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "5km（中・高校生）",
+          "distance_km": "5",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "5km：18歳以上",
+          "distance_km": "5",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "3km（中学生以下）",
+          "distance_km": "3",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "3km：中学生以下",
+          "distance_km": "3",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "1km（小学生以下）",
+          "distance_km": "1",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "1km：小学生以下",
+          "distance_km": "1",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        }
+      ],
+      "summary": {
+        "cat_count": 26,
+        "has_distance": 26,
+        "has_fee": 0,
+        "has_start": 0,
+        "has_limit": 0,
+        "has_gear": 0
+      }
+    },
+    {
+      "note": "トレラン: 6カテゴリで参加費0、制限時間1件のみ",
+      "event": {
+        "id": "33746583-9f89-45fa-beb2-8c77bdfb7c51",
+        "name": "OTAKI \"SENGOKU\" EXTREMES 2026",
+        "official_url": "https://www.murb-ex.kickas.jp/top",
+        "race_type": "trail"
+      },
+      "categories": [
+        {
+          "name": "TRAIL RUN LONG (DOUBLE)",
+          "distance_km": "44",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": "07:30:00",
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "TRAIL RUN MIDDLE",
+          "distance_km": "22",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "TRAIL RUN SHORT",
+          "distance_km": "11",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "TRAIL RUN KIDS 3K（小学1-3年生の部）",
+          "distance_km": "3",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "TRAIL RUN KIDS 3K（小学4-6年生の部）",
+          "distance_km": "3",
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "不明",
+          "distance_km": null,
+          "entry_fee": null,
+          "entry_fee_currency": null,
+          "start_time": null,
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        }
+      ],
+      "summary": {
+        "cat_count": 6,
+        "has_distance": 5,
+        "has_fee": 0,
+        "has_start": 0,
+        "has_limit": 1,
+        "has_gear": 0
+      }
+    },
+    {
+      "note": "トライアスロン: 2カテゴリで参加費・制限時間が全て空",
+      "event": {
+        "id": "b1702322-4b49-4600-b5d4-bd9a03f94f48",
+        "name": "第39回 ジャパンショートトライアスロン赤穂大会",
+        "official_url": "https://www.htj.gr.jp",
+        "race_type": "triathlon"
+      },
+      "categories": [
+        {
+          "name": "2部（スイム1.5km、バイク40km、ラン10km）",
+          "distance_km": "51.5",
+          "entry_fee": null,
+          "entry_fee_currency": "JPY",
+          "start_time": "13:00:00",
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        },
+        {
+          "name": "1部（スイム500m、バイク20km、ラン5km）",
+          "distance_km": "25.5",
+          "entry_fee": null,
+          "entry_fee_currency": "JPY",
+          "start_time": "09:00:00",
+          "time_limit": null,
+          "elevation_gain": null,
+          "mandatory_gear": null,
+          "poles_allowed": null
+        }
+      ],
+      "summary": {
+        "cat_count": 2,
+        "has_distance": 2,
+        "has_fee": 0,
+        "has_start": 2,
+        "has_limit": 0,
+        "has_gear": 0
+      }
+    }
+  ]
+}
