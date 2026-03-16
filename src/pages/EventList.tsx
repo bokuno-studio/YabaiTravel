@@ -38,17 +38,27 @@ function formatJST(ts: string): string {
   return new Date(ts).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })
 }
 
+/** 距離レンジの定義 */
+const DISTANCE_RANGES = [
+  { label: '〜10km', min: 0, max: 10 },
+  { label: '10〜20km', min: 10, max: 20 },
+  { label: '20〜30km', min: 20, max: 30 },
+  { label: '30〜50km', min: 30, max: 50 },
+  { label: '50〜100km', min: 50, max: 100 },
+  { label: '100km〜', min: 100, max: Infinity },
+] as const
+
 function EventList() {
   const [events, setEvents] = useState<EventWithCategories[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [raceTypes, setRaceTypes] = useState<Set<string>>(new Set())
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
-  const [month, setMonth] = useState<string>('')
-  const [distanceMin, setDistanceMin] = useState<string>('')
-  const [distanceMax, setDistanceMax] = useState<string>('')
+  const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set())
+  const [distanceRange, setDistanceRange] = useState<number | null>(null)
   const [timeLimitMin, setTimeLimitMin] = useState<string>('')
-  const [entryStatus, setEntryStatus] = useState<string>('')
+  const [entryStatus, setEntryStatus] = useState<string>('active')
+  const [showPastEvents, setShowPastEvents] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
   const [weeklyNewCount, setWeeklyNewCount] = useState<number>(0)
 
@@ -139,13 +149,38 @@ function EventList() {
     })
   }
 
+  const toggleMonth = (m: string) => {
+    setSelectedMonths((prev) => {
+      const next = new Set(prev)
+      if (next.has(m)) next.delete(m)
+      else next.add(m)
+      return next
+    })
+  }
+
+  /** イベント日付から利用可能な月一覧を生成 */
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>()
+    const today = new Date().toISOString().slice(0, 7)
+    events.forEach((e) => {
+      if (e.event_date) {
+        const ym = e.event_date.slice(0, 7)
+        if (!showPastEvents && ym < today) return
+        months.add(ym)
+      }
+    })
+    return [...months].sort()
+  }, [events, showPastEvents])
+
   const categoryMatchesFilter = (cat: Category): boolean => {
-    const distMin = distanceMin ? parseFloat(distanceMin) : null
-    const distMax = distanceMax ? parseFloat(distanceMax) : null
+    const range = distanceRange != null ? DISTANCE_RANGES[distanceRange] : null
     const timeMin = timeLimitMin ? parseFloat(timeLimitMin) : null
 
-    if (distMin != null && (cat.distance_km == null || cat.distance_km < distMin)) return false
-    if (distMax != null && (cat.distance_km == null || cat.distance_km > distMax)) return false
+    if (range != null) {
+      if (cat.distance_km == null) return false
+      if (cat.distance_km < range.min) return false
+      if (range.max !== Infinity && cat.distance_km > range.max) return false
+    }
     if (timeMin != null) {
       const catHours = parseIntervalHours(cat.time_limit)
       if (catHours == null || catHours < timeMin) return false
@@ -162,22 +197,27 @@ function EventList() {
     })
   }
 
-  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || !!month || !!distanceMin || !!distanceMax || !!timeLimitMin || !!entryStatus
+  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || selectedMonths.size > 0 || distanceRange != null || !!timeLimitMin || entryStatus !== 'active' || showPastEvents
 
   const filtered = events.filter((event) => {
+    const today = new Date().toISOString().slice(0, 10)
+    // デフォルト: 当日以降のイベントのみ表示（#135）
+    if (!showPastEvents && event.event_date && event.event_date < today) return false
     if (raceTypes.size > 0 && (event.race_type == null || !raceTypes.has(event.race_type))) return false
     if (selectedCategories.size > 0) {
       const catNames = new Set((event.categories ?? []).map((c) => c.name))
       const hasMatch = [...selectedCategories].some((name) => catNames.has(name))
       if (!hasMatch) return false
     }
-    if (month && event.event_date) {
-      const [y, m] = month.split('-')
-      if (!event.event_date.startsWith(`${y}-${m}`)) return false
+    if (selectedMonths.size > 0 && event.event_date) {
+      const ym = event.event_date.slice(0, 7)
+      if (!selectedMonths.has(ym)) return false
     }
     if (entryStatus) {
-      const today = new Date().toISOString().slice(0, 10)
-      if (entryStatus === 'open') {
+      if (entryStatus === 'active') {
+        // 受付中 or 受付前（受付終了を除外）（#135）
+        if (event.entry_end && event.entry_end < today) return false
+      } else if (entryStatus === 'open') {
         if (!event.entry_start || !event.entry_end) return false
         if (event.entry_start > today || event.entry_end < today) return false
       } else if (entryStatus === 'upcoming') {
@@ -187,7 +227,7 @@ function EventList() {
       }
     }
     const categories = event.categories ?? []
-    const hasCategoryFilter = distanceMin || distanceMax || timeLimitMin
+    const hasCategoryFilter = distanceRange != null || timeLimitMin
     if (hasCategoryFilter && categories.length > 0) {
       const hasMatch = categories.some(categoryMatchesFilter)
       if (!hasMatch) return false
@@ -271,38 +311,38 @@ function EventList() {
             </div>
           </div>
         )}
-        <div className="filter-group">
-          <label htmlFor="month">開催月</label>
-          <input
-            id="month"
-            type="month"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-          />
+        <div className="filter-group filter-months">
+          <label>開催月</label>
+          <div className="filter-chips">
+            {availableMonths.map((ym) => {
+              const m = parseInt(ym.slice(5, 7), 10)
+              return (
+                <button
+                  key={ym}
+                  type="button"
+                  className={`filter-chip${selectedMonths.has(ym) ? ' filter-chip--active' : ''}`}
+                  onClick={() => toggleMonth(ym)}
+                >
+                  {m}月
+                </button>
+              )
+            })}
+          </div>
         </div>
-        <div className="filter-group">
-          <label htmlFor="distanceMin">距離（km）以上</label>
-          <input
-            id="distanceMin"
-            type="number"
-            min="0"
-            step="1"
-            placeholder="例: 40"
-            value={distanceMin}
-            onChange={(e) => setDistanceMin(e.target.value)}
-          />
-        </div>
-        <div className="filter-group">
-          <label htmlFor="distanceMax">距離（km）以下</label>
-          <input
-            id="distanceMax"
-            type="number"
-            min="0"
-            step="1"
-            placeholder="例: 70"
-            value={distanceMax}
-            onChange={(e) => setDistanceMax(e.target.value)}
-          />
+        <div className="filter-group filter-distance">
+          <label>距離</label>
+          <div className="filter-chips">
+            {DISTANCE_RANGES.map((range, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className={`filter-chip${distanceRange === idx ? ' filter-chip--active' : ''}`}
+                onClick={() => setDistanceRange(distanceRange === idx ? null : idx)}
+              >
+                {range.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="filter-group">
           <label htmlFor="timeLimitMin">制限時間（h）以上</label>
@@ -325,11 +365,22 @@ function EventList() {
             value={entryStatus}
             onChange={(e) => setEntryStatus(e.target.value)}
           >
-            <option value="">指定なし</option>
-            <option value="open">受付中</option>
-            <option value="upcoming">申込前</option>
+            <option value="active">受付中・受付前</option>
+            <option value="open">受付中のみ</option>
+            <option value="upcoming">受付前のみ</option>
             <option value="closed">締切済</option>
+            <option value="">すべて</option>
           </select>
+        </div>
+        <div className="filter-group">
+          <label className="filter-checkbox">
+            <input
+              type="checkbox"
+              checked={showPastEvents}
+              onChange={(e) => setShowPastEvents(e.target.checked)}
+            />
+            <span>過去のイベントも表示</span>
+          </label>
         </div>
       </section>
 
