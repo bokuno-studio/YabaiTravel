@@ -43,7 +43,6 @@ export function extract(html) {
         location: null,
         race_type: 'trail',
       })
-      return false
     }
   })
 
