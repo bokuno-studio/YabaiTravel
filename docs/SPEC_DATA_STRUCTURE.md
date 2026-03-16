@@ -186,7 +186,14 @@ erDiagram
 
 ### 5. 収集メタデータ
 
-`collected_at` でいつ取得したかを記録。空の項目が残っている場合は、追加収集の対象として扱う。
+| カラム | 型 | 説明 |
+|--------|-----|------|
+| `collected_at` | timestamptz | enrich 完了日時。null = 未処理（再試行対象） |
+| `last_attempted_at` | timestamptz | 最後の試行日時。7日間のクールダウン制御用 |
+| `enrich_attempt_count` | integer | enrich 試行回数。品質ゲート不通過時にインクリメント |
+| `enrich_quality` | text | 品質フラグ。`'low'` = 3回失敗で強制通過。null = 正常 |
+
+品質ゲート: ②-A enrich-event 完了時に、カテゴリ >= 1件 AND distance_km が1件以上埋まっていなければ `collected_at` を設定しない。3回失敗で `enrich_quality = 'low'` を付けて強制通過（無限ループ防止）。
 
 ### 6. 取得元の方針
 

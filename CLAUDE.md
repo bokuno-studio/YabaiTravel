@@ -57,9 +57,12 @@ npx vitest run src/pages/EventDetail.test.tsx
 | スクリプト | 役割 |
 |-----------|------|
 | `scripts/crawl/collect-races.js` | ① 各ソースからレース名・URL 収集 → `events` 投入 |
-| `scripts/crawl/enrich-detail.js` | ② 公式ページ + LLM でカテゴリ・詳細収集 |
+| `scripts/crawl/enrich-event.js` | ②-A 公式ページ + LLM でイベント基本情報・コース一覧を収集 |
+| `scripts/crawl/enrich-category-detail.js` | ②-B コース単位で詳細情報（参加費・制限時間・必携品等）を収集 |
 | `scripts/crawl/enrich-logi.js` | ③ アクセス・宿泊情報収集（東京起点） |
-| `scripts/crawl/orchestrator.js` | ④ ②③を並列5件で全未処理を消化する司令塔 |
+| `scripts/crawl/orchestrator.js` | ④ ②-A → ②-B → ③ を順に呼び出す司令塔 |
+| `scripts/crawl/lib/enrich-utils.js` | ②-A / ②-B 共有ユーティリティ |
+| `scripts/crawl/enrich-detail.js` | 旧版②（CLI後方互換用。orchestrator からは呼ばれない） |
 
 GitHub Actions で自動実行（2つのワークフローに分離）:
 - `crawl-collect.yml`: レース名収集（1日1回 06:00 JST）
