@@ -291,7 +291,7 @@ async function fetchTavilySearch(query, { includeUrls = false } = {}) {
 }
 
 /** ポータルサイトのURLかどうかを判定 */
-const PORTAL_DOMAINS = ['sportsentry.ne.jp', 'runnet.jp', 'do.l-tike.com', 'l-tike.com']
+const PORTAL_DOMAINS = ['sportsentry.ne.jp', 'runnet.jp', 'do.l-tike.com', 'l-tike.com', 'moshicom.com']
 function isPortalUrl(url) {
   if (!url) return false
   return PORTAL_DOMAINS.some((d) => url.includes(d))

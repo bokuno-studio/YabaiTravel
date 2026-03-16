@@ -52,6 +52,8 @@ export type Event = {
   photo_spots: string | null
   collected_at: string | null
   updated_at: string | null
+  enrich_attempt_count?: number
+  enrich_quality?: string | null
 }
 
 /** yabai_travel.access_routes テーブルの型 */

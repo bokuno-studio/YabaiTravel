@@ -1,6 +1,6 @@
 /**
  * ④ オーケストレータ
- * 未処理 or 空フィールドあり（7日以内に再試行済みを除く）のイベントを並列5件で処理
+ * ②-A enrichEvent → ②-B enrichCategoryDetail × N → ③ enrichLogi の順で処理
  *
  * 使い方:
  *   node scripts/crawl/orchestrator.js              # 全件
@@ -11,7 +11,8 @@
 import pg from 'pg'
 import { existsSync, readFileSync } from 'fs'
 import { resolve } from 'path'
-import { enrichDetail } from './enrich-detail.js'
+import { enrichEvent } from './enrich-event.js'
+import { enrichCategoryDetail } from './enrich-category-detail.js'
 import { enrichLogi } from './enrich-logi.js'
 
 const envPath = resolve(process.cwd(), '.env.local')
@@ -55,6 +56,7 @@ async function run() {
        OR country IS NULL
        OR race_type IS NULL
      )
+     AND (enrich_quality IS NULL OR enrich_quality != 'low')
      AND (last_attempted_at IS NULL OR last_attempted_at < NOW() - INTERVAL '7 days')
      ORDER BY
        CASE WHEN collected_at IS NULL THEN 0 ELSE 1 END,
@@ -71,8 +73,10 @@ async function run() {
   }
 
   const batches = chunkArray(pendingEvents, CONCURRENCY)
-  let totalDetailOk = 0
-  let totalDetailErr = 0
+  let totalEventOk = 0
+  let totalEventErr = 0
+  let totalCatOk = 0
+  let totalCatErr = 0
   let totalLogiOk = 0
   let totalLogiErr = 0
 
@@ -84,19 +88,50 @@ async function run() {
 
     await Promise.allSettled(
       batch.map(async (event) => {
-        // detail → logi の順で直列実行（logi は detail が書いた location を使うため）
-        const detailResult = await enrichDetail(event, { dryRun: DRY_RUN }).catch((e) => ({ success: false, error: e.message }))
-        if (detailResult.success) {
-          totalDetailOk++
-          console.log(`  [detail] OK  ${event.name?.slice(0, 40)}`)
+        // ②-A: イベント情報 + コース特定
+        const eventResult = await enrichEvent(event, { dryRun: DRY_RUN }).catch((e) => ({ success: false, error: e.message }))
+        if (eventResult.success) {
+          totalEventOk++
+          console.log(`  [event]  OK  ${event.name?.slice(0, 40)} | courses:${eventResult.categoriesCount ?? '?'}`)
         } else {
-          totalDetailErr++
-          console.log(`  [detail] ERR ${event.name?.slice(0, 40)} | ${detailResult.error?.slice(0, 50)}`)
+          totalEventErr++
+          console.log(`  [event]  ERR ${event.name?.slice(0, 40)} | ${eventResult.error?.slice(0, 50)}`)
         }
 
-        // enrichDetail が書き込んだ location を反映してから logi を呼ぶ
-        const enrichedEvent = detailResult.location ? { ...event, location: detailResult.location } : event
+        // ②-B: 各カテゴリの詳細収集（イベント成功時のみ）
+        if (eventResult.success) {
+          try {
+            const catClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
+            await catClient.connect()
+            const { rows: pendingCats } = await catClient.query(
+              `SELECT id, name, distance_km FROM ${SCHEMA}.categories
+               WHERE event_id = $1 AND (entry_fee IS NULL OR start_time IS NULL OR time_limit IS NULL)`,
+              [event.id]
+            )
+            await catClient.end()
 
+            for (const cat of pendingCats) {
+              const catResult = await enrichCategoryDetail(
+                { id: event.id, name: event.name, official_url: event.official_url },
+                cat,
+                { dryRun: DRY_RUN }
+              ).catch((e) => ({ success: false, error: e.message }))
+
+              if (catResult.success) {
+                totalCatOk++
+                console.log(`  [cat]    OK  ${event.name?.slice(0, 25)} / ${cat.name?.slice(0, 20)}`)
+              } else {
+                totalCatErr++
+                console.log(`  [cat]    ERR ${event.name?.slice(0, 25)} / ${cat.name?.slice(0, 20)} | ${catResult.error?.slice(0, 40)}`)
+              }
+            }
+          } catch (e) {
+            console.log(`  [cat]    ERR ${event.name?.slice(0, 40)} | カテゴリ取得失敗: ${e.message?.slice(0, 40)}`)
+          }
+        }
+
+        // ③: ロジ収集
+        const enrichedEvent = eventResult.location ? { ...event, location: eventResult.location } : event
         const logiResult = await enrichLogi(enrichedEvent, { dryRun: DRY_RUN }).catch((e) => ({ success: false, error: e.message }))
         if (logiResult.success) {
           totalLogiOk++
@@ -122,16 +157,19 @@ async function run() {
   }
 
   console.log('=== サマリー ===')
-  console.log(`詳細エンリッチ: OK ${totalDetailOk} / ERR ${totalDetailErr}`)
-  console.log(`ロジエンリッチ: OK ${totalLogiOk} / ERR ${totalLogiErr}`)
+  console.log(`イベント情報:     OK ${totalEventOk} / ERR ${totalEventErr}`)
+  console.log(`カテゴリ詳細:     OK ${totalCatOk} / ERR ${totalCatErr}`)
+  console.log(`ロジエンリッチ:   OK ${totalLogiOk} / ERR ${totalLogiErr}`)
 
   // 失敗率が50%以上の場合、GitHub Issue を自動起票 (#74)
-  const totalProcessed = totalDetailOk + totalDetailErr
-  if (totalProcessed > 0 && totalDetailErr / totalProcessed >= 0.5) {
+  const totalProcessed = totalEventOk + totalEventErr
+  if (totalProcessed > 0 && totalEventErr / totalProcessed >= 0.5) {
     await createAlertIssue({
       totalProcessed,
-      detailOk: totalDetailOk,
-      detailErr: totalDetailErr,
+      eventOk: totalEventOk,
+      eventErr: totalEventErr,
+      catOk: totalCatOk,
+      catErr: totalCatErr,
       logiOk: totalLogiOk,
       logiErr: totalLogiErr,
     })
@@ -139,7 +177,7 @@ async function run() {
 }
 
 /** GitHub Issue を起票してenrich失敗をアラートする */
-async function createAlertIssue({ totalProcessed, detailOk, detailErr, logiOk, logiErr }) {
+async function createAlertIssue({ totalProcessed, eventOk, eventErr, catOk, catErr, logiOk, logiErr }) {
   const token = process.env.GITHUB_TOKEN
   if (!token) {
     console.log('[alert] GITHUB_TOKEN が未設定のため Issue 起票をスキップ')
@@ -147,7 +185,7 @@ async function createAlertIssue({ totalProcessed, detailOk, detailErr, logiOk, l
   }
 
   const repo = process.env.GITHUB_REPOSITORY || 'bokunon/YabaiTravel'
-  const failRate = Math.round((detailErr / totalProcessed) * 100)
+  const failRate = Math.round((eventErr / totalProcessed) * 100)
   const now = new Date().toISOString().slice(0, 10)
 
   const title = `[自動検知] enrich失敗率 ${failRate}%（${now}）`
@@ -156,8 +194,9 @@ async function createAlertIssue({ totalProcessed, detailOk, detailErr, logiOk, l
     '',
     `| 項目 | 成功 | 失敗 |`,
     `|------|------|------|`,
-    `| 詳細エンリッチ | ${detailOk} | ${detailErr} |`,
-    `| ロジエンリッチ | ${logiOk} | ${logiErr} |`,
+    `| イベント情報（②-A） | ${eventOk} | ${eventErr} |`,
+    `| カテゴリ詳細（②-B） | ${catOk} | ${catErr} |`,
+    `| ロジエンリッチ（③） | ${logiOk} | ${logiErr} |`,
     '',
     `**失敗率: ${failRate}%**（閾値: 50%）`,
     '',
