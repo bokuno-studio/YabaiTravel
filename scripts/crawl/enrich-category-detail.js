@@ -37,7 +37,7 @@ const CATEGORY_DETAIL_PROMPT = `あなたはレースイベントの情報抽出
 
 ルール:
 - ページに記載がない項目は null。推測しない
-- entry_fee は一般枠・標準カテゴリの料金（R.LEAGUE割引や早期割引ではない）
+- entry_fee は1名・一般枠・標準カテゴリの料金（R.LEAGUE割引、早期割引、ペア/チーム料金ではない）
 - wave start イベント（HYROX、スパルタン等）: start_time は全 wave の時間幅で返す
 - cutoff_times はカットオフ地点ごとに配列
 - JSON のみ返す`
