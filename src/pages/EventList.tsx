@@ -249,6 +249,9 @@ function EventList() {
       tough_mudder: 'タフマダー',
       triathlon: 'トライアスロン',
       aquathlon: 'アクアスロン',
+      cycling: 'サイクリング',
+      duathlon: 'デュアスロン',
+      rogaining: 'ロゲイニング',
     }
     return map[t] ?? t
   }

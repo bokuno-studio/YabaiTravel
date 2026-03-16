@@ -4,7 +4,7 @@
 
 ---
 
-## スクリプト構成（4種）
+## スクリプト構成（4種 + ユーティリティ）
 
 | # | スクリプト | 役割 | 設計書 |
 |---|------------|------|--------|
@@ -12,6 +12,7 @@
 | ② | `enrich-detail.js` | 公式ページ + LLM でカテゴリ・詳細情報を収集 | [SPEC_CRAWL_ENRICH_DETAIL.md](./SPEC_CRAWL_ENRICH_DETAIL.md) |
 | ③ | `enrich-logi.js` | アクセス・宿泊情報を収集（東京起点） | [SPEC_CRAWL_ENRICH_LOGI.md](./SPEC_CRAWL_ENRICH_LOGI.md) |
 | ④ | `orchestrator.js` | ② と ③ を呼び出す司令塔。未処理を延々処理 | [SPEC_CRAWL_ORCHESTRATOR.md](./SPEC_CRAWL_ORCHESTRATOR.md) |
+| - | `reclassify-other.js` | race_type=other の一括再分類（メンテナンス用） | 本ドキュメント参照 |
 
 ---
 
@@ -30,8 +31,10 @@ flowchart TB
     end
 
     subgraph S2["② enrich-detail"]
-        S2_FETCH[公式ページ取得] --> S2_LLM[LLM 抽出]
-        S2_LLM --> S2_WRITE[(events / categories 更新)]
+        S2_PASS0{"パス0: race_type 再分類\n(other の場合のみ)"}
+        S2_FETCH[パス1: 公式ページ取得] --> S2_LLM[LLM 抽出]
+        S2_LLM --> S2_PASS0
+        S2_PASS0 --> S2_WRITE[(events / categories 更新)]
     end
 
     subgraph S3["③ enrich-logi"]
