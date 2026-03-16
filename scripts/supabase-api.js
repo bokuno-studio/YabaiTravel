@@ -59,25 +59,43 @@ export async function queryManagementAPI(sql) {
 }
 
 /**
- * PostgREST の exposed schemas を更新する
- * @param {string[]} schemas - 公開するスキーマ名の配列
+ * PostgREST の exposed schemas を更新する（マージ方式）
+ * 既存の公開スキーマを維持したまま、指定スキーマを追加する。
+ * 他プロジェクトのスキーマを上書きで消す事故を防止する。
+ *
+ * @param {string[]} schemas - 追加で公開するスキーマ名の配列
  */
 export async function updatePostgrest(schemas) {
   assertEnv();
-  const res = await fetch(
-    `https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/postgrest`,
-    {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${SUPABASE_ACCESS_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ db_schema: schemas.join(', ') }),
-    }
-  );
-  if (!res.ok) {
-    const err = await res.json().catch(() => res.text());
+  const url = `https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/postgrest`;
+  const headers = {
+    Authorization: `Bearer ${SUPABASE_ACCESS_TOKEN}`,
+    'Content-Type': 'application/json',
+  };
+
+  // 現在の設定を取得
+  const getRes = await fetch(url, { headers });
+  if (!getRes.ok) {
+    const err = await getRes.json().catch(() => getRes.text());
+    throw new Error(`PostgREST 取得エラー: ${JSON.stringify(err)}`);
+  }
+  const current = await getRes.json();
+  const existingSchemas = (current.db_schema || 'public')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  // マージ（既存 + 追加、重複除去）
+  const merged = [...new Set([...existingSchemas, ...schemas])];
+
+  const patchRes = await fetch(url, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ db_schema: merged.join(', ') }),
+  });
+  if (!patchRes.ok) {
+    const err = await patchRes.json().catch(() => patchRes.text());
     throw new Error(`PostgREST 更新エラー: ${JSON.stringify(err)}`);
   }
-  return res.json();
+  return patchRes.json();
 }
