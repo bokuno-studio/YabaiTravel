@@ -241,7 +241,7 @@ async function collectOtherSourceRaces(url) {
         // /german 等の言語別パスは除外し、実際のレースページURLのみ取得
         const officialUrl = href.startsWith('http') ? href : new URL(href, url).href
         if (/\/(german|french|spanish|italian)\b/i.test(officialUrl)) return
-        races.push({ name: text, official_url: officialUrl, entry_url: officialUrl, race_type: 'adventure', source: 'albatros' })
+        races.push({ name: text, official_url: officialUrl, entry_url: officialUrl, race_type: 'marathon', source: 'albatros' })
       })
       return limitForEnv(races, 1)
     }

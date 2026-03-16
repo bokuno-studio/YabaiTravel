@@ -43,7 +43,7 @@ export async function translateEvent(event, opts = { dryRun: false }) {
     const { rows: [ev] } = await client.query(
       `SELECT name, location, country, weather_forecast, reception_place, start_place,
               prohibited_items, total_cost_estimate, required_qualification,
-              visa_info, recovery_facilities, photo_spots
+              visa_info, recovery_facilities, photo_spots, description
        FROM ${SCHEMA}.events WHERE id = $1`,
       [eventId]
     )
@@ -137,7 +137,8 @@ export async function translateEvent(event, opts = { dryRun: false }) {
         required_qualification_en = COALESCE(required_qualification_en, $9),
         visa_info_en = COALESCE(visa_info_en, $10),
         recovery_facilities_en = COALESCE(recovery_facilities_en, $11),
-        photo_spots_en = COALESCE(photo_spots_en, $12)
+        photo_spots_en = COALESCE(photo_spots_en, $12),
+        description_en = COALESCE(description_en, $14)
        WHERE id = $13`,
       [
         te.name || null, te.location || null, te.country || null,
@@ -145,7 +146,7 @@ export async function translateEvent(event, opts = { dryRun: false }) {
         te.prohibited_items || null, te.total_cost_estimate || null,
         te.required_qualification || null, te.visa_info || null,
         te.recovery_facilities || null, te.photo_spots || null,
-        eventId,
+        eventId, te.description || null,
       ]
     )
 

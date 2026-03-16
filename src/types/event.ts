@@ -50,6 +50,7 @@ export type Event = {
   visa_info: string | null
   recovery_facilities: string | null
   photo_spots: string | null
+  description: string | null
   collected_at: string | null
   updated_at: string | null
   enrich_attempt_count?: number
@@ -65,6 +66,7 @@ export type Event = {
   visa_info_en?: string | null
   recovery_facilities_en?: string | null
   photo_spots_en?: string | null
+  description_en?: string | null
 }
 
 /** yabai_travel.access_routes テーブルの型 */

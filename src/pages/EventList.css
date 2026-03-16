@@ -132,6 +132,13 @@
   border-color: #3b82f6;
 }
 
+.event-description {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
 .badge-pending {
   background: #fbbf24;
   color: #78350f;

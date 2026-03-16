@@ -73,6 +73,7 @@ function EventDetail() {
         <header className="event-detail-header">
           <Link to="/" className="back-link">← 一覧に戻る</Link>
           <h1>{event.name}</h1>
+          {event.description && <p className="event-description">{event.description}</p>}
           <div className="event-detail-basic">
             <dl className="event-detail-dl event-detail-dl-inline">
               <dt>日程</dt>
@@ -166,6 +167,7 @@ function EventDetail() {
       <header className="event-detail-header">
         <Link to="/" className="back-link">← 一覧に戻る</Link>
         <h1>{event.name}</h1>
+        {event.description && <p className="event-description">{event.description}</p>}
         <div className="event-detail-basic">
           <dl className="event-detail-dl event-detail-dl-inline">
             <dt>日程</dt>
