@@ -6,7 +6,8 @@ import '../App.css'
 import './EventDetail.css'
 
 function CategoryDetail() {
-  const { eventId, categoryId } = useParams<{ eventId: string; categoryId: string }>()
+  const { eventId, categoryId, lang } = useParams<{ eventId: string; categoryId: string; lang: string }>()
+  const langPrefix = `/${lang || 'ja'}`
   const [event, setEvent] = useState<Event | null>(null)
   const [category, setCategory] = useState<Category | null>(null)
   const [accessRoutes, setAccessRoutes] = useState<AccessRoute[]>([])
@@ -162,8 +163,8 @@ function CategoryDetail() {
   return (
     <div className="event-detail-page">
       <header className="event-detail-header">
-        <Link to="/" className="back-link">← 一覧に戻る</Link>
-        <Link to={`/events/${eventId}`} className="back-link event-breadcrumb">
+        <Link to={langPrefix} className="back-link">← 一覧に戻る</Link>
+        <Link to={`${langPrefix}/events/${eventId}`} className="back-link event-breadcrumb">
           {event.name}
         </Link>
         <h1>{event.name} — {category.name}</h1>
@@ -240,7 +241,7 @@ function CategoryDetail() {
             {categories.map((c) => (
               <Link
                 key={c.id}
-                to={`/events/${eventId}/categories/${c.id}`}
+                to={`${langPrefix}/events/${eventId}/categories/${c.id}`}
                 className={`category-nav-link ${c.id === categoryId ? 'active' : ''}`}
               >
                 {c.name}

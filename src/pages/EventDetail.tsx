@@ -10,7 +10,8 @@ import './EventDetail.css'
  * カテゴリ0件の場合はイベントレベルの情報（アクセス・申込み等）を直接表示 (#32)
  */
 function EventDetail() {
-  const { eventId } = useParams<{ eventId: string }>()
+  const { eventId, lang } = useParams<{ eventId: string; lang: string }>()
+  const langPrefix = `/${lang || 'ja'}`
   const [event, setEvent] = useState<Event | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [accessRoutes, setAccessRoutes] = useState<AccessRoute[]>([])
@@ -56,11 +57,11 @@ function EventDetail() {
 
   // enrich未完了のイベントは一覧へリダイレクト (#63, #71)
   const hasEnrichedCategories = categories.length === 0 || categories.some(c => c.distance_km != null || c.elevation_gain != null)
-  if (event.location == null || !hasEnrichedCategories) return <Navigate to="/" replace />
+  if (event.location == null || !hasEnrichedCategories) return <Navigate to={langPrefix} replace />
 
   // カテゴリが1つのみの場合はその詳細へリダイレクト
   if (categories.length === 1 && eventId) {
-    return <Navigate to={`/events/${eventId}/categories/${categories[0].id}`} replace />
+    return <Navigate to={`${langPrefix}/events/${eventId}/categories/${categories[0].id}`} replace />
   }
 
   const outbound = accessRoutes.find((r) => r.direction === 'outbound')
@@ -71,7 +72,7 @@ function EventDetail() {
     return (
       <div className="event-detail-page">
         <header className="event-detail-header">
-          <Link to="/" className="back-link">← 一覧に戻る</Link>
+          <Link to={langPrefix} className="back-link">← 一覧に戻る</Link>
           <h1>{event.name}</h1>
           {event.description && <p className="event-description">{event.description}</p>}
           <div className="event-detail-basic">
@@ -165,7 +166,7 @@ function EventDetail() {
   return (
     <div className="event-detail-page">
       <header className="event-detail-header">
-        <Link to="/" className="back-link">← 一覧に戻る</Link>
+        <Link to={langPrefix} className="back-link">← 一覧に戻る</Link>
         <h1>{event.name}</h1>
         {event.description && <p className="event-description">{event.description}</p>}
         <div className="event-detail-basic">
@@ -189,7 +190,7 @@ function EventDetail() {
           {categories.map((cat) => (
             <li key={cat.id}>
               <Link
-                to={`/events/${eventId}/categories/${cat.id}`}
+                to={`${langPrefix}/events/${eventId}/categories/${cat.id}`}
                 className="category-list-link"
               >
                 <span className="category-list-name">{cat.name}</span>
