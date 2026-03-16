@@ -236,10 +236,14 @@ async function collectOtherSourceRaces(url) {
 // --- DB挿入 ---
 
 async function insertRace(client, race) {
-  // official_url がある場合は official_url で重複チェック、なければ name で重複チェック
-  const dupCheck = race.official_url
-    ? `WHERE NOT EXISTS (SELECT 1 FROM ${SCHEMA}.events WHERE official_url = $6)`
-    : `WHERE NOT EXISTS (SELECT 1 FROM ${SCHEMA}.events WHERE name = $1)`
+  // official_url OR (name + event_date) で重複チェック
+  // - official_url 一致 → 重複
+  // - name 一致 AND (どちらかの event_date が NULL OR 同じ日付) → 重複（別年度は通す）
+  const dupCheck = `WHERE NOT EXISTS (
+    SELECT 1 FROM ${SCHEMA}.events
+    WHERE official_url = $6
+       OR (name = $1 AND (event_date IS NULL OR $2 IS NULL OR event_date = $2::date))
+  )`
   const result = await client.query(
     `INSERT INTO ${SCHEMA}.events (name, event_date, location, country, race_type, official_url, entry_url, collected_at)
      SELECT $1, $2, $3, $4, $5, $6, $7, NULL
