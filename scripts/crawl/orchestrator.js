@@ -46,8 +46,9 @@ async function run() {
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
   await client.connect()
 
-  const { rows: pendingEvents } = await client.query(
-    `SELECT id, name, official_url, location, country
+  // ②-A 未処理イベント
+  const { rows: needsEventEnrich } = await client.query(
+    `SELECT id, name, official_url, location, country, FALSE as event_done
      FROM ${SCHEMA}.events
      WHERE (
        collected_at IS NULL
@@ -63,9 +64,29 @@ async function run() {
        updated_at ASC`
   )
 
+  // ②-B のみ必要（②-A 完了だがカテゴリ詳細未収集）
+  const { rows: needsCatDetail } = await client.query(
+    `SELECT DISTINCT e.id, e.name, e.official_url, e.location, e.country, TRUE as event_done
+     FROM ${SCHEMA}.events e
+     JOIN ${SCHEMA}.categories c ON c.event_id = e.id
+     WHERE e.collected_at IS NOT NULL
+       AND (c.entry_fee IS NULL OR c.start_time IS NULL OR c.time_limit IS NULL)
+       AND e.id NOT IN (SELECT id FROM ${SCHEMA}.events WHERE collected_at IS NULL)
+     ORDER BY e.updated_at ASC`
+  )
+
   await client.end()
 
-  console.log(`処理対象イベント: ${pendingEvents.length} 件\n`)
+  // マージ（②-A 未処理が優先、②-B のみは後ろに追加。ID重複除去）
+  const seenIds = new Set()
+  const pendingEvents = []
+  for (const ev of [...needsEventEnrich, ...needsCatDetail]) {
+    if (seenIds.has(ev.id)) continue
+    seenIds.add(ev.id)
+    pendingEvents.push(ev)
+  }
+
+  console.log(`処理対象: ${pendingEvents.length} 件（②-A未処理: ${needsEventEnrich.length}, ②-Bのみ: ${needsCatDetail.length}）\n`)
 
   if (pendingEvents.length === 0) {
     console.log('処理対象なし。終了します。')
@@ -88,18 +109,22 @@ async function run() {
 
     await Promise.allSettled(
       batch.map(async (event) => {
-        // ②-A: イベント情報 + コース特定
-        const eventResult = await enrichEvent(event, { dryRun: DRY_RUN }).catch((e) => ({ success: false, error: e.message }))
-        if (eventResult.success) {
-          totalEventOk++
-          console.log(`  [event]  OK  ${event.name?.slice(0, 40)} | courses:${eventResult.categoriesCount ?? '?'}`)
-        } else {
-          totalEventErr++
-          console.log(`  [event]  ERR ${event.name?.slice(0, 40)} | ${eventResult.error?.slice(0, 50)}`)
+        // ②-A: イベント情報 + コース特定（未処理の場合のみ）
+        let eventOk = !!event.event_done  // 既に ②-A 完了済みならスキップ
+        if (!event.event_done) {
+          const eventResult = await enrichEvent(event, { dryRun: DRY_RUN }).catch((e) => ({ success: false, error: e.message }))
+          if (eventResult.success) {
+            totalEventOk++
+            eventOk = true
+            console.log(`  [event]  OK  ${event.name?.slice(0, 40)} | courses:${eventResult.categoriesCount ?? '?'}`)
+          } else {
+            totalEventErr++
+            console.log(`  [event]  ERR ${event.name?.slice(0, 40)} | ${eventResult.error?.slice(0, 50)}`)
+          }
         }
 
-        // ②-B: 各カテゴリの詳細収集（イベント成功時のみ）
-        if (eventResult.success) {
+        // ②-B: 各カテゴリの詳細収集
+        if (eventOk) {
           try {
             const catClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
             await catClient.connect()
