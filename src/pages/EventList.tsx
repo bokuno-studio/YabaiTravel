@@ -56,7 +56,7 @@ function EventList() {
   const [raceTypes, setRaceTypes] = useState<Set<string>>(new Set())
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set())
-  const [distanceRange, setDistanceRange] = useState<number | null>(null)
+  const [distanceRanges, setDistanceRanges] = useState<Set<number>>(new Set())
   const [timeLimitMin, setTimeLimitMin] = useState<string>('')
   const [entryStatus, setEntryStatus] = useState<string>('active')
   const [showPastEvents, setShowPastEvents] = useState(false)
@@ -173,14 +173,25 @@ function EventList() {
     return [...months].sort()
   }, [events, showPastEvents])
 
+  const toggleDistanceRange = (idx: number) => {
+    setDistanceRanges((prev) => {
+      const next = new Set(prev)
+      if (next.has(idx)) next.delete(idx)
+      else next.add(idx)
+      return next
+    })
+  }
+
   const categoryMatchesFilter = (cat: Category): boolean => {
-    const range = distanceRange != null ? DISTANCE_RANGES[distanceRange] : null
     const timeMin = timeLimitMin ? parseFloat(timeLimitMin) : null
 
-    if (range != null) {
+    if (distanceRanges.size > 0) {
       if (cat.distance_km == null) return false
-      if (cat.distance_km < range.min) return false
-      if (range.max !== Infinity && cat.distance_km > range.max) return false
+      const matchesAny = [...distanceRanges].some((idx) => {
+        const range = DISTANCE_RANGES[idx]
+        return cat.distance_km! >= range.min && (range.max === Infinity || cat.distance_km! <= range.max)
+      })
+      if (!matchesAny) return false
     }
     if (timeMin != null) {
       const catHours = parseIntervalHours(cat.time_limit)
@@ -198,7 +209,7 @@ function EventList() {
     })
   }
 
-  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || selectedMonths.size > 0 || distanceRange != null || !!timeLimitMin || entryStatus !== 'active' || showPastEvents
+  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || selectedMonths.size > 0 || distanceRanges.size > 0 || !!timeLimitMin || entryStatus !== 'active' || showPastEvents
 
   const filtered = events.filter((event) => {
     const today = new Date().toISOString().slice(0, 10)
@@ -228,7 +239,7 @@ function EventList() {
       }
     }
     const categories = event.categories ?? []
-    const hasCategoryFilter = distanceRange != null || timeLimitMin
+    const hasCategoryFilter = distanceRanges.size > 0 || timeLimitMin
     if (hasCategoryFilter && categories.length > 0) {
       const hasMatch = categories.some(categoryMatchesFilter)
       if (!hasMatch) return false
@@ -334,8 +345,8 @@ function EventList() {
               <button
                 key={idx}
                 type="button"
-                className={`filter-chip${distanceRange === idx ? ' filter-chip--active' : ''}`}
-                onClick={() => setDistanceRange(distanceRange === idx ? null : idx)}
+                className={`filter-chip${distanceRanges.has(idx) ? ' filter-chip--active' : ''}`}
+                onClick={() => toggleDistanceRange(idx)}
               >
                 {range.label}
               </button>
