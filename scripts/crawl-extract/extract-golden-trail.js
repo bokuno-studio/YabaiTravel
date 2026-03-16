@@ -35,7 +35,6 @@ export function extract(html) {
       const text = $(spanEl).text().trim()
       if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(text)) {
         eventDate = parseDate(text)
-        return false // break
       }
     })
 

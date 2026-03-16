@@ -48,7 +48,6 @@ export function extract(html) {
         location: null,
         race_type: 'hyrox',
       })
-      return false
     }
   })
 
@@ -63,7 +62,6 @@ export function extract(html) {
       $next.find('a[href*="/event/"]').each((__, a) => {
         entryUrl = $(a).attr('href')
         if (entryUrl && !entryUrl.startsWith('http')) entryUrl = new URL(entryUrl, 'https://hyrox.com/').href
-        return false
       })
       const text = $next.text()
       const dm = text.match(/(\d{1,2})\.\s*[A-Za-z]+\.?\s*(\d{4})/)
@@ -77,7 +75,6 @@ export function extract(html) {
           location: null,
           race_type: 'hyrox',
         })
-        return false
       }
     })
   }

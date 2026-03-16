@@ -41,7 +41,6 @@ export function extract(html, baseUrl) {
     $a.find('[class*="location"], [class*="place"]').each((__, locEl) => {
       const t = $(locEl).text().trim()
       if (t && t.length < 100) location = t
-      return false
     })
     if (!location) {
       const locMatch = $a.text().match(/([A-Za-z\s]+,\s*[A-Z]{2})\s*[A-Za-z\s]*$/)
@@ -57,7 +56,6 @@ export function extract(html, baseUrl) {
         location,
         race_type: 'spartan',
       })
-      return false // 1件のみ取得
     }
   })
 

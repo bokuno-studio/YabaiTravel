@@ -55,7 +55,6 @@ export function extract(html) {
         location: location ? `${location}, Netherlands` : 'Netherlands',
         race_type: 'strong_viking',
       })
-      return false
     }
   })
 
