@@ -405,37 +405,38 @@ function CategoryDetail() {
         </dl>
 
         {/* コースマップ（サイト内保持・レース終了後も参照可能） */}
-        {(courseMapFiles.length > 0 || event.course_map_url) && (
-          <>
-            <h2 className="section-title">コースマップ</h2>
-            <dl className="event-detail-dl">
-              {courseMapFiles.length > 0 ? (
-                <>
-                  <dt>サイト内保管</dt>
-                  <dd>
-                    <ul className="course-map-list">
-                      {courseMapFiles.map((cm) => (
-                        <li key={cm.id}>
-                          <a href={cm.file_path} target="_blank" rel="noreferrer">
-                            {cm.display_name ?? (cm.year ? `${cm.year}年コース` : 'コースマップ')}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="course-map-note">レース終了後も参照できます</p>
-                  </dd>
-                </>
-              ) : event.course_map_url ? (
-                <>
-                  <dt>外部リンク</dt>
-                  <dd>
-                    <a href={event.course_map_url} target="_blank" rel="noreferrer">{event.course_map_url}</a>
-                  </dd>
-                </>
-              ) : null}
-            </dl>
-          </>
-        )}
+        <h2 className="section-title">コースマップ</h2>
+        <dl className="event-detail-dl">
+          {courseMapFiles.length > 0 ? (
+            <>
+              <dt>サイト内保管</dt>
+              <dd>
+                <ul className="course-map-list">
+                  {courseMapFiles.map((cm) => (
+                    <li key={cm.id}>
+                      <a href={cm.file_path} target="_blank" rel="noreferrer">
+                        {cm.display_name ?? (cm.year ? `${cm.year}年コース` : 'コースマップ')}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+                <p className="course-map-note">レース終了後も参照できます</p>
+              </dd>
+            </>
+          ) : event.course_map_url ? (
+            <>
+              <dt>外部リンク</dt>
+              <dd>
+                <a href={event.course_map_url} target="_blank" rel="noreferrer">{event.course_map_url}</a>
+              </dd>
+            </>
+          ) : (
+            <>
+              <dt>コースマップ</dt>
+              <dd className="empty-value">—</dd>
+            </>
+          )}
+        </dl>
 
         {/* 去年のレースはこちら（previous_edition_url） */}
         {event.previous_edition_url && (
