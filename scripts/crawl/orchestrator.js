@@ -66,12 +66,13 @@ async function run() {
 
   // ②-B のみ必要（②-A 完了だがカテゴリ詳細未収集）
   const { rows: needsCatDetail } = await client.query(
-    `SELECT DISTINCT e.id, e.name, e.official_url, e.location, e.country, TRUE as event_done
+    `SELECT e.id, e.name, e.official_url, e.location, e.country, TRUE as event_done
      FROM ${SCHEMA}.events e
-     JOIN ${SCHEMA}.categories c ON c.event_id = e.id
      WHERE e.collected_at IS NOT NULL
-       AND (c.entry_fee IS NULL OR c.start_time IS NULL OR c.time_limit IS NULL)
-       AND e.id NOT IN (SELECT id FROM ${SCHEMA}.events WHERE collected_at IS NULL)
+       AND EXISTS (
+         SELECT 1 FROM ${SCHEMA}.categories c
+         WHERE c.event_id = e.id AND (c.entry_fee IS NULL OR c.start_time IS NULL OR c.time_limit IS NULL)
+       )
      ORDER BY e.updated_at ASC`
   )
 
