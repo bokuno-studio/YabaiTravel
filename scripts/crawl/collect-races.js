@@ -273,7 +273,7 @@ async function insertRace(client, race) {
   const dupCheck = `WHERE NOT EXISTS (
     SELECT 1 FROM ${SCHEMA}.events
     WHERE official_url = $6
-       OR (name = $1 AND (event_date IS NULL OR $2 IS NULL OR event_date = $2::date))
+       OR (name = $1 AND (event_date IS NULL OR $2::text IS NULL OR event_date::text = $2::text))
   )`
   const result = await client.query(
     `INSERT INTO ${SCHEMA}.events (name, event_date, location, country, race_type, official_url, entry_url, collected_at)
