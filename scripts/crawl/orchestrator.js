@@ -72,7 +72,7 @@ async function run() {
      WHERE e.collected_at IS NOT NULL
        AND EXISTS (
          SELECT 1 FROM ${SCHEMA}.categories c
-         WHERE c.event_id = e.id AND (c.entry_fee IS NULL OR c.start_time IS NULL OR c.time_limit IS NULL)
+         WHERE c.event_id = e.id AND c.entry_fee IS NULL AND c.collected_at IS NULL
        )
      ORDER BY e.updated_at ASC`
   )
@@ -132,7 +132,7 @@ async function run() {
             await catClient.connect()
             const { rows: pendingCats } = await catClient.query(
               `SELECT id, name, distance_km FROM ${SCHEMA}.categories
-               WHERE event_id = $1 AND (entry_fee IS NULL OR start_time IS NULL OR time_limit IS NULL)`,
+               WHERE event_id = $1 AND entry_fee IS NULL AND collected_at IS NULL`,
               [event.id]
             )
             await catClient.end()

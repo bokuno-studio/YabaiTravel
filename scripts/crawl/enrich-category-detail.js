@@ -135,7 +135,8 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
         elevation_gain     = COALESCE(elevation_gain, $8),
         mandatory_gear     = COALESCE(mandatory_gear, $9),
         poles_allowed      = COALESCE(poles_allowed, $10),
-        itra_points        = COALESCE(itra_points, $11)
+        itra_points        = COALESCE(itra_points, $11),
+        collected_at       = NOW()
        WHERE id = $1`,
       [
         categoryId,

@@ -284,7 +284,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
       )
       if (exists.rows.length === 0) {
         await client.query(
-          `INSERT INTO ${SCHEMA}.categories (event_id, name, distance_km) VALUES ($1, $2, $3)`,
+          `INSERT INTO ${SCHEMA}.categories (event_id, name, distance_km, collected_at) VALUES ($1, $2, $3, NULL)`,
           [eventId, course.name, course.distance_km ?? null]
         )
       } else {
