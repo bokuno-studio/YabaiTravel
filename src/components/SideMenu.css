@@ -140,6 +140,23 @@
 }
 
 /* アコーディオン */
+.side-menu-show-more {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.75rem;
+  border: none;
+  background: none;
+  color: #3b82f6;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 6px;
+}
+
+.side-menu-show-more:hover {
+  background: #eff6ff;
+}
+
 .side-menu-accordion {
   cursor: pointer;
   display: flex;

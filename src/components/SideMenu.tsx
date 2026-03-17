@@ -21,7 +21,7 @@ function SideMenu() {
   const langPrefix = `/${lang || 'ja'}`
   const isEn = lang === 'en'
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [guidesOpen, setGuidesOpen] = useState(location.pathname.includes('/guide/'))
+  const [guidesOpen, setGuidesOpen] = useState(false)
 
   const menu = (
     <nav className={`side-menu${mobileOpen ? ' side-menu--open' : ''}`}>
@@ -50,12 +50,9 @@ function SideMenu() {
       </div>
 
       <div className="side-menu-section">
-        <button className="side-menu-accordion" onClick={() => setGuidesOpen(!guidesOpen)}>
-          <span className={`side-menu-accordion-arrow${guidesOpen ? ' side-menu-accordion-arrow--open' : ''}`}>▶</span>
-          {isEn ? 'Sports Guide' : 'スポーツガイド'}
-        </button>
-        <ul className={`side-menu-accordion-content${guidesOpen ? ' side-menu-accordion-content--open' : ''}`}>
-          {SPORT_GUIDES.map((s) => (
+        <h3>{isEn ? 'Sports Guide' : 'スポーツガイド'}</h3>
+        <ul>
+          {SPORT_GUIDES.slice(0, guidesOpen ? SPORT_GUIDES.length : 3).map((s) => (
             <li key={s.key}>
               <Link
                 to={`${langPrefix}/guide/${s.key}`}
@@ -66,6 +63,20 @@ function SideMenu() {
               </Link>
             </li>
           ))}
+          {!guidesOpen && (
+            <li>
+              <button className="side-menu-show-more" onClick={() => setGuidesOpen(true)}>
+                {isEn ? `+ ${SPORT_GUIDES.length - 3} more...` : `+ 他${SPORT_GUIDES.length - 3}件を表示...`}
+              </button>
+            </li>
+          )}
+          {guidesOpen && SPORT_GUIDES.length > 3 && (
+            <li>
+              <button className="side-menu-show-more" onClick={() => setGuidesOpen(false)}>
+                {isEn ? '− Show less' : '− 閉じる'}
+              </button>
+            </li>
+          )}
         </ul>
       </div>
 
