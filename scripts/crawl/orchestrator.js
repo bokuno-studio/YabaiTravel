@@ -223,6 +223,20 @@ async function createAlertIssue({ totalProcessed, eventOk, eventErr, catOk, catE
   const failRate = Math.round((eventErr / totalProcessed) * 100)
   const now = new Date().toISOString().slice(0, 10)
 
+  // 同日の enrich-alert が既に open なら起票しない（重複防止）
+  try {
+    const searchRes = await fetch(`https://api.github.com/search/issues?q=repo:${repo}+label:enrich-alert+state:open+${now}+in:title`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (searchRes.ok) {
+      const searchData = await searchRes.json()
+      if (searchData.total_count > 0) {
+        console.log(`[alert] 同日のアラート Issue が既に存在するためスキップ (${searchData.total_count}件)`)
+        return
+      }
+    }
+  } catch { /* 検索失敗時は起票を続行 */ }
+
   const title = `[自動検知] enrich失敗率 ${failRate}%（${now}）`
   const body = [
     '## enrich ジョブ失敗アラート',
