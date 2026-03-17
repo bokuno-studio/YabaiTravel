@@ -26,7 +26,9 @@ function LangLayout() {
   return (
     <>
       <SideMenu />
-      <Outlet />
+      <div className="app-with-sidebar">
+        <Outlet />
+      </div>
     </>
   )
 }

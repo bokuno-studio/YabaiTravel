@@ -1,3 +1,4 @@
+/* モバイル: スライドイン（既存動作） */
 .side-menu-toggle {
   position: fixed;
   top: 1rem;
@@ -24,20 +25,19 @@
 .side-menu {
   position: fixed;
   top: 0;
-  right: -300px;
-  width: 280px;
+  left: -280px;
+  width: 260px;
   height: 100vh;
   background: #fff;
-  border-left: 1px solid #e2e8f0;
-  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.08);
+  border-right: 1px solid #e2e8f0;
   z-index: 1000;
   overflow-y: auto;
-  padding: 3.5rem 1.25rem 2rem;
-  transition: right 0.25s ease;
+  padding: 1.25rem 1rem 2rem;
+  transition: left 0.25s ease;
 }
 
 .side-menu--open {
-  right: 0;
+  left: 0;
 }
 
 .side-menu-overlay {
@@ -50,17 +50,56 @@
   z-index: 999;
 }
 
+/* デスクトップ: 常時表示 */
+@media (min-width: 960px) {
+  .side-menu-toggle {
+    display: none;
+  }
+
+  .side-menu {
+    position: fixed;
+    left: 0;
+    top: 0;
+    box-shadow: none;
+  }
+
+  .side-menu-overlay {
+    display: none;
+  }
+
+  /* メインコンテンツを右にずらす */
+  .app-with-sidebar {
+    margin-left: 260px;
+  }
+}
+
+/* メニュー内スタイル */
+.side-menu-brand {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-decoration: none;
+  display: block;
+  padding: 0.5rem 0.5rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 1rem;
+}
+
+.side-menu-brand:hover {
+  color: #3b82f6;
+}
+
 .side-menu-section {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .side-menu-section h3 {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: #94a3b8;
-  margin: 0 0 0.5rem;
-  padding: 0 0.25rem;
+  margin: 0 0 0.4rem;
+  padding: 0 0.5rem;
 }
 
 .side-menu-section ul {
@@ -75,11 +114,11 @@
 
 .side-menu-section a {
   display: block;
-  padding: 0.5rem 0.75rem;
+  padding: 0.4rem 0.75rem;
   border-radius: 6px;
   color: #475569;
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   transition: background 0.15s;
 }
 
@@ -92,4 +131,66 @@
   background: #eff6ff;
   color: #3b82f6;
   font-weight: 500;
+}
+
+/* アコーディオン */
+.side-menu-accordion {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  margin: 0;
+}
+
+.side-menu-accordion:hover {
+  color: #64748b;
+}
+
+.side-menu-accordion-arrow {
+  font-size: 0.6rem;
+  transition: transform 0.2s;
+}
+
+.side-menu-accordion-arrow--open {
+  transform: rotate(90deg);
+}
+
+.side-menu-accordion-content {
+  display: none;
+}
+
+.side-menu-accordion-content--open {
+  display: block;
+}
+
+/* 言語切替 */
+.side-menu-lang {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.side-menu-lang a {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  text-decoration: none;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.side-menu-lang a.active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
 }

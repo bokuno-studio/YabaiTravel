@@ -249,14 +249,11 @@ function EventList() {
         if (!event.entry_end || event.entry_end >= today) return false
       }
     }
-    if (costRange && event.total_cost_estimate) {
-      const cost = parseInt(event.total_cost_estimate, 10)
-      if (!isNaN(cost)) {
-        if (costRange === '10000' && cost > 10000) return false
-        if (costRange === '30000' && (cost < 10000 || cost > 30000)) return false
-        if (costRange === '50000' && (cost < 30000 || cost > 50000)) return false
-        if (costRange === '100000' && (cost < 50000 || cost > 100000)) return false
-        if (costRange === '100001' && cost < 100000) return false
+    if (costRange) {
+      const maxCost = parseInt(costRange, 10)
+      if (event.total_cost_estimate) {
+        const cost = parseInt(event.total_cost_estimate, 10)
+        if (!isNaN(cost) && cost > maxCost) return false
       }
     }
     const categories = event.categories ?? []
@@ -292,13 +289,7 @@ function EventList() {
         <h1>
           <Link to={langPrefix}>{t('site.title')}</Link>
         </h1>
-        <div className="app-header-row">
-          <p className="app-subtitle">{t('site.subtitle')}</p>
-          <div className="lang-switcher">
-            <Link to={`/ja${window.location.pathname.replace(/^\/(ja|en)/, '')}`} className={lang === 'ja' ? 'active' : ''}>JA</Link>
-            <Link to={`/en${window.location.pathname.replace(/^\/(ja|en)/, '')}`} className={lang === 'en' ? 'active' : ''}>EN</Link>
-          </div>
-        </div>
+        <p className="app-subtitle">{t('site.subtitle')}</p>
         <p className="app-stats">
           {lastUpdated && <span>{t('stats.lastUpdated')}: {formatJST(lastUpdated)}</span>}
           {weeklyNewCount > 0 && <span>{t('stats.weeklyNew')}: {weeklyNewCount}</span>}
@@ -389,15 +380,22 @@ function EventList() {
           </select>
         </div>
         <div className="filter-group">
-          <label htmlFor="costRange">{lang === 'en' ? 'Est. Cost' : 'コスト目安'}</label>
-          <select id="costRange" value={costRange} onChange={(e) => setCostRange(e.target.value)}>
-            <option value="">{t('filter.noLimit')}</option>
-            <option value="10000">{lang === 'en' ? '≤ ¥10K' : '〜1万円'}</option>
-            <option value="30000">{lang === 'en' ? '¥10K-30K' : '1〜3万円'}</option>
-            <option value="50000">{lang === 'en' ? '¥30K-50K' : '3〜5万円'}</option>
-            <option value="100000">{lang === 'en' ? '¥50K-100K' : '5〜10万円'}</option>
-            <option value="100001">{lang === 'en' ? '¥100K+' : '10万円〜'}</option>
-          </select>
+          <label>{lang === 'en' ? 'Est. Cost' : 'コスト目安'}</label>
+          <div className="cost-range-bar">
+            <div className="cost-range-labels">
+              <span>{lang === 'en' ? '¥0' : '0円'}</span>
+              <span>{costRange ? (lang === 'en' ? `≤ ¥${parseInt(costRange).toLocaleString()}` : `${parseInt(costRange).toLocaleString()}円以下`) : (lang === 'en' ? 'Any' : '指定なし')}</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="200000"
+              step="10000"
+              value={costRange || '200000'}
+              onChange={(e) => setCostRange(e.target.value === '200000' ? '' : e.target.value)}
+              className="cost-slider"
+            />
+          </div>
         </div>
         <div className="filter-group">
           <label htmlFor="entryStatus">{t('filter.entryStatus')}</label>
