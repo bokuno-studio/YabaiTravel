@@ -267,7 +267,21 @@ function CategoryDetail() {
           <dt>カットオフタイム</dt>
           <dd className={formatCutoffTimes(category.cutoff_times) ? '' : 'empty-value multi-line'}>{formatCutoffTimes(category.cutoff_times) ?? '—'}</dd>
           <dt>必要ペース</dt>
-          <dd className={category.required_pace ? '' : 'empty-value'}>{category.required_pace ?? '—'}</dd>
+          <dd className={category.required_pace || (category.distance_km && category.time_limit) ? '' : 'empty-value'}>
+            {category.required_pace ?? (() => {
+              if (category.distance_km && category.time_limit) {
+                const parts = category.time_limit.match(/(\d+):(\d+):(\d+)/)
+                if (parts) {
+                  const totalMin = parseInt(parts[1]) * 60 + parseInt(parts[2]) + parseInt(parts[3]) / 60
+                  const paceMin = totalMin / category.distance_km
+                  const m = Math.floor(paceMin)
+                  const s = Math.round((paceMin - m) * 60)
+                  return `${m}:${String(s).padStart(2, '0')} /km（制限時間から算出）`
+                }
+              }
+              return '—'
+            })()}
+          </dd>
           <dt>必要クライムペース</dt>
           <dd className={category.required_climb_pace ? '' : 'empty-value'}>{category.required_climb_pace ?? '—'}</dd>
           <dt>必携品</dt>

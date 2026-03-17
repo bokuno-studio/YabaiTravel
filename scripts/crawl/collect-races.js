@@ -226,7 +226,7 @@ async function collectOtherSourceRaces(url) {
         if (!href || !text || href.includes('season-pass') || text.includes('SEASON') || text.length < 3) return
         const officialUrl = href.startsWith('http') ? href : new URL(href, 'https://toughmudder.com/').href
         if (races.find((r) => r.official_url === officialUrl)) return
-        races.push({ name: `Tough Mudder ${text}`, official_url: officialUrl, entry_url: officialUrl, race_type: 'obstacle', source: 'tough-mudder' })
+        races.push({ name: `Tough Mudder ${text}`, official_url: officialUrl, entry_url: officialUrl, race_type: 'tough_mudder', source: 'tough-mudder' })
       })
       return limitForEnv(races, 3)
     }

@@ -31,7 +31,7 @@ const EVENT_SYSTEM_PROMPT = `あなたはレースイベントの情報抽出エ
     "event_date_end": "YYYY-MM-DD（複数日の場合の最終日）",
     "location": "開催地。日本国内なら「○○県○○市」等。海外なら「都市名, 国名」。必ず自治体名を含める",
     "country": "国名（日本語）",
-    "race_type": "marathon|trail|triathlon|cycling|duathlon|rogaining|spartan|hyrox|obstacle|adventure|devils_circuit|strong_viking|other",
+    "race_type": "marathon|trail|triathlon|cycling|duathlon|rogaining|spartan|hyrox|tough_mudder|obstacle|adventure|devils_circuit|strong_viking|other",
     "official_url": "大会の公式サイトURL（ポータルや申込サイトではなく主催者の公式ページURL。runnet.jp, sportsentry.ne.jp, moshicom.com, l-tike.com 等はポータルなので除外）",
     "entry_url": "申込URL",
     "entry_start": "YYYY-MM-DD",

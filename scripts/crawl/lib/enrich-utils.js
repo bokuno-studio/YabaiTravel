@@ -42,7 +42,7 @@ export const RELEVANT_URL_PATTERNS = [
 
 export const VALID_RACE_TYPES = [
   'marathon', 'trail', 'triathlon', 'cycling', 'duathlon', 'rogaining',
-  'spartan', 'hyrox', 'obstacle', 'adventure', 'devils_circuit', 'strong_viking',
+  'spartan', 'hyrox', 'tough_mudder', 'obstacle', 'adventure', 'devils_circuit', 'strong_viking',
 ]
 
 const RACE_TYPE_CLASSIFY_PROMPT = `あなたはレースイベントの分類エキスパートです。

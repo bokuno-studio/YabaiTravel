@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabaseClient'
 import type { EventWithCategories, Category } from '../types/event'
@@ -52,9 +52,11 @@ const DISTANCE_RANGES = [
 
 function EventList() {
   const [events, setEvents] = useState<EventWithCategories[]>([])
+  const [searchParams] = useSearchParams()
+  const initialType = searchParams.get('type')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [raceTypes, setRaceTypes] = useState<Set<string>>(new Set())
+  const [raceTypes, setRaceTypes] = useState<Set<string>>(initialType ? new Set([initialType]) : new Set())
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set())
   const [distanceRanges, setDistanceRanges] = useState<Set<number>>(new Set())
@@ -114,7 +116,7 @@ function EventList() {
   const RACE_TYPE_ORDER = [
     'marathon', 'trail',
     'triathlon', 'duathlon',
-    'spartan', 'hyrox', 'obstacle',
+    'spartan', 'hyrox', 'tough_mudder', 'obstacle',
     'cycling',
     'rogaining', 'adventure',
     'devils_circuit', 'strong_viking',
