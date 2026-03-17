@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabaseClient'
 import type { EventWithCategories, Category } from '../types/event'
 import EventMap from '../components/EventMap'
+import PriceHistogramSlider from '../components/PriceHistogramSlider'
 import '../App.css'
 import './EventList.css'
 
@@ -61,7 +62,8 @@ function EventList() {
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set())
   const [distanceRanges, setDistanceRanges] = useState<Set<number>>(new Set())
   const [timeLimitMin, setTimeLimitMin] = useState<string>('')
-  const [costRange, setCostRange] = useState<string>('')
+  const [costMin, setCostMin] = useState<number>(0)
+  const [costMax, setCostMax] = useState<number>(Infinity)
   const [entryStatus, setEntryStatus] = useState<string>('active')
   const [showPastEvents, setShowPastEvents] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
@@ -111,6 +113,18 @@ function EventList() {
     fetchEvents()
     fetchStats()
   }, [])
+
+  /** コスト分布データ */
+  const costPrices = useMemo(() => {
+    return events
+      .map((e) => e.total_cost_estimate ? parseInt(e.total_cost_estimate, 10) : NaN)
+      .filter((v) => !isNaN(v) && v > 0)
+  }, [events])
+
+  const costGlobalMax = useMemo(() => {
+    if (costPrices.length === 0) return 100000
+    return Math.ceil(Math.max(...costPrices) / 10000) * 10000
+  }, [costPrices])
 
   /** DB に存在するレース種別を定義順で取得（#154） */
   const RACE_TYPE_ORDER = [
@@ -222,7 +236,7 @@ function EventList() {
     })
   }
 
-  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || selectedMonths.size > 0 || distanceRanges.size > 0 || !!timeLimitMin || !!costRange || entryStatus !== 'active' || showPastEvents
+  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || selectedMonths.size > 0 || distanceRanges.size > 0 || !!timeLimitMin || costMin > 0 || costMax < Infinity || entryStatus !== 'active' || showPastEvents
 
   const filtered = events.filter((event) => {
     const today = new Date().toISOString().slice(0, 10)
@@ -251,11 +265,12 @@ function EventList() {
         if (!event.entry_end || event.entry_end >= today) return false
       }
     }
-    if (costRange) {
-      const maxCost = parseInt(costRange, 10)
+    if (costMin > 0 || costMax < Infinity) {
       if (event.total_cost_estimate) {
         const cost = parseInt(event.total_cost_estimate, 10)
-        if (!isNaN(cost) && cost > maxCost) return false
+        if (!isNaN(cost)) {
+          if (cost < costMin || cost > costMax) return false
+        }
       }
     }
     const categories = event.categories ?? []
@@ -383,21 +398,16 @@ function EventList() {
         </div>
         <div className="filter-group">
           <label>{lang === 'en' ? 'Est. Cost' : 'コスト目安'}</label>
-          <div className="cost-range-bar">
-            <div className="cost-range-labels">
-              <span>{lang === 'en' ? '¥0' : '0円'}</span>
-              <span>{costRange ? (lang === 'en' ? `≤ ¥${parseInt(costRange).toLocaleString()}` : `${parseInt(costRange).toLocaleString()}円以下`) : (lang === 'en' ? 'Any' : '指定なし')}</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="200000"
-              step="10000"
-              value={costRange || '200000'}
-              onChange={(e) => setCostRange(e.target.value === '200000' ? '' : e.target.value)}
-              className="cost-slider"
-            />
-          </div>
+          <PriceHistogramSlider
+            prices={costPrices}
+            min={costMin}
+            max={costMax >= Infinity ? costGlobalMax : costMax}
+            onRangeChange={(newMin, newMax) => {
+              setCostMin(newMin)
+              setCostMax(newMax >= costGlobalMax ? Infinity : newMax)
+            }}
+            currency={lang === 'en' ? '$' : '¥'}
+          />
         </div>
         <div className="filter-group">
           <label htmlFor="entryStatus">{t('filter.entryStatus')}</label>
