@@ -74,15 +74,20 @@
 }
 
 /* メニュー内スタイル */
+.side-menu-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.5rem 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 1rem;
+}
+
 .side-menu-brand {
   font-size: 1.1rem;
   font-weight: 700;
   color: #0f172a;
   text-decoration: none;
-  display: block;
-  padding: 0.5rem 0.5rem 1rem;
-  border-bottom: 1px solid #f1f5f9;
-  margin-bottom: 1rem;
 }
 
 .side-menu-brand:hover {
@@ -176,8 +181,6 @@
 .side-menu-lang {
   display: flex;
   gap: 0.25rem;
-  padding: 0 0.5rem;
-  margin-top: 0.5rem;
 }
 
 .side-menu-lang a {

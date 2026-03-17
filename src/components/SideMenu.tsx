@@ -25,9 +25,15 @@ function SideMenu() {
 
   const menu = (
     <nav className={`side-menu${mobileOpen ? ' side-menu--open' : ''}`}>
-      <Link to={langPrefix} className="side-menu-brand" onClick={() => setMobileOpen(false)}>
-        yabai.travel
-      </Link>
+      <div className="side-menu-brand-row">
+        <Link to={langPrefix} className="side-menu-brand" onClick={() => setMobileOpen(false)}>
+          yabai.travel
+        </Link>
+        <div className="side-menu-lang">
+          <Link to={`/ja${location.pathname.replace(/^\/(ja|en)/, '')}`} className={lang === 'ja' ? 'active' : ''}>JA</Link>
+          <Link to={`/en${location.pathname.replace(/^\/(ja|en)/, '')}`} className={lang === 'en' ? 'active' : ''}>EN</Link>
+        </div>
+      </div>
 
       <div className="side-menu-section">
         <ul>
@@ -78,10 +84,6 @@ function SideMenu() {
         </ul>
       </div>
 
-      <div className="side-menu-lang">
-        <Link to={`/ja${location.pathname.replace(/^\/(ja|en)/, '')}`} className={lang === 'ja' ? 'active' : ''}>JA</Link>
-        <Link to={`/en${location.pathname.replace(/^\/(ja|en)/, '')}`} className={lang === 'en' ? 'active' : ''}>EN</Link>
-      </div>
     </nav>
   )
 
