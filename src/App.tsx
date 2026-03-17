@@ -5,6 +5,8 @@ import EventList from './pages/EventList'
 import EventDetail from './pages/EventDetail'
 import CategoryDetail from './pages/CategoryDetail'
 import Sources from './pages/Sources'
+import SportGuide from './pages/SportGuide'
+import SideMenu from './components/SideMenu'
 
 /** パスの :lang から i18n 言語を設定し、子ルートを描画 */
 function LangLayout() {
@@ -21,7 +23,12 @@ function LangLayout() {
     return <Navigate to="/ja" replace />
   }
 
-  return <Outlet />
+  return (
+    <>
+      <SideMenu />
+      <Outlet />
+    </>
+  )
 }
 
 /** ブラウザ言語でリダイレクト */
@@ -39,6 +46,7 @@ function App() {
           <Route path="events/:eventId" element={<EventDetail />} />
           <Route path="events/:eventId/categories/:categoryId" element={<CategoryDetail />} />
           <Route path="sources" element={<Sources />} />
+          <Route path="guide/:sport" element={<SportGuide />} />
         </Route>
         <Route path="/" element={<DefaultRedirect />} />
         {/* 旧URL互換 */}

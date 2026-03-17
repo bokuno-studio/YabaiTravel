@@ -1,0 +1,95 @@
+.side-menu-toggle {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1001;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  color: #475569;
+}
+
+.side-menu-toggle:hover {
+  background: #f8fafc;
+}
+
+.side-menu {
+  position: fixed;
+  top: 0;
+  right: -300px;
+  width: 280px;
+  height: 100vh;
+  background: #fff;
+  border-left: 1px solid #e2e8f0;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.08);
+  z-index: 1000;
+  overflow-y: auto;
+  padding: 3.5rem 1.25rem 2rem;
+  transition: right 0.25s ease;
+}
+
+.side-menu--open {
+  right: 0;
+}
+
+.side-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.2);
+  z-index: 999;
+}
+
+.side-menu-section {
+  margin-bottom: 1.5rem;
+}
+
+.side-menu-section h3 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin: 0 0 0.5rem;
+  padding: 0 0.25rem;
+}
+
+.side-menu-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.side-menu-section li {
+  margin: 0;
+}
+
+.side-menu-section a {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  color: #475569;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: background 0.15s;
+}
+
+.side-menu-section a:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.side-menu-section a.active {
+  background: #eff6ff;
+  color: #3b82f6;
+  font-weight: 500;
+}
