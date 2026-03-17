@@ -1,4 +1,4 @@
-import { APIProvider, Map, AdvancedMarker, InfoWindow } from '@vis.gl/react-google-maps'
+import { APIProvider, Map, Marker, InfoWindow } from '@vis.gl/react-google-maps'
 import { useState, useCallback } from 'react'
 import type { EventWithCategories } from '../types/event'
 
@@ -8,20 +8,6 @@ interface EventMapProps {
   events: EventWithCategories[]
   langPrefix: string
   raceTypeLabel: (t: string | null) => string
-}
-
-const RACE_TYPE_COLORS: Record<string, string> = {
-  marathon: '#ef4444',
-  trail: '#22c55e',
-  triathlon: '#3b82f6',
-  cycling: '#f59e0b',
-  spartan: '#8b5cf6',
-  hyrox: '#ec4899',
-  obstacle: '#f97316',
-  rogaining: '#14b8a6',
-  adventure: '#6366f1',
-  duathlon: '#06b6d4',
-  other: '#6b7280',
 }
 
 function EventMap({ events, langPrefix, raceTypeLabel }: EventMapProps) {
@@ -43,24 +29,14 @@ function EventMap({ events, langPrefix, raceTypeLabel }: EventMapProps) {
           defaultZoom={3}
           gestureHandling="greedy"
           disableDefaultUI={false}
-          mapId="yabai-travel-map"
         >
-          {mappable.map((event) => {
-            const color = RACE_TYPE_COLORS[event.race_type || 'other'] || '#6b7280'
-            return (
-              <AdvancedMarker
-                key={event.id}
-                position={{ lat: event.latitude!, lng: event.longitude! }}
-                onClick={() => handleMarkerClick(event)}
-              >
-                <div style={{
-                  width: '12px', height: '12px', borderRadius: '50%',
-                  background: color, border: '2px solid white',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)', cursor: 'pointer',
-                }} />
-              </AdvancedMarker>
-            )
-          })}
+          {mappable.map((event) => (
+            <Marker
+              key={event.id}
+              position={{ lat: event.latitude!, lng: event.longitude! }}
+              onClick={() => handleMarkerClick(event)}
+            />
+          ))}
 
           {selectedEvent && (
             <InfoWindow
@@ -76,13 +52,7 @@ function EventMap({ events, langPrefix, raceTypeLabel }: EventMapProps) {
                 <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#475569' }}>
                   {selectedEvent.event_date || ''} / {selectedEvent.location || ''}
                 </p>
-                <span style={{
-                  display: 'inline-block', marginTop: '0.25rem', padding: '0.1rem 0.4rem',
-                  borderRadius: '999px', fontSize: '0.7rem',
-                  background: `${RACE_TYPE_COLORS[selectedEvent.race_type || 'other']}20`,
-                  color: RACE_TYPE_COLORS[selectedEvent.race_type || 'other'],
-                  border: `1px solid ${RACE_TYPE_COLORS[selectedEvent.race_type || 'other']}40`,
-                }}>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
                   {raceTypeLabel(selectedEvent.race_type)}
                 </span>
               </div>
