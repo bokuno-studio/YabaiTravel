@@ -268,11 +268,12 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
       if (apiKey) {
         try {
           const outboundData = await fetchGoogleDirections('東京駅', location, apiKey)
-          const returnData = await fetchGoogleDirections(location, '東京駅', apiKey)
-
           outboundRoute = parseGoogleDirections(outboundData)
-          returnRoute = parseGoogleDirections(returnData)
-          if (outboundRoute) transitAccessible = true
+          // スタート=ゴール同一（大半のレース）: 復路は往路と同じ。API呼び出しを省略
+          if (outboundRoute) {
+            returnRoute = { ...outboundRoute, route_detail: outboundRoute.route_detail ? `${outboundRoute.route_detail}（逆順）` : null }
+            transitAccessible = true
+          }
         } catch (e) {
           console.warn(`  Google Directions API error: ${e.message}, falling back to LLM`)
         }

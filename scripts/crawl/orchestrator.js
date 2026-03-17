@@ -240,6 +240,28 @@ async function run() {
     }
   }
 
+  // コスト集計パス（参加費+交通費+宿泊費 → total_cost_estimate）
+  if (!DRY_RUN) {
+    const costClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
+    await costClient.connect()
+    const { rowCount } = await costClient.query(`
+      UPDATE ${SCHEMA}.events e SET total_cost_estimate = sub.total::text
+      FROM (
+        SELECT e2.id,
+          COALESCE((SELECT MIN(c.entry_fee) FROM ${SCHEMA}.categories c WHERE c.event_id = e2.id AND c.entry_fee IS NOT NULL), 0)
+          + COALESCE((SELECT NULLIF(regexp_replace(ar.cost_estimate, '[^0-9]', '', 'g'), '')::int FROM ${SCHEMA}.access_routes ar WHERE ar.event_id = e2.id AND ar.direction = 'outbound' LIMIT 1), 0)
+          + COALESCE((SELECT NULLIF(regexp_replace(ar2.cost_estimate, '[^0-9]', '', 'g'), '')::int FROM ${SCHEMA}.access_routes ar2 WHERE ar2.event_id = e2.id AND ar2.direction = 'return' LIMIT 1), 0)
+          + COALESCE((SELECT a.avg_cost_3star FROM ${SCHEMA}.accommodations a WHERE a.event_id = e2.id LIMIT 1), 0)
+          AS total
+        FROM ${SCHEMA}.events e2
+        WHERE e2.collected_at IS NOT NULL
+      ) sub
+      WHERE e.id = sub.id AND sub.total > 0 AND (e.total_cost_estimate IS NULL OR e.total_cost_estimate != sub.total::text)
+    `)
+    await costClient.end()
+    if (rowCount > 0) console.log(`\n[cost] ${rowCount} 件のトータルコストを集計`)
+  }
+
   console.log('\n=== サマリー ===')
   console.log(`イベント情報:     OK ${totalEventOk} / ERR ${totalEventErr}`)
   console.log(`カテゴリ詳細:     OK ${totalCatOk} / ERR ${totalCatErr}`)
