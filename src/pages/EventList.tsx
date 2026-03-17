@@ -102,7 +102,7 @@ function EventList() {
       const { count } = await supabase
         .from('events')
         .select('id', { count: 'exact', head: true })
-        .gte('created_at', weekAgo)
+        .gte('updated_at', weekAgo)
       setWeeklyNewCount(count ?? 0)
     }
 
