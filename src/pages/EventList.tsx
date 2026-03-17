@@ -59,6 +59,7 @@ function EventList() {
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set())
   const [distanceRanges, setDistanceRanges] = useState<Set<number>>(new Set())
   const [timeLimitMin, setTimeLimitMin] = useState<string>('')
+  const [costRange, setCostRange] = useState<string>('')
   const [entryStatus, setEntryStatus] = useState<string>('active')
   const [showPastEvents, setShowPastEvents] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
@@ -219,7 +220,7 @@ function EventList() {
     })
   }
 
-  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || selectedMonths.size > 0 || distanceRanges.size > 0 || !!timeLimitMin || entryStatus !== 'active' || showPastEvents
+  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || selectedMonths.size > 0 || distanceRanges.size > 0 || !!timeLimitMin || !!costRange || entryStatus !== 'active' || showPastEvents
 
   const filtered = events.filter((event) => {
     const today = new Date().toISOString().slice(0, 10)
@@ -246,6 +247,16 @@ function EventList() {
         if (!event.entry_start || event.entry_start <= today) return false
       } else if (entryStatus === 'closed') {
         if (!event.entry_end || event.entry_end >= today) return false
+      }
+    }
+    if (costRange && event.total_cost_estimate) {
+      const cost = parseInt(event.total_cost_estimate, 10)
+      if (!isNaN(cost)) {
+        if (costRange === '10000' && cost > 10000) return false
+        if (costRange === '30000' && (cost < 10000 || cost > 30000)) return false
+        if (costRange === '50000' && (cost < 30000 || cost > 50000)) return false
+        if (costRange === '100000' && (cost < 50000 || cost > 100000)) return false
+        if (costRange === '100001' && cost < 100000) return false
       }
     }
     const categories = event.categories ?? []
@@ -378,6 +389,17 @@ function EventList() {
           </select>
         </div>
         <div className="filter-group">
+          <label htmlFor="costRange">{lang === 'en' ? 'Est. Cost' : 'コスト目安'}</label>
+          <select id="costRange" value={costRange} onChange={(e) => setCostRange(e.target.value)}>
+            <option value="">{t('filter.noLimit')}</option>
+            <option value="10000">{lang === 'en' ? '≤ ¥10K' : '〜1万円'}</option>
+            <option value="30000">{lang === 'en' ? '¥10K-30K' : '1〜3万円'}</option>
+            <option value="50000">{lang === 'en' ? '¥30K-50K' : '3〜5万円'}</option>
+            <option value="100000">{lang === 'en' ? '¥50K-100K' : '5〜10万円'}</option>
+            <option value="100001">{lang === 'en' ? '¥100K+' : '10万円〜'}</option>
+          </select>
+        </div>
+        <div className="filter-group">
           <label htmlFor="entryStatus">{t('filter.entryStatus')}</label>
           <select
             id="entryStatus"
@@ -443,6 +465,9 @@ function EventList() {
                         </p>
                         {entryPeriodText(event) && (
                           <p className="event-entry-period">{t('event.entry')}: {entryPeriodText(event)}</p>
+                        )}
+                        {event.total_cost_estimate && (
+                          <p className="event-entry-period">{lang === 'en' ? 'Est.' : '目安'}: ¥{parseInt(event.total_cost_estimate, 10).toLocaleString()}</p>
                         )}
                       </div>
                       <div className="event-card-badges">

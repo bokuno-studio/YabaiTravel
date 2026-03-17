@@ -12,6 +12,7 @@ import pg from 'pg'
 import { existsSync, readFileSync } from 'fs'
 import { resolve } from 'path'
 import { enrichEvent } from './enrich-event.js'
+import { InsufficientBalanceError } from './lib/enrich-utils.js'
 import { enrichCategoryDetail } from './enrich-category-detail.js'
 import { enrichLogi } from './enrich-logi.js'
 import { translateEvent } from './enrich-translate.js'
@@ -109,12 +110,15 @@ async function run() {
 
     console.log(`--- バッチ ${batchNum}/${batches.length} (${batch.length} 件) ---`)
 
-    await Promise.allSettled(
+    const batchResults = await Promise.allSettled(
       batch.map(async (event) => {
         // ②-A: イベント情報 + コース特定（未処理の場合のみ）
         let eventOk = !!event.event_done  // 既に ②-A 完了済みならスキップ
         if (!event.event_done) {
-          const eventResult = await enrichEvent(event, { dryRun: DRY_RUN }).catch((e) => ({ success: false, error: e.message }))
+          const eventResult = await enrichEvent(event, { dryRun: DRY_RUN }).catch((e) => {
+            if (e instanceof InsufficientBalanceError) throw e
+            return { success: false, error: e.message }
+          })
           if (eventResult.success) {
             totalEventOk++
             eventOk = true
@@ -142,7 +146,10 @@ async function run() {
                 { id: event.id, name: event.name, official_url: event.official_url },
                 cat,
                 { dryRun: DRY_RUN }
-              ).catch((e) => ({ success: false, error: e.message }))
+              ).catch((e) => {
+                if (e instanceof InsufficientBalanceError) throw e
+                return { success: false, error: e.message }
+              })
 
               if (catResult.success) {
                 totalCatOk++
@@ -159,7 +166,10 @@ async function run() {
 
         // ③: ロジ収集
         const enrichedEvent = eventResult.location ? { ...event, location: eventResult.location } : event
-        const logiResult = await enrichLogi(enrichedEvent, { dryRun: DRY_RUN }).catch((e) => ({ success: false, error: e.message }))
+        const logiResult = await enrichLogi(enrichedEvent, { dryRun: DRY_RUN }).catch((e) => {
+          if (e instanceof InsufficientBalanceError) throw e
+          return { success: false, error: e.message }
+        })
         if (logiResult.success) {
           totalLogiOk++
           console.log(`  [logi]   OK  ${event.name?.slice(0, 40)}`)
@@ -169,7 +179,10 @@ async function run() {
         }
 
         // ⑤: 翻訳（name_en が未設定の場合のみ）
-        const transResult = await translateEvent(event, { dryRun: DRY_RUN }).catch((e) => ({ success: false, error: e.message }))
+        const transResult = await translateEvent(event, { dryRun: DRY_RUN }).catch((e) => {
+          if (e instanceof InsufficientBalanceError) throw e
+          return { success: false, error: e.message }
+        })
         if (transResult.success) {
           console.log(`  [trans]  OK  ${event.name?.slice(0, 40)}`)
         } else {
@@ -177,6 +190,13 @@ async function run() {
         }
       })
     )
+
+    // 残高不足チェック → 即時停止
+    const balanceError = batchResults.find((r) => r.status === 'rejected' && r.reason instanceof InsufficientBalanceError)
+    if (balanceError) {
+      console.log('\n=== API 残高不足により処理を中断します ===')
+      break
+    }
 
     console.log()
 
@@ -191,7 +211,36 @@ async function run() {
     }
   }
 
-  console.log('=== サマリー ===')
+  // ⑤ 翻訳パス（メインループとは独立。enrich 済みで未翻訳のイベントを処理）
+  if (!DRY_RUN) {
+    const transClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
+    await transClient.connect()
+    const { rows: untranslated } = await transClient.query(
+      `SELECT id, name FROM ${SCHEMA}.events
+       WHERE collected_at IS NOT NULL AND name_en IS NULL
+       ORDER BY collected_at DESC LIMIT 20`
+    )
+    await transClient.end()
+
+    if (untranslated.length > 0) {
+      console.log(`\n--- 翻訳パス (${untranslated.length} 件) ---`)
+      for (const ev of untranslated) {
+        try {
+          const r = await translateEvent(ev, { dryRun: false })
+          if (r.success) console.log(`  [trans]  OK  ${ev.name?.slice(0, 40)}`)
+          else console.log(`  [trans]  ERR ${ev.name?.slice(0, 40)} | ${r.error?.slice(0, 50)}`)
+        } catch (e) {
+          if (e instanceof InsufficientBalanceError) {
+            console.log('\n=== API 残高不足により翻訳を中断します ===')
+            break
+          }
+          console.log(`  [trans]  ERR ${ev.name?.slice(0, 40)} | ${e.message?.slice(0, 50)}`)
+        }
+      }
+    }
+  }
+
+  console.log('\n=== サマリー ===')
   console.log(`イベント情報:     OK ${totalEventOk} / ERR ${totalEventErr}`)
   console.log(`カテゴリ詳細:     OK ${totalCatOk} / ERR ${totalCatErr}`)
   console.log(`ロジエンリッチ:   OK ${totalLogiOk} / ERR ${totalLogiErr}`)

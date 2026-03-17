@@ -1,9 +1,8 @@
-import { useEffect, useRef } from 'react'
-import mapboxgl from 'mapbox-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import { APIProvider, Map, AdvancedMarker, InfoWindow } from '@vis.gl/react-google-maps'
+import { useState, useCallback } from 'react'
 import type { EventWithCategories } from '../types/event'
 
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || ''
+const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || ''
 
 interface EventMapProps {
   events: EventWithCategories[]
@@ -26,58 +25,72 @@ const RACE_TYPE_COLORS: Record<string, string> = {
 }
 
 function EventMap({ events, langPrefix, raceTypeLabel }: EventMapProps) {
-  const mapContainer = useRef<HTMLDivElement>(null)
-  const map = useRef<mapboxgl.Map | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<EventWithCategories | null>(null)
 
   const mappable = events.filter((e) => e.latitude != null && e.longitude != null)
 
-  useEffect(() => {
-    if (!mapContainer.current || !mapboxgl.accessToken || mappable.length === 0) return
-    if (map.current) return
+  const handleMarkerClick = useCallback((event: EventWithCategories) => {
+    setSelectedEvent(event)
+  }, [])
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/light-v11',
-      center: [139.6, 36.0],
-      zoom: 3,
-    })
-
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right')
-
-    for (const event of mappable) {
-      const color = RACE_TYPE_COLORS[event.race_type || 'other'] || '#6b7280'
-      const popup = new mapboxgl.Popup({ offset: 25, maxWidth: '280px' }).setHTML(`
-        <div style="font-family: system-ui, sans-serif;">
-          <strong style="font-size: 0.9rem;"><a href="${langPrefix}/events/${event.id}" style="color: #0f172a; text-decoration: none;">${event.name}</a></strong>
-          <p style="margin: 0.25rem 0 0; font-size: 0.8rem; color: #475569;">
-            ${event.event_date || ''} / ${event.location || ''}
-          </p>
-          <span style="display: inline-block; margin-top: 0.25rem; padding: 0.1rem 0.4rem; border-radius: 999px; font-size: 0.7rem; background: ${color}20; color: ${color}; border: 1px solid ${color}40;">
-            ${raceTypeLabel(event.race_type)}
-          </span>
-        </div>
-      `)
-
-      new mapboxgl.Marker({ color })
-        .setLngLat([event.longitude!, event.latitude!])
-        .setPopup(popup)
-        .addTo(map.current!)
-    }
-
-    return () => {
-      map.current?.remove()
-      map.current = null
-    }
-  }, [mappable.length])
-
-  if (!mapboxgl.accessToken) return null
-  if (mappable.length === 0) return null
+  if (!API_KEY || mappable.length === 0) return null
 
   return (
-    <div
-      ref={mapContainer}
-      style={{ width: '100%', height: '400px', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}
-    />
+    <APIProvider apiKey={API_KEY}>
+      <div style={{ width: '100%', height: '400px', borderRadius: '0.75rem', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        <Map
+          defaultCenter={{ lat: 36.0, lng: 139.6 }}
+          defaultZoom={3}
+          gestureHandling="greedy"
+          disableDefaultUI={false}
+          mapId="yabai-travel-map"
+        >
+          {mappable.map((event) => {
+            const color = RACE_TYPE_COLORS[event.race_type || 'other'] || '#6b7280'
+            return (
+              <AdvancedMarker
+                key={event.id}
+                position={{ lat: event.latitude!, lng: event.longitude! }}
+                onClick={() => handleMarkerClick(event)}
+              >
+                <div style={{
+                  width: '12px', height: '12px', borderRadius: '50%',
+                  background: color, border: '2px solid white',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)', cursor: 'pointer',
+                }} />
+              </AdvancedMarker>
+            )
+          })}
+
+          {selectedEvent && (
+            <InfoWindow
+              position={{ lat: selectedEvent.latitude!, lng: selectedEvent.longitude! }}
+              onCloseClick={() => setSelectedEvent(null)}
+            >
+              <div style={{ fontFamily: 'system-ui, sans-serif', maxWidth: '250px' }}>
+                <strong style={{ fontSize: '0.9rem' }}>
+                  <a href={`${langPrefix}/events/${selectedEvent.id}`} style={{ color: '#0f172a', textDecoration: 'none' }}>
+                    {selectedEvent.name}
+                  </a>
+                </strong>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#475569' }}>
+                  {selectedEvent.event_date || ''} / {selectedEvent.location || ''}
+                </p>
+                <span style={{
+                  display: 'inline-block', marginTop: '0.25rem', padding: '0.1rem 0.4rem',
+                  borderRadius: '999px', fontSize: '0.7rem',
+                  background: `${RACE_TYPE_COLORS[selectedEvent.race_type || 'other']}20`,
+                  color: RACE_TYPE_COLORS[selectedEvent.race_type || 'other'],
+                  border: `1px solid ${RACE_TYPE_COLORS[selectedEvent.race_type || 'other']}40`,
+                }}>
+                  {raceTypeLabel(selectedEvent.race_type)}
+                </span>
+              </div>
+            </InfoWindow>
+          )}
+        </Map>
+      </div>
+    </APIProvider>
   )
 }
 

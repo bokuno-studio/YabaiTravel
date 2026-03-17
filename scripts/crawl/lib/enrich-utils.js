@@ -149,6 +149,15 @@ export function extractRelevantLinks(html, baseUrl) {
   return links.slice(0, 10)
 }
 
+// --- エラークラス ---
+
+export class InsufficientBalanceError extends Error {
+  constructor(message) {
+    super(message)
+    this.name = 'InsufficientBalanceError'
+  }
+}
+
 // --- LLM ---
 
 export async function callLlm(anthropic, systemPrompt, userContent, { maxTokens = 2048 } = {}) {
@@ -168,7 +177,10 @@ export async function callLlm(anthropic, systemPrompt, userContent, { maxTokens 
     } catch (e) {
       lastError = e
       if (e.status === 400 && e.error?.error?.message?.includes('credit')) {
-        throw new Error(`Anthropic クレジット残高不足: ${e.error.error.message}`)
+        throw new InsufficientBalanceError(`Anthropic クレジット残高不足: ${e.error.error.message}`)
+      }
+      if (e.status === 402) {
+        throw new InsufficientBalanceError(`Anthropic 残高不足 (402)`)
       }
       if (attempt === 0 && e.status === 429) {
         console.warn(`  [LLM] 429 rate limit、60秒待機してリトライ...`)

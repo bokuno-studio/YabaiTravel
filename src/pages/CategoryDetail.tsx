@@ -158,6 +158,7 @@ function CategoryDetail() {
 
   const outbound = accessRoutes.find((r) => r.direction === 'outbound')
   const returnRoute = accessRoutes.find((r) => r.direction === 'return')
+  const sameStartGoal = !returnRoute || (outbound?.route_detail === returnRoute?.route_detail)
   const stayStatus = category.stay_status ?? event.stay_status
 
   return (
@@ -395,15 +396,23 @@ function CategoryDetail() {
           <dt>タクシー</dt>
           <dd className={outbound?.taxi_estimate ? '' : 'empty-value'}>{outbound?.taxi_estimate ?? '—'}</dd>
         </dl>
-        <h3 className="section-subtitle">復路</h3>
-        <dl className="event-detail-dl">
-          <dt>経路・乗り換え</dt>
-          <dd className={returnRoute?.route_detail ? 'multi-line' : 'empty-value'}>{returnRoute?.route_detail ?? '—'}</dd>
-          <dt>所要時間</dt>
-          <dd className={returnRoute?.total_time_estimate ? '' : 'empty-value'}>{returnRoute?.total_time_estimate ?? '—'}</dd>
-          <dt>費用概算</dt>
-          <dd className={returnRoute?.cost_estimate ? '' : 'empty-value'}>{returnRoute?.cost_estimate ?? '—'}</dd>
-        </dl>
+        {sameStartGoal ? (
+          <p style={{ color: '#64748b', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+            {lang === 'en' ? 'Start and finish are at the same location. Return route is the same as outbound.' : 'スタート・ゴール同一のため、復路は往路と同様です。'}
+          </p>
+        ) : (
+          <>
+            <h3 className="section-subtitle">復路</h3>
+            <dl className="event-detail-dl">
+              <dt>経路・乗り換え</dt>
+              <dd className={returnRoute?.route_detail ? 'multi-line' : 'empty-value'}>{returnRoute?.route_detail ?? '—'}</dd>
+              <dt>所要時間</dt>
+              <dd className={returnRoute?.total_time_estimate ? '' : 'empty-value'}>{returnRoute?.total_time_estimate ?? '—'}</dd>
+              <dt>費用概算</dt>
+              <dd className={returnRoute?.cost_estimate ? '' : 'empty-value'}>{returnRoute?.cost_estimate ?? '—'}</dd>
+            </dl>
+          </>
+        )}
 
         {/* コースマップ（サイト内保持・レース終了後も参照可能） */}
         <h2 className="section-title">コースマップ</h2>
