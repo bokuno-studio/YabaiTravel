@@ -115,20 +115,20 @@ function EventList() {
     fetchStats()
   }, [])
 
-  /** コスト分布データ */
+  /** コスト分布データ（95パーセンタイル超の外れ値を除外してヒストグラムに渡す） */
   const costPrices = useMemo(() => {
-    return events
+    const all = events
       .map((e) => e.total_cost_estimate ? parseInt(e.total_cost_estimate, 10) : NaN)
       .filter((v) => !isNaN(v) && v > 0)
+    if (all.length === 0) return all
+    const sorted = [...all].sort((a, b) => a - b)
+    const p95 = sorted[Math.min(Math.floor(sorted.length * 0.95), sorted.length - 1)]
+    return all.filter((v) => v <= p95)
   }, [events])
 
   const costGlobalMax = useMemo(() => {
     if (costPrices.length === 0) return 100000
-    const sorted = [...costPrices].sort((a, b) => a - b)
-    // 外れ値の影響を避けるため95パーセンタイルを上限に使用
-    const p95idx = Math.min(Math.floor(sorted.length * 0.95), sorted.length - 1)
-    const p95 = sorted[p95idx]
-    return Math.ceil(p95 / 10000) * 10000
+    return Math.ceil(Math.max(...costPrices) / 10000) * 10000
   }, [costPrices])
 
   /** DB に存在するレース種別を定義順で取得（#154） */
