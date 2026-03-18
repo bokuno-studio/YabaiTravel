@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import { supabase } from '../lib/supabaseClient'
 import type { Event, AccessRoute, Accommodation, Category, CourseMapFile, StayStatus } from '../types/event'
 import '../App.css'
@@ -162,6 +163,14 @@ function CategoryDetail() {
   const stayStatus = category.stay_status ?? event.stay_status
 
   return (
+    <>
+      <Helmet>
+        <title>{event.name} {category.name} | yabai.travel</title>
+        <meta name="description" content={`${event.name} ${category.name}コースの参加費・アクセス・宿泊・必携品をまとめてチェック。`} />
+        <meta property="og:title" content={`${event.name} ${category.name} | yabai.travel`} />
+        <meta property="og:description" content={`${event.name} ${category.name}コースの参加費・アクセス・宿泊・必携品をまとめてチェック。`} />
+        <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}/categories/${category.id}`} />
+      </Helmet>
     <div className="event-detail-page">
       <header className="event-detail-header">
         <Link to={langPrefix} className="back-link">← 一覧に戻る</Link>
@@ -252,21 +261,21 @@ function CategoryDetail() {
         )}
 
         {/* レーススペック（このカテゴリのみ。空欄も表示して視覚化 #30） */}
-        <h2 className="section-title">レーススペック</h2>
+        <h2 className="section-title">このレースのスペックは？</h2>
         <dl className="event-detail-dl">
-          <dt>スタート時間</dt>
+          <dt>スタートは何時？</dt>
           <dd className={category.start_time ? '' : 'empty-value'}>{category.start_time ? `${category.start_time} スタート` : '—'}</dd>
-          <dt>受付終了</dt>
+          <dt>受付は何時まで？</dt>
           <dd className={category.reception_end ? '' : 'empty-value'}>{category.reception_end ?? '—'}</dd>
-          <dt>受付場所</dt>
+          <dt>受付場所は？</dt>
           <dd className={category.reception_place || event.reception_place ? '' : 'empty-value'}>{category.reception_place ?? event.reception_place ?? '—'}</dd>
-          <dt>スタート場所</dt>
+          <dt>スタート場所は？</dt>
           <dd className={category.start_place || event.start_place ? '' : 'empty-value'}>{category.start_place ?? event.start_place ?? '—'}</dd>
-          <dt>完走率</dt>
+          <dt>完走率は？</dt>
           <dd className={category.finish_rate != null ? '' : 'empty-value'}>{category.finish_rate != null ? `${(category.finish_rate * 100).toFixed(1)}%` : '—'}</dd>
-          <dt>カットオフタイム</dt>
+          <dt>カットオフは？</dt>
           <dd className={formatCutoffTimes(category.cutoff_times) ? '' : 'empty-value multi-line'}>{formatCutoffTimes(category.cutoff_times) ?? '—'}</dd>
-          <dt>必要ペース</dt>
+          <dt>必要なペースは？</dt>
           <dd className={category.required_pace || (category.distance_km && category.time_limit) ? '' : 'empty-value'}>
             {category.required_pace ?? (() => {
               if (category.distance_km && category.time_limit) {
@@ -282,36 +291,36 @@ function CategoryDetail() {
               return '—'
             })()}
           </dd>
-          <dt>必要クライムペース</dt>
+          <dt>登りに必要なペースは？</dt>
           <dd className={category.required_climb_pace ? '' : 'empty-value'}>{category.required_climb_pace ?? '—'}</dd>
-          <dt>必携品</dt>
+          <dt>必携品は？</dt>
           <dd className={category.mandatory_gear ? '' : 'empty-value multi-line'}>{category.mandatory_gear ?? '—'}</dd>
-          <dt>携行推奨品</dt>
+          <dt>持っておくと良いものは？</dt>
           <dd className={category.recommended_gear ? '' : 'empty-value multi-line'}>{category.recommended_gear ?? '—'}</dd>
-          <dt>使用禁止品</dt>
+          <dt>使用禁止品は？</dt>
           <dd className={category.prohibited_items ? '' : 'empty-value'}>{category.prohibited_items ?? '—'}</dd>
-          <dt>ポール</dt>
+          <dt>ポールは使える？</dt>
           <dd className={category.poles_allowed != null ? '' : 'empty-value'}>{category.poles_allowed != null ? (category.poles_allowed ? '可' : '不可') : '—'}</dd>
-          <dt>申込費</dt>
+          <dt>参加費はいくら？</dt>
           <dd className={category.entry_fee != null ? '' : 'empty-value'}>{category.entry_fee != null ? `${category.entry_fee.toLocaleString()} ${category.entry_fee_currency ?? '円'}` : '—'}</dd>
         </dl>
 
         {/* 申込み（空欄も表示 #30） */}
         <h2 className="section-title">申込み</h2>
         <dl className="event-detail-dl">
-          <dt>エントリ種別</dt>
+          <dt>エントリ方法は？</dt>
           <dd className={event.entry_type ? '' : 'empty-value'}>
             {event.entry_type === 'lottery' ? '抽選' : event.entry_type === 'first_come' ? '先着' : event.entry_type ?? '—'}
           </dd>
-          <dt>参加資格</dt>
+          <dt>参加資格はある？</dt>
           <dd className={event.required_qualification ? '' : 'empty-value'}>{event.required_qualification ?? '—'}</dd>
-          <dt>ITRA</dt>
+          <dt>ITRAポイントは？</dt>
           <dd className={category.itra_points ? '' : 'empty-value'}>{category.itra_points ?? '—'}</dd>
-          <dt>申込み開始</dt>
+          <dt>いつから申し込める？</dt>
           <dd className={event.entry_start ? '' : 'empty-value'}>{event.entry_start ?? '—'}</dd>
-          <dt>申込み終了</dt>
+          <dt>申込み締切はいつ？</dt>
           <dd className={event.entry_end ? '' : 'empty-value'}>{event.entry_end ?? '—'}</dd>
-          <dt>例年の申込期間</dt>
+          <dt>例年の申込時期は？</dt>
           <dd className={event.entry_start_typical ? '' : 'empty-value'}>
             {event.entry_start_typical && event.entry_end_typical ? (
               <>
@@ -347,15 +356,15 @@ function CategoryDetail() {
         {/* 何日必要か（常に表示 #30） */}
         <h2 className="section-title">何日必要か</h2>
         <dl className="event-detail-dl">
-          <dt>ステイタス</dt>
+          <dt>前泊は必要？</dt>
           <dd className={stayStatus ? '' : 'empty-value'}>{stayStatus ? stayStatusLabel(stayStatus) : '—'}</dd>
-          <dt>前泊推奨地</dt>
+          <dt>どこに泊まればいい？</dt>
           <dd className={accommodations.some((a) => a.recommended_area) ? '' : 'empty-value'}>
             {accommodations.some((a) => a.recommended_area)
               ? accommodations.map((a) => a.recommended_area).filter(Boolean).join('、')
               : '—'}
           </dd>
-          <dt>宿泊費用目安（星3）</dt>
+          <dt>宿泊費の目安は？</dt>
           <dd className={accommodations.some((a) => a.avg_cost_3star != null) ? '' : 'empty-value'}>
             {accommodations.some((a) => a.avg_cost_3star != null)
               ? `約${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円`
@@ -364,20 +373,20 @@ function CategoryDetail() {
         </dl>
 
         {/* トータルコスト（常に表示 #30） */}
-        <h2 className="section-title">トータルコスト</h2>
+        <h2 className="section-title">トータルコストはいくら？</h2>
         {event.total_cost_estimate && (
           <p className="total-cost-summary">{event.total_cost_estimate}</p>
         )}
         <dl className="event-detail-dl">
-          <dt>申込費</dt>
+          <dt>参加費はいくら？</dt>
           <dd className={category.entry_fee != null ? '' : 'empty-value'}>
             {category.entry_fee != null ? `${category.entry_fee.toLocaleString()} ${category.entry_fee_currency ?? '円'}` : '—'}
           </dd>
-          <dt>往路交通費</dt>
+          <dt>行きの交通費は？</dt>
           <dd className={outbound?.cost_estimate ? '' : 'empty-value'}>{outbound?.cost_estimate ?? '—'}</dd>
-          <dt>復路交通費</dt>
+          <dt>帰りの交通費は？</dt>
           <dd className={returnRoute?.cost_estimate ? '' : 'empty-value'}>{returnRoute?.cost_estimate ?? '—'}</dd>
-          <dt>宿泊</dt>
+          <dt>宿泊費は？</dt>
           <dd className={accommodations.some((a) => a.avg_cost_3star != null) ? '' : 'empty-value'}>
             {accommodations.some((a) => a.avg_cost_3star != null)
               ? `約${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円`
@@ -386,28 +395,28 @@ function CategoryDetail() {
         </dl>
 
         {/* アクセスの詳細（常に表示 #30） */}
-        <h2 className="section-title">アクセスの詳細</h2>
+        <h2 className="section-title">どうやって行く？</h2>
         <h3 className="section-subtitle">往路</h3>
         <dl className="event-detail-dl">
-          <dt>経路・乗り換え</dt>
+          <dt>どのルートで行く？</dt>
           <dd className={outbound?.route_detail ? 'multi-line' : 'empty-value'}>{outbound?.route_detail ?? '—'}</dd>
-          <dt>所要時間</dt>
+          <dt>所要時間は？</dt>
           <dd className={outbound?.total_time_estimate ? '' : 'empty-value'}>{outbound?.total_time_estimate ?? '—'}</dd>
-          <dt>費用概算</dt>
+          <dt>費用の目安は？</dt>
           <dd className={outbound?.cost_estimate ? '' : 'empty-value'}>{outbound?.cost_estimate ?? '—'}</dd>
-          <dt>現金必須</dt>
+          <dt>現金は必要？</dt>
           <dd className={outbound?.cash_required != null ? '' : 'empty-value'}>
             {outbound?.cash_required != null ? (outbound.cash_required ? 'あり' : 'なし') : '—'}
           </dd>
-          <dt>予約サイト</dt>
+          <dt>予約サイトは？</dt>
           <dd className={outbound?.booking_url ? '' : 'empty-value'}>
             {outbound?.booking_url
               ? <a href={outbound.booking_url} target="_blank" rel="noreferrer">{outbound.booking_url}</a>
               : '—'}
           </dd>
-          <dt>シャトルバス</dt>
+          <dt>シャトルバスはある？</dt>
           <dd className={outbound?.shuttle_available ? '' : 'empty-value'}>{outbound?.shuttle_available ?? '—'}</dd>
-          <dt>タクシー</dt>
+          <dt>タクシーは？</dt>
           <dd className={outbound?.taxi_estimate ? '' : 'empty-value'}>{outbound?.taxi_estimate ?? '—'}</dd>
         </dl>
         {sameStartGoal ? (
@@ -418,18 +427,18 @@ function CategoryDetail() {
           <>
             <h3 className="section-subtitle">復路</h3>
             <dl className="event-detail-dl">
-              <dt>経路・乗り換え</dt>
+              <dt>どのルートで行く？</dt>
               <dd className={returnRoute?.route_detail ? 'multi-line' : 'empty-value'}>{returnRoute?.route_detail ?? '—'}</dd>
-              <dt>所要時間</dt>
+              <dt>所要時間は？</dt>
               <dd className={returnRoute?.total_time_estimate ? '' : 'empty-value'}>{returnRoute?.total_time_estimate ?? '—'}</dd>
-              <dt>費用概算</dt>
+              <dt>費用の目安は？</dt>
               <dd className={returnRoute?.cost_estimate ? '' : 'empty-value'}>{returnRoute?.cost_estimate ?? '—'}</dd>
             </dl>
           </>
         )}
 
         {/* コースマップ（サイト内保持・レース終了後も参照可能） */}
-        <h2 className="section-title">コースマップ</h2>
+        <h2 className="section-title">コースマップはある？</h2>
         <dl className="event-detail-dl">
           {courseMapFiles.length > 0 ? (
             <>
@@ -521,24 +530,24 @@ function CategoryDetail() {
 
         {event.weather_forecast && (
           <>
-            <h2 className="section-title">天候</h2>
+            <h2 className="section-title">当日の天候は？</h2>
             <p className="section-text">{event.weather_forecast}</p>
           </>
         )}
 
         {(event.recovery_facilities || event.photo_spots) && (
           <>
-            <h2 className="section-title">周辺情報</h2>
+            <h2 className="section-title">周辺の情報は？</h2>
             <dl className="event-detail-dl">
               {event.recovery_facilities && (
                 <>
-                  <dt>リカバリー施設・温泉</dt>
+                  <dt>リカバリー施設・温泉は？</dt>
                   <dd>{event.recovery_facilities}</dd>
                 </>
               )}
               {event.photo_spots && (
                 <>
-                  <dt>フォトスポット</dt>
+                  <dt>フォトスポットは？</dt>
                   <dd>{event.photo_spots}</dd>
                 </>
               )}
@@ -548,7 +557,7 @@ function CategoryDetail() {
 
         {event.visa_info && (
           <>
-            <h2 className="section-title">ビザ情報</h2>
+            <h2 className="section-title">ビザは必要？</h2>
             <p className="section-text">{event.visa_info}</p>
           </>
         )}
@@ -559,13 +568,13 @@ function CategoryDetail() {
             <dl className="event-detail-dl">
               {event.prohibited_items && (
                 <>
-                  <dt>使用禁止品</dt>
+                  <dt>使用禁止品は？</dt>
                   <dd>{event.prohibited_items}</dd>
                 </>
               )}
               {event.furusato_nozei_url && (
                 <>
-                  <dt>ふるさと納税</dt>
+                  <dt>ふるさと納税は？</dt>
                   <dd>
                     <a href={event.furusato_nozei_url} target="_blank" rel="noreferrer">{event.furusato_nozei_url}</a>
                   </dd>
@@ -574,8 +583,14 @@ function CategoryDetail() {
             </dl>
           </>
         )}
+        {(category.updated_at || event.updated_at) && (
+          <p className="last-updated">
+            最終更新: <time dateTime={(category.updated_at ?? event.updated_at)!}>{(category.updated_at ?? event.updated_at)!.slice(0, 10)}</time>
+          </p>
+        )}
       </section>
     </div>
+    </>
   )
 }
 

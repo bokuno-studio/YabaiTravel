@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+
+# AI crawlers - explicitly allowed for GEO (Generative Engine Optimization)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: GoogleExtended
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+Sitemap: https://yabai-travel.vercel.app/sitemap.xml

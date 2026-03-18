@@ -91,9 +91,10 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
         html = await fetchHtml(officialUrl)
       } catch (e) {
         const status = parseInt(e.message, 10)
-        if (status === 403 || status === 404 || status === 429) {
+        if (status === 403 || status === 404 || status === 429 || isNaN(status)) {
           fetchFailed = true
-          console.log(`  [fallback] ${name?.slice(0, 40)} | ${e.message} → Tavily検索`)
+          const label = isNaN(status) ? 'fallback-network' : 'fallback'
+          console.log(`  [${label}] ${name?.slice(0, 40)} | ${e.message} → Tavily検索`)
         } else {
           await client.query(
             `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = enrich_attempt_count + 1 WHERE id = $1`,
@@ -114,7 +115,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
       const content = extractRelevantContent(html)
       if (content.length < 50) {
         await client.query(
-          `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = enrich_attempt_count + 1 WHERE id = $1`,
+          `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = enrich_attempt_count + 1, last_error_type = 'not_available' WHERE id = $1`,
           [eventId]
         )
         return { success: false, eventId, error: 'page content too short' }
@@ -128,7 +129,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
       const searchResults = await fetchTavilySearch(query, { includeUrls: true })
       if (searchResults.length === 0) {
         await client.query(
-          `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = enrich_attempt_count + 1 WHERE id = $1`,
+          `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = enrich_attempt_count + 1, last_error_type = 'not_available' WHERE id = $1`,
           [eventId]
         )
         return { success: false, eventId, error: 'no search results' }
@@ -347,13 +348,13 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
 
     if (hasQuality) {
       await client.query(
-        `UPDATE ${SCHEMA}.events SET collected_at = NOW(), last_attempted_at = NOW(), enrich_attempt_count = $2 WHERE id = $1`,
+        `UPDATE ${SCHEMA}.events SET collected_at = NOW(), last_attempted_at = NOW(), enrich_attempt_count = $2, last_error_type = NULL WHERE id = $1`,
         [eventId, attemptCount]
       )
     } else if (attemptCount >= 3) {
       // 3回失敗 → 強制通過
       await client.query(
-        `UPDATE ${SCHEMA}.events SET collected_at = NOW(), last_attempted_at = NOW(), enrich_attempt_count = $2, enrich_quality = 'low' WHERE id = $1`,
+        `UPDATE ${SCHEMA}.events SET collected_at = NOW(), last_attempted_at = NOW(), enrich_attempt_count = $2, enrich_quality = 'low', last_error_type = 'not_available' WHERE id = $1`,
         [eventId, attemptCount]
       )
       console.log(`  [quality-gate] LOW ${name?.slice(0, 40)} | 3回失敗で強制通過`)

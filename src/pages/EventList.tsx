@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { Helmet } from 'react-helmet-async'
 import { supabase } from '../lib/supabaseClient'
 import type { EventWithCategories, Category } from '../types/event'
 import EventMap from '../components/EventMap'
@@ -301,6 +302,14 @@ function EventList() {
   if (error) return <p className="event-list-error">エラー: {error}</p>
 
   return (
+    <>
+      <Helmet>
+        <title>エンデュランス大会を探す | yabai.travel</title>
+        <meta name="description" content="トレラン・スパルタン・HYROX・マラソンなどエンデュランス系大会の情報、アクセス・宿泊コストをまとめて比較できるポータルサイト。" />
+        <meta property="og:title" content="エンデュランス大会を探す | yabai.travel" />
+        <meta property="og:description" content="トレラン・スパルタン・HYROX・マラソンなどエンデュランス系大会の情報、アクセス・宿泊コストをまとめて比較できるポータルサイト。" />
+        <meta property="og:url" content="https://yabai-travel.vercel.app/ja" />
+      </Helmet>
     <div className="event-list-page">
       <header className="app-header">
         <h1>
@@ -537,6 +546,7 @@ function EventList() {
         <Link to={`${langPrefix}/sources`}>{lang === 'en' ? 'Data Sources' : '情報取得元'}</Link>
       </footer>
     </div>
+    </>
   )
 }
 

@@ -92,6 +92,16 @@ function SideMenu() {
               {isEn ? 'Data Sources' : '情報取得元'}
             </Link>
           </li>
+          <li>
+            <a
+              href="https://omnivoc-nu.vercel.app/board/yabai-travel"
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setMobileOpen(false)}
+            >
+              {isEn ? 'Feedback' : '要望・フィードバック'}
+            </a>
+          </li>
         </ul>
       </div>
 

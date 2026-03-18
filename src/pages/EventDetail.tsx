@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import { supabase } from '../lib/supabaseClient'
 import type { Event, Category, AccessRoute, Accommodation } from '../types/event'
 import '../App.css'
@@ -70,6 +71,14 @@ function EventDetail() {
   // カテゴリ0件: イベントレベルの情報を直接表示 (#32)
   if (categories.length === 0) {
     return (
+      <>
+        <Helmet>
+          <title>{event.name} | yabai.travel</title>
+          <meta name="description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+          <meta property="og:title" content={`${event.name} | yabai.travel`} />
+          <meta property="og:description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+          <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}`} />
+        </Helmet>
       <div className="event-detail-page">
         <header className="event-detail-header">
           <Link to={langPrefix} className="back-link">← 一覧に戻る</Link>
@@ -106,15 +115,15 @@ function EventDetail() {
         <section className="event-detail-body">
           <h2 className="section-title">申込み</h2>
           <dl className="event-detail-dl">
-            <dt>エントリ種別</dt>
+            <dt>エントリ方法は？</dt>
             <dd className={event.entry_type ? '' : 'empty-value'}>
               {event.entry_type === 'lottery' ? '抽選' : event.entry_type === 'first_come' ? '先着' : event.entry_type ?? '—'}
             </dd>
-            <dt>参加資格</dt>
+            <dt>参加資格はある？</dt>
             <dd className={event.required_qualification ? '' : 'empty-value'}>{event.required_qualification ?? '—'}</dd>
-            <dt>申込み開始</dt>
+            <dt>いつから申し込める？</dt>
             <dd className={event.entry_start ? '' : 'empty-value'}>{event.entry_start ?? '—'}</dd>
-            <dt>申込み終了</dt>
+            <dt>申込み締切はいつ？</dt>
             <dd className={event.entry_end ? '' : 'empty-value'}>{event.entry_end ?? '—'}</dd>
           </dl>
 
@@ -145,11 +154,11 @@ function EventDetail() {
             <>
               <h2 className="section-title">何日必要か</h2>
               <dl className="event-detail-dl">
-                <dt>前泊推奨地</dt>
+                <dt>どこに泊まればいい？</dt>
                 <dd className={accommodations.some((a) => a.recommended_area) ? '' : 'empty-value'}>
                   {accommodations.map((a) => a.recommended_area).filter(Boolean).join('、') || '—'}
                 </dd>
-                <dt>宿泊費用目安（星3）</dt>
+                <dt>宿泊費の目安は？</dt>
                 <dd className={accommodations.some((a) => a.avg_cost_3star != null) ? '' : 'empty-value'}>
                   {accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star != null
                     ? `約${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円`
@@ -158,12 +167,26 @@ function EventDetail() {
               </dl>
             </>
           )}
+          {event.updated_at && (
+            <p className="last-updated">
+              最終更新: <time dateTime={event.updated_at}>{event.updated_at.slice(0, 10)}</time>
+            </p>
+          )}
         </section>
       </div>
+      </>
     )
   }
 
   return (
+    <>
+      <Helmet>
+        <title>{event.name} | yabai.travel</title>
+        <meta name="description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+        <meta property="og:title" content={`${event.name} | yabai.travel`} />
+        <meta property="og:description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+        <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}`} />
+      </Helmet>
     <div className="event-detail-page">
       <header className="event-detail-header">
         <Link to={langPrefix} className="back-link">← 一覧に戻る</Link>
@@ -205,8 +228,14 @@ function EventDetail() {
             </li>
           ))}
         </ul>
+        {event.updated_at && (
+          <p className="last-updated">
+            最終更新: <time dateTime={event.updated_at}>{event.updated_at.slice(0, 10)}</time>
+          </p>
+        )}
       </section>
     </div>
+    </>
   )
 }
 

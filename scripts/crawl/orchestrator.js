@@ -60,7 +60,13 @@ async function run() {
        OR race_type IS NULL
      )
      AND (enrich_quality IS NULL OR enrich_quality != 'low')
-     AND (last_attempted_at IS NULL OR last_attempted_at < NOW() - INTERVAL '7 days')
+     AND last_error_type IS DISTINCT FROM 'bug'
+     AND (
+       last_attempted_at IS NULL
+       OR (last_error_type = 'not_available' AND last_attempted_at < NOW() - INTERVAL '7 days')
+       OR (last_error_type = 'temporary'     AND last_attempted_at < NOW() - INTERVAL '0 days')
+       OR (last_error_type IS NULL           AND last_attempted_at < NOW() - INTERVAL '7 days')
+     )
      ORDER BY
        CASE WHEN collected_at IS NULL THEN 0 ELSE 1 END,
        updated_at ASC`
