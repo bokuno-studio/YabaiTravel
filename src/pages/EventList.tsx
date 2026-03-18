@@ -124,7 +124,11 @@ function EventList() {
 
   const costGlobalMax = useMemo(() => {
     if (costPrices.length === 0) return 100000
-    return Math.ceil(Math.max(...costPrices) / 10000) * 10000
+    const sorted = [...costPrices].sort((a, b) => a - b)
+    // 外れ値の影響を避けるため95パーセンタイルを上限に使用
+    const p95idx = Math.min(Math.floor(sorted.length * 0.95), sorted.length - 1)
+    const p95 = sorted[p95idx]
+    return Math.ceil(p95 / 10000) * 10000
   }, [costPrices])
 
   /** DB に存在するレース種別を定義順で取得（#154） */
@@ -267,12 +271,10 @@ function EventList() {
       }
     }
     if (costMin > 0 || costMax < Infinity) {
-      if (event.total_cost_estimate) {
-        const cost = parseInt(event.total_cost_estimate, 10)
-        if (!isNaN(cost)) {
-          if (cost < costMin || cost > costMax) return false
-        }
-      }
+      // 集計未完了（null）はコストフィルターの対象外
+      if (!event.total_cost_estimate) return false
+      const cost = parseInt(event.total_cost_estimate, 10)
+      if (isNaN(cost) || cost < costMin || cost > costMax) return false
     }
     const categories = event.categories ?? []
     const hasCategoryFilter = distanceRanges.size > 0 || timeLimitMin
