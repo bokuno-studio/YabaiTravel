@@ -1,69 +1,81 @@
-.app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem 2rem 3rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  color: #1f2937;
+/* App Layout */
+.app-with-sidebar {
+  min-height: 100vh;
+  background-color: var(--color-bg-primary);
 }
 
+/* Header Styles */
 .app-header {
   text-align: left;
+  margin-bottom: 1.5rem;
 }
 
 .app-header h1 {
-  font-size: 2rem;
-  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.app-header h1 a {
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.app-header h1 a:hover {
+  color: var(--color-accent);
 }
 
 .app-subtitle {
   margin: 0.25rem 0 0;
-  color: #64748b;
+  color: var(--color-text-secondary);
   font-size: 0.9rem;
 }
 
+/* Filter Section */
 .filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
-  border-radius: 0.75rem;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  gap: 1.25rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
 }
 
 .filter-group {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.5rem;
   min-width: 160px;
 }
 
-.filter-group label {
-  font-size: 0.8rem;
-  color: #64748b;
+.filter-group > label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
 }
 
 .filter-group select,
 .filter-group input[type='number'],
 .filter-group input[type='month'] {
-  padding: 0.4rem 0.6rem;
-  border-radius: 0.5rem;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  color: #1f2937;
-  font-size: 0.9rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
 }
 
 .filter-group select:focus,
 .filter-group input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-muted);
 }
 
+/* Filter Checkboxes */
 .filter-checkboxes {
   display: flex;
   flex-wrap: wrap;
@@ -73,84 +85,68 @@
 .filter-checkbox {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.9rem;
+  gap: 0.5rem;
+  font-size: 0.875rem;
   cursor: pointer;
-  color: #475569;
+  color: var(--color-text-secondary);
+  transition: color 0.15s ease;
 }
 
-.filter-checkbox input {
-  accent-color: #3b82f6;
+.filter-checkbox:hover {
+  color: var(--color-text-primary);
 }
 
+.filter-checkbox input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+/* Filter Categories inner */
+.filter-categories-inner {
+  max-height: 120px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+/* Filter Chips */
 .filter-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.5rem;
 }
 
 .filter-chip {
-  padding: 0.25rem 0.65rem;
+  padding: 0.375rem 0.875rem;
   border-radius: 999px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  color: #475569;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
   font-size: 0.8rem;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .filter-chip:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+  background: var(--color-bg-card-hover);
+  border-color: var(--color-border-hover);
+  color: var(--color-text-primary);
 }
 
 .filter-chip--active {
-  background: #3b82f6;
-  color: #fff;
-  border-color: #3b82f6;
+  background: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
 }
 
 .filter-chip--active:hover {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
 }
 
-.cost-range-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.cost-range-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: #64748b;
-}
-
-.cost-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background: #e2e8f0;
-  outline: none;
-}
-
-.cost-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #3b82f6;
-  cursor: pointer;
-  border: 2px solid #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-
+/* Event List */
 .event-list ul {
   list-style: none;
   padding: 0;
@@ -161,57 +157,184 @@
 }
 
 .event-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.9rem 1.1rem;
-  border-radius: 0.75rem;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  transition: all 0.2s ease;
+}
+
+.event-card:hover {
+  background: var(--color-bg-card-hover);
+  border-color: var(--color-border-hover);
+  transform: translateY(-1px);
 }
 
 .event-main h2 {
   margin: 0;
   font-size: 1rem;
-  color: #0f172a;
+  font-weight: 600;
+  color: var(--color-text-primary);
 }
 
 .event-meta {
-  margin: 0.2rem 0 0;
+  margin: 0.25rem 0 0;
   font-size: 0.85rem;
-  color: #475569;
+  color: var(--color-text-secondary);
 }
 
+/* Badges */
 .badge {
-  padding: 0.15rem 0.6rem;
-  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
   font-size: 0.75rem;
-  border: 1px solid transparent;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   white-space: nowrap;
 }
 
-/* レース種別・カテゴリは色分けせず統一装飾（#25） */
+/* Race type badges - Athletic styling */
 .badge:not(.badge-stay) {
-  background: #f1f5f9;
-  color: #475569;
-  border-color: #e2e8f0;
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
 }
 
+/* Specific race type colors */
+.badge-trail {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border-color: #22c55e;
+}
+
+.badge-marathon {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.badge-spartan {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+.badge-hyrox {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border-color: #f59e0b;
+}
+
+.badge-triathlon {
+  background: rgba(6, 182, 212, 0.15);
+  color: #06b6d4;
+  border-color: #06b6d4;
+}
+
+.badge-obstacle {
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+  border-color: #a855f7;
+}
+
+.badge-adventure {
+  background: rgba(236, 72, 153, 0.15);
+  color: #ec4899;
+  border-color: #ec4899;
+}
+
+.badge-cycling {
+  background: rgba(132, 204, 22, 0.15);
+  color: #84cc16;
+  border-color: #84cc16;
+}
+
+.badge-duathlon {
+  background: rgba(20, 184, 166, 0.15);
+  color: #14b8a6;
+  border-color: #14b8a6;
+}
+
+.badge-rogaining {
+  background: rgba(251, 146, 60, 0.15);
+  color: #fb923c;
+  border-color: #fb923c;
+}
+
+.badge-other {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}
+
+/* Empty state */
 .empty {
-  margin: 0.5rem 0 0;
-  color: #64748b;
-  font-size: 0.9rem;
+  margin: 2rem 0;
+  padding: 3rem 2rem;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  background: var(--color-bg-card);
+  border-radius: 12px;
+  border: 1px dashed var(--color-border);
 }
 
+/* Cost Range Slider */
+.cost-range-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cost-range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.cost-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-border);
+  outline: none;
+}
+
+.cost-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  cursor: pointer;
+  border: 2px solid var(--color-bg-primary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Mobile Responsive */
 @media (max-width: 640px) {
+  .filters {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .filter-group {
+    min-width: 100%;
+  }
+
   .event-card {
     flex-direction: column;
     align-items: flex-start;
   }
 
   .badge {
-    align-self: flex-end;
+    margin-top: 0.5rem;
   }
 }

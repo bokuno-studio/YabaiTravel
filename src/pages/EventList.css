@@ -1,34 +1,47 @@
+/* Event List Page - Dark Athletic Theme */
 .event-list-page {
-  max-width: 1280px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem 2rem 3rem;
+  padding: 1.5rem 1.5rem 3rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  color: #1f2937;
 }
 
 .event-list-loading,
 .event-list-error {
-  max-width: 1280px;
+  max-width: 1200px;
   margin: 2rem auto;
-  padding: 2rem;
+  padding: 3rem;
   text-align: center;
-  color: #475569;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
 }
 
 .event-list-error {
-  color: #dc2626;
+  color: var(--color-error);
+  border-color: var(--color-error);
+  background: var(--color-error-bg);
 }
 
+/* Stats Row */
 .app-stats {
   display: flex;
   gap: 1.5rem;
   font-size: 0.8rem;
-  color: #94a3b8;
-  margin: 0.25rem 0 0;
+  color: var(--color-text-muted);
+  margin: 0.5rem 0 0;
 }
 
+.app-stats span {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Event Card Structure */
 .event-card-inner {
   display: flex;
   flex-direction: column;
@@ -37,17 +50,26 @@
 
 .event-card-main {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
   text-decoration: none;
   color: inherit;
 }
 
-.event-card-main:hover {
-  opacity: 0.9;
+.event-card-main:hover h2 {
+  color: var(--color-accent);
 }
 
+.event-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Category Chips */
 .event-category-chips {
   display: flex;
   flex-wrap: wrap;
@@ -56,55 +78,53 @@
 }
 
 .category-chip {
-  display: inline-block;
-  padding: 0.2rem 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
   font-size: 0.75rem;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  color: #475569;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-secondary);
   text-decoration: none;
+  transition: all 0.15s ease;
 }
 
 .category-chip:hover {
-  background: #e2e8f0;
-  border-color: #cbd5e1;
-  color: #0f172a;
+  background: var(--color-bg-card-hover);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
+/* Entry Period */
 .event-entry-period {
-  margin: 0.25rem 0 0;
+  margin: 0.35rem 0 0;
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
-.event-card-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-}
-
+/* Filter More */
 .filter-more {
-  font-size: 0.85rem;
-  color: #64748b;
-  align-self: center;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  padding: 0.25rem 0.5rem;
 }
 
-/* enrich未完了イベント (#63) */
+/* Pending Events (enrich not complete) */
 .event-card--pending {
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .event-card-main--disabled {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
   color: inherit;
   cursor: default;
 }
 
+/* Lang Switcher (legacy support) */
 .app-header-row {
   display: flex;
   align-items: center;
@@ -118,49 +138,134 @@
 }
 
 .lang-switcher a {
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
+  padding: 0.25rem 0.625rem;
+  border-radius: 6px;
   font-size: 0.75rem;
+  font-weight: 500;
   text-decoration: none;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  transition: all 0.15s ease;
+}
+
+.lang-switcher a:hover {
+  background: var(--color-bg-card-hover);
 }
 
 .lang-switcher a.active {
-  background: #3b82f6;
-  color: #fff;
-  border-color: #3b82f6;
+  background: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
 }
 
+/* Footer */
 .app-footer {
-  margin-top: 2rem;
-  padding: 1rem 0;
-  border-top: 1px solid #e2e8f0;
+  margin-top: 3rem;
+  padding: 1.5rem 0;
+  border-top: 1px solid var(--color-border);
   text-align: center;
 }
 
 .app-footer a {
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
   text-decoration: none;
+  transition: color 0.15s ease;
 }
 
 .app-footer a:hover {
-  color: #3b82f6;
+  color: var(--color-accent);
 }
 
+/* Event Description */
 .event-description {
   margin: 0.5rem 0 0;
   font-size: 0.9rem;
-  color: #475569;
+  color: var(--color-text-secondary);
   line-height: 1.5;
 }
 
+/* Pending Badge */
 .badge-pending {
-  background: #fbbf24;
-  color: #78350f;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
   font-size: 0.7rem;
-  padding: 0.15rem 0.4rem;
+  padding: 0.2rem 0.5rem;
   border-radius: 4px;
   font-weight: 600;
+  border: 1px solid var(--color-warning);
+}
+
+/* Filter Race Types - Better layout */
+.filter-race-types {
+  flex: 1;
+  min-width: 300px;
+}
+
+.filter-race-types .filter-checkboxes {
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+/* Filter Months */
+.filter-months {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Filter Distance */
+.filter-distance {
+  flex: 1;
+  min-width: 280px;
+}
+
+/* Filter Categories */
+.filter-categories {
+  flex: 1;
+  min-width: 280px;
+}
+
+/* Skeleton Loading Animation */
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.skeleton {
+  background: var(--color-bg-elevated);
+  border-radius: 6px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-card {
+  height: 80px;
+  border-radius: 12px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .event-list-page {
+    padding: 1rem;
+  }
+
+  .event-card-main {
+    flex-direction: column;
+  }
+
+  .event-card-badges {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+
+  .filter-race-types,
+  .filter-months,
+  .filter-distance,
+  .filter-categories {
+    min-width: 100%;
+  }
 }
