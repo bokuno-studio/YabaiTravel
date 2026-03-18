@@ -95,6 +95,10 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
           fetchFailed = true
           console.log(`  [fallback] ${name?.slice(0, 40)} | ${e.message} → Tavily検索`)
         } else {
+          await client.query(
+            `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = enrich_attempt_count + 1 WHERE id = $1`,
+            [eventId]
+          )
           return { success: false, eventId, error: `fetch failed: ${e.message}` }
         }
       }
@@ -109,6 +113,10 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
       // 直接取得成功 → LLM 抽出
       const content = extractRelevantContent(html)
       if (content.length < 50) {
+        await client.query(
+          `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = enrich_attempt_count + 1 WHERE id = $1`,
+          [eventId]
+        )
         return { success: false, eventId, error: 'page content too short' }
       }
       const result = await callLlm(anthropic, EVENT_SYSTEM_PROMPT, `「${name}」の公式ページ内容:\n\n${content}`)
@@ -119,6 +127,10 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
       const query = `${name} 公式サイト エントリー 開催日 距離`
       const searchResults = await fetchTavilySearch(query, { includeUrls: true })
       if (searchResults.length === 0) {
+        await client.query(
+          `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = enrich_attempt_count + 1 WHERE id = $1`,
+          [eventId]
+        )
         return { success: false, eventId, error: 'no search results' }
       }
 
