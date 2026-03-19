@@ -3,6 +3,7 @@ export interface UserProfile {
   display_name: string | null
   avatar_url: string | null
   membership: 'free' | 'supporter'
+  role: 'user' | 'admin'
   stripe_customer_id?: string | null
   stripe_subscription_id?: string | null
   square_customer_id?: string | null

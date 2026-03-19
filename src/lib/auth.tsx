@@ -11,6 +11,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
   isSupporter: boolean
+  isAdmin: boolean
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
   signInWithGoogle: async () => {},
   signOut: async () => {},
   isSupporter: false,
+  isAdmin: false,
 })
 
 export function useAuth() {
@@ -128,11 +130,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null)
   }, [])
 
-  const isSupporter = profile?.membership === 'supporter'
+  const isAdmin = profile?.role === 'admin'
+  const isSupporter = isAdmin || profile?.membership === 'supporter'
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, session, loading, signInWithGoogle, signOut, isSupporter }}
+      value={{ user, profile, session, loading, signInWithGoogle, signOut, isSupporter, isAdmin }}
     >
       {children}
     </AuthContext.Provider>
