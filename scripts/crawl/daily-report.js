@@ -131,7 +131,7 @@ async function getWorkflowRuns() {
       const runs = (data.workflow_runs || []).slice(0, 3).map((r) => ({
         name: wf.replace('.yml', ''),
         status: r.conclusion,
-        date: r.updated_at?.slice(0, 16).replace('T', ' '),
+        date: r.updated_at ? new Date(r.updated_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
       }))
       results.push(...runs)
     } catch { /* ignore */ }
@@ -159,7 +159,16 @@ function pct(done, total) {
 }
 
 function estimateDays(backlog, history, field) {
-  if (history.length < 2) return '?'
+  if (backlog <= 0) return '完了'
+  if (history.length < 2) {
+    // Only 1 day of data - estimate from current done count (assume linear from start)
+    const current = history[0]?.[field] ?? 0
+    if (current <= 0) return '不明'
+    // Rough estimate: if we processed `current` items so far, assume similar daily rate
+    const rate = current / 7 // assume data was collected over ~1 week
+    if (rate <= 0) return '不明'
+    return `約${Math.ceil(backlog / rate)}`
+  }
   // Average daily consumption over available history
   const first = history[0]
   const last = history[history.length - 1]
@@ -167,7 +176,7 @@ function estimateDays(backlog, history, field) {
   const consumed = last[field] - first[field]
   const rate = consumed / days
   if (rate <= 0) return '停滞中'
-  return Math.ceil(backlog / rate).toString()
+  return `約${Math.ceil(backlog / rate)}`
 }
 
 function barGraph(history, valueKey, maxWidth = 20) {
