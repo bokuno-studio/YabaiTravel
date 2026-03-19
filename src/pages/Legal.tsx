@@ -119,7 +119,7 @@ function Legal() {
                 </ul>
               ) : (
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Crew メンバーシップ: $10/月（\u00a51,500/月相当）</li>
+                  <li>Crew メンバーシップ: $10/月（¥1,500/月相当）</li>
                   <li>単発寄付: 任意の金額</li>
                 </ul>
               )
