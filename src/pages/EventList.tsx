@@ -60,51 +60,79 @@ function parseNumSetParam(searchParams: URLSearchParams, key: string): Set<numbe
   return new Set(val.split(',').filter(Boolean).map(Number))
 }
 
+/** Save filter state to sessionStorage */
+function saveFiltersToSession(filters: Record<string, string>) {
+  try { sessionStorage.setItem('yabai_filters', JSON.stringify(filters)) } catch { /* ignore */ }
+}
+
+/** Load filter state from sessionStorage */
+function loadFiltersFromSession(): Record<string, string> {
+  try {
+    const raw = sessionStorage.getItem('yabai_filters')
+    return raw ? JSON.parse(raw) : {}
+  } catch { return {} }
+}
+
 function EventList() {
   const [events, setEvents] = useState<EventWithCategories[]>([])
   const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // #1: Restore filter state from URL search params
+  // Restore filter state: URL params > sessionStorage > defaults
+  const stored = loadFiltersFromSession()
+
   const [raceTypes, setRaceTypes] = useState<Set<string>>(() => {
     const fromParams = parseSetParam(searchParams, 'raceTypes')
     if (fromParams.size > 0) return fromParams
     const initialType = searchParams.get('type')
-    return initialType ? new Set([initialType]) : new Set()
+    if (initialType) return new Set([initialType])
+    if (stored.raceTypes) return new Set(stored.raceTypes.split(',').filter(Boolean))
+    return new Set()
   })
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => parseSetParam(searchParams, 'categories'))
-  const [selectedMonths, setSelectedMonths] = useState<Set<string>>(() => parseSetParam(searchParams, 'months'))
-  const [distanceRanges, setDistanceRanges] = useState<Set<number>>(() => parseNumSetParam(searchParams, 'distances'))
-  const [timeLimitMin, setTimeLimitMin] = useState<string>(() => searchParams.get('timeLimitMin') ?? '')
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => {
+    const fromParams = parseSetParam(searchParams, 'categories')
+    return fromParams.size > 0 ? fromParams : stored.categories ? new Set(stored.categories.split(',').filter(Boolean)) : new Set()
+  })
+  const [selectedMonths, setSelectedMonths] = useState<Set<string>>(() => {
+    const fromParams = parseSetParam(searchParams, 'months')
+    return fromParams.size > 0 ? fromParams : stored.months ? new Set(stored.months.split(',').filter(Boolean)) : new Set()
+  })
+  const [distanceRanges, setDistanceRanges] = useState<Set<number>>(() => {
+    const fromParams = parseNumSetParam(searchParams, 'distances')
+    return fromParams.size > 0 ? fromParams : stored.distances ? new Set(stored.distances.split(',').filter(Boolean).map(Number)) : new Set()
+  })
+  const [timeLimitMin, setTimeLimitMin] = useState<string>(() => searchParams.get('timeLimitMin') ?? stored.timeLimitMin ?? '')
   const [costMin, setCostMin] = useState<number>(() => {
-    const v = searchParams.get('costMin')
+    const v = searchParams.get('costMin') ?? stored.costMin
     return v ? Number(v) : 0
   })
   const [costMax, setCostMax] = useState<number>(() => {
-    const v = searchParams.get('costMax')
+    const v = searchParams.get('costMax') ?? stored.costMax
     return v ? Number(v) : Infinity
   })
-  const [entryStatus, setEntryStatus] = useState<string>(() => searchParams.get('entryStatus') ?? 'active')
-  const [showPastEvents, setShowPastEvents] = useState(() => searchParams.get('showPast') === '1')
-  const [showMap, setShowMap] = useState(true) // #4: default open
+  const [entryStatus, setEntryStatus] = useState<string>(() => searchParams.get('entryStatus') ?? stored.entryStatus ?? 'active')
+  const [showPastEvents, setShowPastEvents] = useState(() => (searchParams.get('showPast') ?? stored.showPast) === '1')
+  const [showMap, setShowMap] = useState(true)
 
   // #5, #6: Push stats to context for sidebar
   const { setLastUpdated: setSidebarLastUpdated, setWeeklyNewCount: setSidebarWeeklyNewCount } = useSidebarStats()
 
-  // #1: Sync filter state to URL search params
+  // Sync filter state to URL search params + sessionStorage
   useEffect(() => {
     const params = new URLSearchParams()
-    if (raceTypes.size > 0) params.set('raceTypes', [...raceTypes].join(','))
-    if (selectedMonths.size > 0) params.set('months', [...selectedMonths].join(','))
-    if (selectedCategories.size > 0) params.set('categories', [...selectedCategories].join(','))
-    if (distanceRanges.size > 0) params.set('distances', [...distanceRanges].join(','))
-    if (timeLimitMin) params.set('timeLimitMin', timeLimitMin)
-    if (costMin > 0) params.set('costMin', String(costMin))
-    if (costMax < Infinity) params.set('costMax', String(costMax))
-    if (entryStatus !== 'active') params.set('entryStatus', entryStatus)
-    if (showPastEvents) params.set('showPast', '1')
+    const store: Record<string, string> = {}
+    if (raceTypes.size > 0) { const v = [...raceTypes].join(','); params.set('raceTypes', v); store.raceTypes = v }
+    if (selectedMonths.size > 0) { const v = [...selectedMonths].join(','); params.set('months', v); store.months = v }
+    if (selectedCategories.size > 0) { const v = [...selectedCategories].join(','); params.set('categories', v); store.categories = v }
+    if (distanceRanges.size > 0) { const v = [...distanceRanges].join(','); params.set('distances', v); store.distances = v }
+    if (timeLimitMin) { params.set('timeLimitMin', timeLimitMin); store.timeLimitMin = timeLimitMin }
+    if (costMin > 0) { params.set('costMin', String(costMin)); store.costMin = String(costMin) }
+    if (costMax < Infinity) { params.set('costMax', String(costMax)); store.costMax = String(costMax) }
+    if (entryStatus !== 'active') { params.set('entryStatus', entryStatus); store.entryStatus = entryStatus }
+    if (showPastEvents) { params.set('showPast', '1'); store.showPast = '1' }
     setSearchParams(params, { replace: true })
+    saveFiltersToSession(store)
   }, [raceTypes, selectedMonths, selectedCategories, distanceRanges, timeLimitMin, costMin, costMax, entryStatus, showPastEvents, setSearchParams])
 
   useEffect(() => {
@@ -291,6 +319,7 @@ function EventList() {
     setCostMax(Infinity)
     setEntryStatus('active')
     setShowPastEvents(false)
+    try { sessionStorage.removeItem('yabai_filters') } catch { /* ignore */ }
   }, [])
 
   const filtered = events.filter((event) => {
