@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? (amount || 500)
         : (amount || 500)
 
-      const response = await client.checkout.createPaymentLink({
+      const response = await client.checkout.paymentLinks.create({
         idempotencyKey: randomUUID(),
         quickPay: {
           name: 'yabai.travel 応援',
@@ -52,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // with a note that this is a membership activation.
       // Recurring billing will be handled via Square Invoices or manual renewal.
       const isJpy = lang !== 'en'
-      const response = await client.checkout.createPaymentLink({
+      const response = await client.checkout.paymentLinks.create({
         idempotencyKey: randomUUID(),
         quickPay: {
           name: isJpy ? 'yabai.travel Crew メンバーシップ' : 'yabai.travel Crew Membership',
