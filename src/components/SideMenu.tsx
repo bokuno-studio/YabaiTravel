@@ -150,7 +150,7 @@ function SideMenuContent({
           onClick={onNavigate}
         >
           <MessageSquare className="h-4 w-4" />
-          {isEn ? 'Feature Requests' : '要望掲示板'}
+          {isEn ? 'Feature Requests' : '機能リクエスト'}
         </Link>
         <Link
           to={`${langPrefix}/sources`}
