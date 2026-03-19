@@ -6,11 +6,15 @@ import type { EventWithCategories, Category } from '../types/event'
 import EventMap from '../components/EventMap'
 import { EventCard } from '../components/EventCard'
 import { EventCardSkeleton } from '../components/EventCardSkeleton'
-import { FilterBar } from '../components/FiltersSidebar'
+import { getActiveFilterChips } from '../components/FiltersSidebar'
 import type { FiltersSidebarProps } from '../components/FiltersSidebar'
+import SidebarFilters from '../components/SidebarFilters'
 import { Header } from '../components/Header'
 import { Button } from '@/components/ui/button'
-import { MapIcon, MapPinOff } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { MapIcon, MapPinOff, SlidersHorizontal, X } from 'lucide-react'
+import { useSidebarFilter } from '@/contexts/SidebarFilterContext'
 
 /** interval 文字列から時間数を取得（フィルタ用） */
 function parseIntervalHours(v: string | null): number | null {
@@ -320,6 +324,16 @@ function EventList() {
     lang,
   }
 
+  // Inject filters into sidebar via context
+  const { setFilterNode } = useSidebarFilter()
+  useEffect(() => {
+    setFilterNode(<SidebarFilters {...filterProps} />)
+    return () => setFilterNode(null)
+  })
+
+  const activeChips = getActiveFilterChips(filterProps)
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
+
   if (error) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-12 text-center">
@@ -350,34 +364,83 @@ function EventList() {
           statsWeeklyNewLabel={t('stats.weeklyNew')}
         />
 
-        {/* Unified filter bar: active chips + 絞り込み button */}
-        <div className="mb-4">
-          <FilterBar {...filterProps} />
-        </div>
+        {/* Active filter chips + toolbar */}
+        <div className="mb-4 space-y-2">
+          {/* Active filter chips row */}
+          <div className="flex items-center gap-2">
+            {/* Mobile-only filter button */}
+            <Sheet open={mobileFilterOpen} onOpenChange={setMobileFilterOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="shrink-0 min-[960px]:hidden">
+                  <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" />
+                  {lang === 'en' ? 'Filters' : '絞り込み'}
+                  {activeChips.length > 0 && (
+                    <span className="ml-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                      {activeChips.length}
+                    </span>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72 overflow-y-auto p-0">
+                <SheetHeader className="px-4 pt-4">
+                  <SheetTitle>{lang === 'en' ? 'Filters' : '絞り込み'}</SheetTitle>
+                </SheetHeader>
+                <div className="mt-2">
+                  <SidebarFilters {...filterProps} />
+                </div>
+              </SheetContent>
+            </Sheet>
 
-        {/* Toolbar: result count + map toggle */}
-        <div className="mb-4 flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">
-            {loading ? '...' : `${filtered.length} ${lang === 'en' ? 'events' : '件'}`}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowMap((prev) => !prev)}
-            className="text-xs text-muted-foreground"
-          >
-            {showMap ? (
-              <>
-                <MapPinOff className="mr-1 h-3.5 w-3.5" />
-                {lang === 'en' ? 'Hide Map' : '地図を非表示'}
-              </>
-            ) : (
-              <>
-                <MapIcon className="mr-1 h-3.5 w-3.5" />
-                {lang === 'en' ? 'Show Map' : '地図を表示'}
-              </>
-            )}
-          </Button>
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+              {activeChips.length === 0 && (
+                <span className="text-sm text-muted-foreground hidden min-[960px]:inline">
+                  {lang === 'en' ? 'No filters applied' : 'フィルターなし'}
+                </span>
+              )}
+              {activeChips.map((chip) => (
+                <Badge
+                  key={chip.key}
+                  variant="secondary"
+                  className="flex items-center gap-1 pl-2 pr-1 py-0.5 text-xs"
+                >
+                  <span>{chip.label}</span>
+                  <button
+                    type="button"
+                    onClick={chip.onRemove}
+                    className="ml-0.5 rounded-full p-0.5 hover:bg-destructive/20 transition-colors"
+                    aria-label={`Remove ${chip.label}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* Result count + map toggle */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              {loading ? '...' : `${filtered.length} ${lang === 'en' ? 'events' : '件'}`}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowMap((prev) => !prev)}
+              className="text-xs text-muted-foreground"
+            >
+              {showMap ? (
+                <>
+                  <MapPinOff className="mr-1 h-3.5 w-3.5" />
+                  {lang === 'en' ? 'Hide Map' : '地図を非表示'}
+                </>
+              ) : (
+                <>
+                  <MapIcon className="mr-1 h-3.5 w-3.5" />
+                  {lang === 'en' ? 'Show Map' : '地図を表示'}
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Map (toggle, max height 300px) */}

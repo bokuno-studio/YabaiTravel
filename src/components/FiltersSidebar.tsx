@@ -51,7 +51,7 @@ export interface FiltersSidebarProps {
 }
 
 /** Format year-month for display: "2026年3月" or "2026/03" */
-function formatYearMonth(ym: string, lang: string | undefined): string {
+export function formatYearMonth(ym: string, lang: string | undefined): string {
   const [year, month] = ym.split('-')
   const m = parseInt(month, 10)
   if (lang === 'en') return `${year}/${month}`
@@ -73,7 +73,7 @@ function countActiveFilters(props: FiltersSidebarProps): number {
 }
 
 /** Build list of active filter chips for display */
-function getActiveFilterChips(props: FiltersSidebarProps): { key: string; label: string; onRemove: () => void }[] {
+export function getActiveFilterChips(props: FiltersSidebarProps): { key: string; label: string; onRemove: () => void }[] {
   const chips: { key: string; label: string; onRemove: () => void }[] = []
 
   // Race types

@@ -2,6 +2,7 @@ import { Link, useParams, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { Search, Heart, MessageSquare, Info, FileText, ChevronDown, Menu, X } from 'lucide-react'
 import AuthButton from './AuthButton'
+import { useSidebarFilter } from '@/contexts/SidebarFilterContext'
 
 const SPORT_GUIDES = [
   { key: 'marathon', ja: 'マラソン', en: 'Marathon' },
@@ -24,12 +25,14 @@ function SideMenuContent({
   isEn,
   location,
   onNavigate,
+  filterNode,
 }: {
   lang: string | undefined
   langPrefix: string
   isEn: boolean
   location: ReturnType<typeof useLocation>
   onNavigate: () => void
+  filterNode?: React.ReactNode
 }) {
   const [guidesExpanded, setGuidesExpanded] = useState(false)
 
@@ -123,6 +126,14 @@ function SideMenuContent({
         </div>
       </div>
 
+      {/* Filter Section (injected from EventList) */}
+      {filterNode && (
+        <>
+          <div className="border-t border-border my-4" />
+          {filterNode}
+        </>
+      )}
+
       {/* Separator */}
       <div className="border-t border-border my-4" />
 
@@ -195,6 +206,7 @@ function SideMenu() {
   const langPrefix = `/${lang || 'ja'}`
   const isEn = lang === 'en'
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { filterNode } = useSidebarFilter()
 
   const closeMobile = () => setMobileOpen(false)
 
@@ -217,6 +229,7 @@ function SideMenu() {
           isEn={isEn}
           location={location}
           onNavigate={closeMobile}
+          filterNode={filterNode}
         />
       </nav>
 
@@ -232,6 +245,7 @@ function SideMenu() {
           isEn={isEn}
           location={location}
           onNavigate={closeMobile}
+          filterNode={filterNode}
         />
       </nav>
 

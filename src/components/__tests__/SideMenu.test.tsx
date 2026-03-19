@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import SideMenu from '../SideMenu'
+import { SidebarFilterProvider } from '@/contexts/SidebarFilterContext'
 
 vi.mock('@/lib/auth', () => ({
   useAuth: () => ({
@@ -16,13 +17,15 @@ vi.mock('@/lib/auth', () => ({
   }),
 }))
 
-function renderMenu(lang = 'ja', path = '/ja') {
+function renderMenu(_lang = 'ja', path = '/ja') {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route path="/:lang/*" element={<SideMenu />} />
-        <Route path="/:lang" element={<SideMenu />} />
-      </Routes>
+      <SidebarFilterProvider>
+        <Routes>
+          <Route path="/:lang/*" element={<SideMenu />} />
+          <Route path="/:lang" element={<SideMenu />} />
+        </Routes>
+      </SidebarFilterProvider>
     </MemoryRouter>
   )
 }
