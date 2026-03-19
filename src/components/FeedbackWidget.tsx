@@ -1,19 +1,16 @@
 import { useState, useEffect } from 'react'
-import { MessageSquare, X, Loader2, Lightbulb, Bug, CheckCircle } from 'lucide-react'
+import { Bug, X, Loader2, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth'
-import { cn } from '@/lib/utils'
 
 function FeedbackWidget() {
-  const { user, isSupporter } = useAuth()
+  const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [content, setContent] = useState('')
-  const [type, setType] = useState<'feature' | 'bug'>('feature')
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
 
-  // Auto-close after success
   useEffect(() => {
     if (!success) return
     const timer = setTimeout(() => {
@@ -33,7 +30,7 @@ function FeedbackWidget() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           content: content.trim(),
-          feedback_type: type,
+          feedback_type: 'bug',
           source_url: window.location.href,
           user_id: user?.id || null,
           channel: 'widget',
@@ -45,7 +42,6 @@ function FeedbackWidget() {
         return
       }
       setContent('')
-      setType('feature')
       setSuccess(true)
     } catch {
       setError('送信に失敗しました')
@@ -56,28 +52,22 @@ function FeedbackWidget() {
 
   return (
     <>
-      {/* Floating button */}
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+          className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full bg-red-500 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-red-600 transition-colors"
         >
-          <MessageSquare className="size-4" />
-          フィードバック
+          <Bug className="size-4" />
+          バグ報告
         </button>
       )}
 
-      {/* Popup */}
       {open && (
         <div className="fixed bottom-4 right-4 z-50 w-80 rounded-xl border bg-background shadow-xl">
-          {/* Header */}
           <div className="flex items-center justify-between border-b px-4 py-3">
-            <h3 className="text-sm font-semibold">フィードバック</h3>
+            <h3 className="text-sm font-semibold">バグ報告</h3>
             <button
-              onClick={() => {
-                setOpen(false)
-                setSuccess(false)
-              }}
+              onClick={() => { setOpen(false); setSuccess(false) }}
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="size-4" />
@@ -89,67 +79,20 @@ function FeedbackWidget() {
               <div className="flex flex-col items-center gap-2 py-4 text-center">
                 <CheckCircle className="size-10 text-green-500" />
                 <p className="font-medium">送信しました！</p>
-                <p className="text-xs text-muted-foreground">
-                  フィードバックありがとうございます
-                </p>
+                <p className="text-xs text-muted-foreground">報告ありがとうございます</p>
               </div>
             ) : (
               <>
-                {/* Type selector */}
-                <div className="flex gap-2 mb-3">
-                  <button
-                    onClick={() => setType('feature')}
-                    className={cn(
-                      'flex items-center gap-1 rounded-full px-2.5 py-1 text-xs border transition-colors',
-                      type === 'feature'
-                        ? 'border-blue-300 bg-blue-50 text-blue-700'
-                        : 'border-border text-muted-foreground hover:border-blue-200'
-                    )}
-                  >
-                    <Lightbulb className="size-3" />
-                    要望
-                  </button>
-                  {isSupporter && (
-                    <button
-                      onClick={() => setType('bug')}
-                      className={cn(
-                        'flex items-center gap-1 rounded-full px-2.5 py-1 text-xs border transition-colors',
-                        type === 'bug'
-                          ? 'border-red-300 bg-red-50 text-red-700'
-                          : 'border-border text-muted-foreground hover:border-red-200'
-                      )}
-                    >
-                      <Bug className="size-3" />
-                      バグ
-                    </button>
-                  )}
-                </div>
-
                 <textarea
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[80px] resize-y"
-                  placeholder="どんな改善があると嬉しいですか？"
+                  placeholder="どこで何が起きましたか？"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                 />
-
-                {error && (
-                  <p className="mt-1 text-xs text-destructive">{error}</p>
-                )}
-
+                {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
                 <div className="mt-3 flex justify-end">
-                  <Button
-                    size="sm"
-                    onClick={handleSubmit}
-                    disabled={!content.trim() || submitting}
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="size-3 animate-spin" />
-                        送信中...
-                      </>
-                    ) : (
-                      '送信'
-                    )}
+                  <Button size="sm" onClick={handleSubmit} disabled={!content.trim() || submitting}>
+                    {submitting ? (<><Loader2 className="size-3 animate-spin" />送信中...</>) : '送信'}
                   </Button>
                 </div>
               </>

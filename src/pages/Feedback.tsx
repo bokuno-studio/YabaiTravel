@@ -462,29 +462,42 @@ function Feedback() {
     <>
       <Helmet>
         <title>
-          {isEn ? 'Feedback | yabai.travel' : '要望・フィードバック | yabai.travel'}
+          {isEn ? 'Community Board | yabai.travel' : 'コミュニティ掲示板 | yabai.travel'}
         </title>
         <meta
           name="description"
           content={
             isEn
-              ? 'Send us your feedback, bug reports and feature requests.'
-              : 'バグ報告・ご要望・機能リクエストをお寄せください。'
+              ? 'Community board for feature requests and discussions.'
+              : 'コミュニティメンバーによる要望・議論の場です。'
           }
         />
       </Helmet>
 
       <div className="mx-auto max-w-3xl px-4 py-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-2">
           <h1 className="text-2xl font-bold">
-            {isEn ? 'Feedback' : '要望・フィードバック'}
+            {isEn ? 'Community Board' : 'コミュニティ掲示板'}
           </h1>
-          <Button onClick={() => setShowForm(true)}>
-            <Plus className="size-4" />
-            {isEn ? 'Post' : '投稿する'}
-          </Button>
+          {isSupporter ? (
+            <Button onClick={() => setShowForm(true)}>
+              <Plus className="size-4" />
+              {isEn ? 'Post' : '投稿する'}
+            </Button>
+          ) : null}
         </div>
+        {!isSupporter && (
+          <p className="text-sm text-muted-foreground mb-4">
+            {isEn
+              ? 'Only community members who help grow this platform can participate here.'
+              : 'コミュニティを育ててくれるメンバーだけがここに参加できます。'}
+            {' '}
+            <Link to={`/${lang}/pricing`} className="text-primary underline hover:no-underline">
+              {isEn ? 'Become a member' : 'メンバーになる'}
+            </Link>
+          </p>
+        )}
 
         {/* Filter chips */}
         <div className="flex flex-wrap gap-2 mb-6">
