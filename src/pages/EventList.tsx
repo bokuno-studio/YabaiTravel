@@ -327,9 +327,9 @@ function EventList() {
   // Inject filters into sidebar via context (dependency on filter state to avoid infinite loop)
   const { setFilterNode } = useSidebarFilter()
   const filterDepsKey = JSON.stringify([
-    [...selectedRaceTypes], [...selectedMonths], [...selectedCategories],
+    [...raceTypes], [...selectedMonths], [...selectedCategories],
     [...distanceRanges], timeLimitMin, costMin, costMax, entryStatus, showPastEvents,
-    raceTypes.length, loading,
+    raceTypes.size, loading,
   ])
   useEffect(() => {
     setFilterNode(<SidebarFilters {...filterProps} />)
