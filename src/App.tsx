@@ -30,7 +30,7 @@ function LangLayout() {
   return (
     <>
       <SideMenu />
-      <div className="app-with-sidebar">
+      <div className="min-[960px]:ml-60 min-[960px]:pl-6">
         <Outlet />
       </div>
     </>

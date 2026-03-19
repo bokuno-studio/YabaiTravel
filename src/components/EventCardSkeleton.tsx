@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 export function EventCardSkeleton() {
   return (
-    <Card className="overflow-hidden border-border/40 py-0">
+    <Card className="overflow-hidden border-solid border-border/40 shadow-sm py-0">
       <CardContent className="p-0">
         {/* Gradient image area placeholder */}
         <Skeleton className="aspect-[16/9] w-full rounded-none" />
