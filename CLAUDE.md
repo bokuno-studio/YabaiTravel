@@ -49,6 +49,7 @@ npx vitest run src/pages/EventDetail.test.tsx
 - `src/pages/CategoryDetail.tsx` — カテゴリ詳細
 - `src/types/event.ts` — DB テーブル対応の TypeScript 型定義（Event, Category, AccessRoute, Accommodation）
 - `src/lib/supabaseClient.ts` — Supabase クライアント（スキーマ `yabai_travel` 固定）
+- UI は shadcn/ui + Tailwind CSS で構築。カスタム CSS は使用しない。
 
 ### バックエンド（クロールスクリプト群）
 

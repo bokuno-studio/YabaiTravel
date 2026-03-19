@@ -1,10 +1,62 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link, Navigate } from 'react-router-dom'
+import { useParams, Link, Navigate, useLocation } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
+import { eventToJsonLd } from '../lib/jsonld'
 import { supabase } from '../lib/supabaseClient'
 import type { Event, Category, AccessRoute, Accommodation } from '../types/event'
-import '../App.css'
-import './EventDetail.css'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
+import {
+  Calendar,
+  MapPin,
+  ArrowLeft,
+  ExternalLink,
+  FileEdit,
+  Train,
+  Home,
+  ChevronRight,
+} from 'lucide-react'
+
+const raceTypeColors: Record<string, string> = {
+  trail: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  hyrox: 'bg-amber-50 text-amber-700 border-amber-200',
+  spartan: 'bg-rose-50 text-rose-700 border-rose-200',
+  marathon: 'bg-sky-50 text-sky-700 border-sky-200',
+  ultra: 'bg-violet-50 text-violet-700 border-violet-200',
+  triathlon: 'bg-teal-50 text-teal-700 border-teal-200',
+  duathlon: 'bg-teal-50 text-teal-700 border-teal-200',
+  cycling: 'bg-lime-50 text-lime-700 border-lime-200',
+  obstacle: 'bg-orange-50 text-orange-700 border-orange-200',
+  tough_mudder: 'bg-orange-50 text-orange-700 border-orange-200',
+  rogaining: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  adventure: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
+  devils_circuit: 'bg-red-50 text-red-700 border-red-200',
+  strong_viking: 'bg-red-50 text-red-700 border-red-200',
+  other: 'bg-stone-50 text-stone-600 border-stone-200',
+}
+
+const raceTypeLabel = (t: string | null) => {
+  if (!t) return 'その他'
+  const map: Record<string, string> = {
+    marathon: 'マラソン',
+    trail: 'トレラン',
+    spartan: 'スパルタン',
+    adventure: 'アドベンチャー',
+    hyrox: 'HYROX',
+    devils_circuit: 'Devils Circuit',
+    strong_viking: 'Strong Viking',
+    obstacle: 'オブスタクル',
+    triathlon: 'トライアスロン',
+    duathlon: 'デュアスロン',
+    cycling: 'サイクリング',
+    rogaining: 'ロゲイニング',
+    tough_mudder: 'Tough Mudder',
+  }
+  return map[t] ?? t
+}
 
 /**
  * 大会概要ページ: カテゴリ一覧を表示し、各カテゴリの詳細ページへリンク
@@ -12,6 +64,7 @@ import './EventDetail.css'
  */
 function EventDetail() {
   const { eventId, lang } = useParams<{ eventId: string; lang: string }>()
+  const location = useLocation()
   const langPrefix = `/${lang || 'ja'}`
   const [event, setEvent] = useState<Event | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
@@ -52,9 +105,36 @@ function EventDetail() {
     fetchData()
   }, [eventId])
 
-  if (loading) return <p className="event-detail-loading">読み込み中...</p>
-  if (error) return <p className="event-detail-error">エラー: {error}</p>
-  if (!event) return <p className="event-detail-error">大会が見つかりません</p>
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-6 md:px-6">
+        <Skeleton className="mb-4 h-6 w-32" />
+        <Skeleton className="mb-6 h-10 w-3/4" />
+        <div className="space-y-4">
+          <Skeleton className="h-32 w-full rounded-xl" />
+          <Skeleton className="h-20 w-full rounded-xl" />
+          <Skeleton className="h-20 w-full rounded-xl" />
+        </div>
+        <p className="sr-only">読み込み中...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-12 text-center">
+        <p className="text-destructive">エラー: {error}</p>
+      </div>
+    )
+  }
+
+  if (!event) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-12 text-center">
+        <p className="text-muted-foreground">大会が見つかりません</p>
+      </div>
+    )
+  }
 
   // enrich未完了のイベントは一覧へリダイレクト (#63, #71)
   const hasEnrichedCategories = categories.length === 0 || categories.some(c => c.distance_km != null || c.elevation_gain != null)
@@ -68,6 +148,10 @@ function EventDetail() {
   const outbound = accessRoutes.find((r) => r.direction === 'outbound')
   const returnRoute = accessRoutes.find((r) => r.direction === 'return')
 
+  const dateDisplay = event.event_date_end && event.event_date_end !== event.event_date
+    ? `${event.event_date}〜${event.event_date_end}`
+    : event.event_date ?? '—'
+
   // カテゴリ0件: イベントレベルの情報を直接表示 (#32)
   if (categories.length === 0) {
     return (
@@ -78,106 +162,173 @@ function EventDetail() {
           <meta property="og:title" content={`${event.name} | yabai.travel`} />
           <meta property="og:description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
           <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}`} />
+          <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+          <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+          <link rel="alternate" hrefLang="en" href={`https://yabai-travel.vercel.app${location.pathname}?lang=en`} />
+          <link rel="alternate" hrefLang="x-default" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+          <script type="application/ld+json">{JSON.stringify(eventToJsonLd(event, categories))}</script>
         </Helmet>
-      <div className="event-detail-page">
-        <header className="event-detail-header">
-          <Link to={langPrefix} className="back-link">← 一覧に戻る</Link>
-          <h1>{event.name}</h1>
-          {event.description && <p className="event-description">{event.description}</p>}
-          <div className="event-detail-basic">
-            <dl className="event-detail-dl event-detail-dl-inline">
-              <dt>日程</dt>
-              <dd>
-                {event.event_date_end && event.event_date_end !== event.event_date
-                  ? `${event.event_date}〜${event.event_date_end}`
-                  : event.event_date ?? '—'}
-              </dd>
-              {event.location && (
-                <>
-                  <dt>場所</dt>
-                  <dd>{event.location}</dd>
-                </>
-              )}
-            </dl>
+        <div className="mx-auto max-w-4xl px-4 py-6 md:px-6">
+          {/* Breadcrumb */}
+          <div className="mb-6">
+            <Link
+              to={langPrefix}
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              一覧に戻る
+            </Link>
           </div>
-          {(event.official_url || event.entry_url) && (
-            <div className="event-detail-links">
-              {event.official_url && (
-                <a href={event.official_url} target="_blank" rel="noreferrer">公式</a>
-              )}
-              {event.entry_url && (
-                <a href={event.entry_url} target="_blank" rel="noreferrer">申込</a>
+
+          {/* Hero */}
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+              {event.name}
+            </h1>
+            {event.description && (
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {event.description}
+              </p>
+            )}
+            <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                {dateDisplay}
+              </span>
+              {event.location && (
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                  {event.location}
+                </span>
               )}
             </div>
-          )}
-        </header>
-
-        <section className="event-detail-body">
-          <h2 className="section-title">申込み</h2>
-          <dl className="event-detail-dl">
-            <dt>エントリ方法は？</dt>
-            <dd className={event.entry_type ? '' : 'empty-value'}>
-              {event.entry_type === 'lottery' ? '抽選' : event.entry_type === 'first_come' ? '先着' : event.entry_type ?? '—'}
-            </dd>
-            <dt>参加資格はある？</dt>
-            <dd className={event.required_qualification ? '' : 'empty-value'}>{event.required_qualification ?? '—'}</dd>
-            <dt>いつから申し込める？</dt>
-            <dd className={event.entry_start ? '' : 'empty-value'}>{event.entry_start ?? '—'}</dd>
-            <dt>申込み締切はいつ？</dt>
-            <dd className={event.entry_end ? '' : 'empty-value'}>{event.entry_end ?? '—'}</dd>
-          </dl>
-
-          {(outbound || returnRoute) && (
-            <>
-              <h2 className="section-title">公共交通機関で行けるか</h2>
-              {outbound?.transit_accessible != null && (
-                <p className={`transit-accessible transit-accessible--${outbound.transit_accessible ? 'yes' : 'no'}`}>
-                  {outbound.transit_accessible ? '✅ 公共交通機関で行ける' : '❌ 公共交通機関では行きにくい（要車・要シャトル）'}
-                </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {event.race_type && (
+                <Badge
+                  variant="outline"
+                  className={cn('border text-xs', raceTypeColors[event.race_type ?? 'other'])}
+                >
+                  {raceTypeLabel(event.race_type)}
+                </Badge>
               )}
-              <div className="access-summary">
-                <div className="access-summary-item">
-                  <span className="access-summary-label">往路</span>
-                  <span className={outbound?.total_time_estimate ? '' : 'empty-value'}>{outbound?.total_time_estimate ?? '—'}</span>
-                  {outbound?.cost_estimate && <span className="access-summary-cost">{outbound.cost_estimate}</span>}
-                </div>
-                <div className="access-summary-item">
-                  <span className="access-summary-label">復路</span>
-                  <span className={returnRoute?.total_time_estimate ? '' : 'empty-value'}>{returnRoute?.total_time_estimate ?? '—'}</span>
-                  {returnRoute?.cost_estimate && <span className="access-summary-cost">{returnRoute.cost_estimate}</span>}
-                </div>
+            </div>
+            {(event.official_url || event.entry_url) && (
+              <div className="mt-3 flex gap-3">
+                {event.official_url && (
+                  <Button asChild variant="outline" size="sm">
+                    <a href={event.official_url} target="_blank" rel="noreferrer">
+                      <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                      公式
+                    </a>
+                  </Button>
+                )}
+                {event.entry_url && (
+                  <Button asChild variant="outline" size="sm">
+                    <a href={event.entry_url} target="_blank" rel="noreferrer">
+                      <FileEdit className="mr-1.5 h-3.5 w-3.5" />
+                      申込
+                    </a>
+                  </Button>
+                )}
               </div>
-            </>
+            )}
+          </div>
+
+          {/* 申込み */}
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle className="text-base">申込み</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
+                <dt className="text-muted-foreground">エントリ方法は？</dt>
+                <dd className={event.entry_type ? '' : 'italic text-muted-foreground/60'}>
+                  {event.entry_type === 'lottery' ? '抽選' : event.entry_type === 'first_come' ? '先着' : event.entry_type ?? '—'}
+                </dd>
+                <dt className="text-muted-foreground">参加資格はある？</dt>
+                <dd className={event.required_qualification ? '' : 'italic text-muted-foreground/60'}>{event.required_qualification ?? '—'}</dd>
+                <dt className="text-muted-foreground">いつから申し込める？</dt>
+                <dd className={event.entry_start ? '' : 'italic text-muted-foreground/60'}>{event.entry_start ?? '—'}</dd>
+                <dt className="text-muted-foreground">申込み締切はいつ？</dt>
+                <dd className={event.entry_end ? '' : 'italic text-muted-foreground/60'}>{event.entry_end ?? '—'}</dd>
+              </dl>
+            </CardContent>
+          </Card>
+
+          {/* アクセス */}
+          {(outbound || returnRoute) && (
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Train className="h-4 w-4 text-primary" />
+                  公共交通機関で行けるか
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {outbound?.transit_accessible != null && (
+                  <p className={cn(
+                    'mb-3 rounded-lg px-3 py-2 text-sm font-medium',
+                    outbound.transit_accessible
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'bg-red-50 text-red-700',
+                  )}>
+                    {outbound.transit_accessible ? '✅ 公共交通機関で行ける' : '❌ 公共交通機関では行きにくい（要車・要シャトル）'}
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-baseline gap-2 text-sm">
+                    <span className="min-w-[2.5em] font-semibold text-muted-foreground">往路</span>
+                    <span className={outbound?.total_time_estimate ? '' : 'italic text-muted-foreground/60'}>{outbound?.total_time_estimate ?? '—'}</span>
+                    {outbound?.cost_estimate && <span className="font-medium text-primary">{outbound.cost_estimate}</span>}
+                  </div>
+                  <div className="flex items-baseline gap-2 text-sm">
+                    <span className="min-w-[2.5em] font-semibold text-muted-foreground">復路</span>
+                    <span className={returnRoute?.total_time_estimate ? '' : 'italic text-muted-foreground/60'}>{returnRoute?.total_time_estimate ?? '—'}</span>
+                    {returnRoute?.cost_estimate && <span className="font-medium text-primary">{returnRoute.cost_estimate}</span>}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
+          {/* 宿泊 */}
           {accommodations.length > 0 && (
-            <>
-              <h2 className="section-title">何日必要か</h2>
-              <dl className="event-detail-dl">
-                <dt>どこに泊まればいい？</dt>
-                <dd className={accommodations.some((a) => a.recommended_area) ? '' : 'empty-value'}>
-                  {accommodations.map((a) => a.recommended_area).filter(Boolean).join('、') || '—'}
-                </dd>
-                <dt>宿泊費の目安は？</dt>
-                <dd className={accommodations.some((a) => a.avg_cost_3star != null) ? '' : 'empty-value'}>
-                  {accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star != null
-                    ? `約${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円`
-                    : '—'}
-                </dd>
-              </dl>
-            </>
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Home className="h-4 w-4 text-primary" />
+                  何日必要か
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
+                  <dt className="text-muted-foreground">どこに泊まればいい？</dt>
+                  <dd className={accommodations.some((a) => a.recommended_area) ? '' : 'italic text-muted-foreground/60'}>
+                    {accommodations.map((a) => a.recommended_area).filter(Boolean).join('、') || '—'}
+                  </dd>
+                  <dt className="text-muted-foreground">宿泊費の目安は？</dt>
+                  <dd className={accommodations.some((a) => a.avg_cost_3star != null) ? '' : 'italic text-muted-foreground/60'}>
+                    {accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star != null
+                      ? `約${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円`
+                      : '—'}
+                  </dd>
+                </dl>
+              </CardContent>
+            </Card>
           )}
+
+          {/* 最終更新 */}
           {event.updated_at && (
-            <p className="last-updated">
+            <p className="mt-6 border-t border-border pt-4 text-right text-xs text-muted-foreground/70">
               最終更新: <time dateTime={event.updated_at}>{event.updated_at.slice(0, 10)}</time>
             </p>
           )}
-        </section>
-      </div>
+        </div>
       </>
     )
   }
 
+  // カテゴリ2件以上: カテゴリ選択画面
   return (
     <>
       <Helmet>
@@ -186,55 +337,90 @@ function EventDetail() {
         <meta property="og:title" content={`${event.name} | yabai.travel`} />
         <meta property="og:description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
         <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}`} />
+        <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+        <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+        <link rel="alternate" hrefLang="en" href={`https://yabai-travel.vercel.app${location.pathname}?lang=en`} />
+        <link rel="alternate" hrefLang="x-default" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+        <script type="application/ld+json">{JSON.stringify(eventToJsonLd(event, categories))}</script>
       </Helmet>
-    <div className="event-detail-page">
-      <header className="event-detail-header">
-        <Link to={langPrefix} className="back-link">← 一覧に戻る</Link>
-        <h1>{event.name}</h1>
-        {event.description && <p className="event-description">{event.description}</p>}
-        <div className="event-detail-basic">
-          <dl className="event-detail-dl event-detail-dl-inline">
-            <dt>日程</dt>
-            <dd>{event.event_date}</dd>
-            {event.location && (
-              <>
-                <dt>場所</dt>
-                <dd>{event.location}</dd>
-              </>
-            )}
-          </dl>
+      <div className="mx-auto max-w-4xl px-4 py-6 md:px-6">
+        {/* Breadcrumb */}
+        <div className="mb-6">
+          <Link
+            to={langPrefix}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            一覧に戻る
+          </Link>
         </div>
-      </header>
 
-      <section className="event-detail-body">
-        <h2 className="section-title">カテゴリを選ぶ</h2>
-        <p className="section-desc">調べたいカテゴリをクリックしてください</p>
-        <ul className="category-list">
+        {/* Hero */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+            {event.name}
+          </h1>
+          {event.description && (
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              {event.description}
+            </p>
+          )}
+          <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+              {event.event_date}
+            </span>
+            {event.location && (
+              <span className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                {event.location}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* カテゴリ選択 */}
+        <div className="space-y-3">
+          <div className="mb-2">
+            <h2 className="text-lg font-semibold text-foreground">カテゴリを選ぶ</h2>
+            <p className="mt-1 text-sm text-muted-foreground">調べたいカテゴリをクリックしてください</p>
+          </div>
           {categories.map((cat) => (
-            <li key={cat.id}>
-              <Link
-                to={`${langPrefix}/events/${eventId}/categories/${cat.id}`}
-                className="category-list-link"
-              >
-                <span className="category-list-name">{cat.name}</span>
-                {(cat.distance_km != null || cat.elevation_gain != null) && (
-                  <span className="category-list-spec">
-                    {cat.distance_km != null && `${cat.distance_km}km`}
-                    {cat.distance_km != null && cat.elevation_gain != null && ' / '}
-                    {cat.elevation_gain != null && `D+${cat.elevation_gain}m`}
-                  </span>
-                )}
-              </Link>
-            </li>
+            <Card
+              key={cat.id}
+              className="group overflow-hidden border-border/60 py-0 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
+            >
+              <CardContent className="p-0">
+                <Link
+                  to={`${langPrefix}/events/${eventId}/categories/${cat.id}`}
+                  className="flex items-center justify-between gap-4 p-4 no-underline"
+                >
+                  <div className="min-w-0 flex-1">
+                    <span className="text-base font-semibold text-foreground transition-colors group-hover:text-primary">
+                      {cat.name}
+                    </span>
+                    {(cat.distance_km != null || cat.elevation_gain != null) && (
+                      <span className="ml-3 text-sm text-muted-foreground">
+                        {cat.distance_km != null && `${cat.distance_km}km`}
+                        {cat.distance_km != null && cat.elevation_gain != null && ' / '}
+                        {cat.elevation_gain != null && `D+${cat.elevation_gain}m`}
+                      </span>
+                    )}
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+                </Link>
+              </CardContent>
+            </Card>
           ))}
-        </ul>
+        </div>
+
+        {/* 最終更新 */}
         {event.updated_at && (
-          <p className="last-updated">
+          <p className="mt-6 border-t border-border pt-4 text-right text-xs text-muted-foreground/70">
             最終更新: <time dateTime={event.updated_at}>{event.updated_at.slice(0, 10)}</time>
           </p>
         )}
-      </section>
-    </div>
+      </div>
     </>
   )
 }

@@ -29,7 +29,7 @@ const args = process.argv.slice(2)
 const DRY_RUN = args.includes('--dry-run')
 const ONCE = args.includes('--once')
 const concurrencyIdx = args.indexOf('--concurrency')
-const CONCURRENCY = concurrencyIdx >= 0 ? parseInt(args[concurrencyIdx + 1], 10) : 5
+const CONCURRENCY = concurrencyIdx >= 0 ? parseInt(args[concurrencyIdx + 1], 10) : 10
 
 const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
 
@@ -63,9 +63,9 @@ async function run() {
      AND last_error_type IS DISTINCT FROM 'bug'
      AND (
        last_attempted_at IS NULL
-       OR (last_error_type = 'not_available' AND last_attempted_at < NOW() - INTERVAL '7 days')
+       OR (last_error_type = 'not_available' AND last_attempted_at < NOW() - INTERVAL '3 days')
        OR (last_error_type = 'temporary'     AND last_attempted_at < NOW() - INTERVAL '0 days')
-       OR (last_error_type IS NULL           AND last_attempted_at < NOW() - INTERVAL '7 days')
+       OR (last_error_type IS NULL           AND last_attempted_at < NOW() - INTERVAL '1 day')
      )
      ORDER BY
        CASE WHEN collected_at IS NULL THEN 0 ELSE 1 END,
@@ -223,7 +223,10 @@ async function run() {
     await transClient.connect()
     const { rows: untranslated } = await transClient.query(
       `SELECT id, name FROM ${SCHEMA}.events
-       WHERE collected_at IS NOT NULL AND name_en IS NULL
+       WHERE collected_at IS NOT NULL AND (
+         (source_language IS DISTINCT FROM 'en' AND name_en IS NULL)
+         OR (source_language = 'en' AND name = name_en)
+       )
        ORDER BY collected_at DESC LIMIT 20`
     )
     await transClient.end()

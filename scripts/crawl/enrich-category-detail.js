@@ -11,7 +11,7 @@ import pg from 'pg'
 import Anthropic from '@anthropic-ai/sdk'
 import {
   loadEnv, fetchHtml, extractRelevantContent, extractRelevantLinks,
-  callLlm, fetchTavilySearch, isPortalUrl,
+  callLlm, fetchTavilySearch, isPortalUrl, detectLanguage,
 } from './lib/enrich-utils.js'
 
 loadEnv()
@@ -42,6 +42,29 @@ const CATEGORY_DETAIL_PROMPT = `あなたはレースイベントの情報抽出
 - cutoff_times はカットオフ地点ごとに配列
 - JSON のみ返す`
 
+const CATEGORY_DETAIL_PROMPT_EN = `You are an expert at extracting race event information.
+Extract only the detailed information for the specified course (category) in JSON format.
+
+{
+  "entry_fee": "Number (in local currency, no commas. Standard fee for general entry)",
+  "entry_fee_currency": "ISO currency code: JPY|USD|EUR etc.",
+  "start_time": "HH:MM (if wave start, show full range like '09:00-15:00')",
+  "reception_end": "HH:MM (check-in deadline)",
+  "time_limit": "HH:MM:SS (time limit / cutoff)",
+  "cutoff_times": [{"point": "Checkpoint name", "time": "HH:MM"}],
+  "elevation_gain": "Number (cumulative elevation gain in meters)",
+  "mandatory_gear": "Mandatory gear list",
+  "poles_allowed": true/false,
+  "itra_points": "Number (ITRA points)"
+}
+
+Rules:
+- Use null for items not found on the page. Do not guess
+- entry_fee is the standard fee for 1 person, general category (NOT R.LEAGUE discount, early bird, pair/team pricing)
+- For wave start events (HYROX, Spartan, etc.): start_time should show the full wave time range
+- cutoff_times is an array per checkpoint
+- Return JSON only`
+
 /**
  * 単一カテゴリの詳細情報を抽出
  * @param {object} event - {id, name, official_url}
@@ -59,7 +82,8 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
     const { id: categoryId, name: catName, distance_km: distKm } = category
 
     const catLabel = `${catName}${distKm ? `(${distKm}km)` : ''}`
-    const userMessage = `「${eventName}」の${catLabel}コースについて、以下のページ内容から詳細情報を抽出してください。\n\n`
+    const userMessageJa = `「${eventName}」の${catLabel}コースについて、以下のページ内容から詳細情報を抽出してください。\n\n`
+    const userMessageEn = `Extract detailed information for the "${catLabel}" course of "${eventName}" from the following page content:\n\n`
 
     // --- ステップ1: ページ取得 ---
     let html = opts.html || null
@@ -77,7 +101,10 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
     if (html) {
       const content = extractRelevantContent(html)
       if (content.length >= 50) {
-        const result = await callLlm(anthropic, CATEGORY_DETAIL_PROMPT, userMessage + content)
+        const lang = detectLanguage(content)
+        const prompt = lang === 'en' ? CATEGORY_DETAIL_PROMPT_EN : CATEGORY_DETAIL_PROMPT
+        const userMsg = lang === 'en' ? userMessageEn : userMessageJa
+        const result = await callLlm(anthropic, prompt, userMsg + content)
         totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
         extracted = result
       }
@@ -88,7 +115,10 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       for (const content of searchResults) {
         if (content.length < 50) continue
         try {
-          const result = await callLlm(anthropic, CATEGORY_DETAIL_PROMPT, userMessage + content)
+          const searchLang = detectLanguage(content)
+          const prompt = searchLang === 'en' ? CATEGORY_DETAIL_PROMPT_EN : CATEGORY_DETAIL_PROMPT
+          const userMsg = searchLang === 'en' ? userMessageEn : userMessageJa
+          const result = await callLlm(anthropic, prompt, userMsg + content)
           totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
           // マージ
           for (const key of Object.keys(result)) {
@@ -108,7 +138,10 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
           const linkHtml = await fetchHtml(link)
           const linkContent = extractRelevantContent(linkHtml, 5000)
           if (linkContent.length < 50) continue
-          const result = await callLlm(anthropic, CATEGORY_DETAIL_PROMPT, userMessage + linkContent)
+          const linkLang = detectLanguage(linkContent)
+          const linkPrompt = linkLang === 'en' ? CATEGORY_DETAIL_PROMPT_EN : CATEGORY_DETAIL_PROMPT
+          const linkUserMsg = linkLang === 'en' ? userMessageEn : userMessageJa
+          const result = await callLlm(anthropic, linkPrompt, linkUserMsg + linkContent)
           totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
           for (const key of Object.keys(result)) {
             if (key === '_usage') continue

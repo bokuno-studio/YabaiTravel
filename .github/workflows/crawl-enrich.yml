@@ -17,7 +17,7 @@ on:
         required: false
         default: ''
   schedule:
-    - cron: '0 * * * *'  # 1時間おき (#70)
+    - cron: '0,30 * * * *'  # 30分おき (#223)
 
 permissions:
   issues: write

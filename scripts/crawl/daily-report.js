@@ -1,0 +1,463 @@
+/**
+ * デイリークロール進捗レポート (#222, #224)
+ *
+ * - DB から現在の統計を取得し crawl_daily_stats にスナップショット保存
+ * - 前日比・バックログ推移・エラー内訳を集計
+ * - GitHub Actions の最新実行状況を取得
+ * - Telegram + GitHub Issue コメントでレポート配信
+ *
+ * 使い方:
+ *   node scripts/crawl/daily-report.js
+ *   node scripts/crawl/daily-report.js --dry-run   # 送信せずコンソール出力のみ
+ */
+import pg from 'pg'
+import { existsSync, readFileSync } from 'fs'
+import { resolve } from 'path'
+
+// .env.local 読み込み（ローカル実行用）
+const envPath = resolve(process.cwd(), '.env.local')
+if (existsSync(envPath)) {
+  readFileSync(envPath, 'utf8').split('\n').forEach((line) => {
+    const m = line.match(/^([^#=]+)=(.*)$/)
+    if (m) process.env[m[1].trim()] = m[2].trim().replace(/^["']|["']$/g, '')
+  })
+}
+
+const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
+const DRY_RUN = process.argv.includes('--dry-run')
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN
+const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY
+
+// ---------------------------------------------------------------------------
+// DB helpers
+// ---------------------------------------------------------------------------
+
+async function ensureStatsTable(client) {
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.crawl_daily_stats (
+      id SERIAL PRIMARY KEY,
+      stat_date DATE NOT NULL UNIQUE,
+      total_events INT NOT NULL DEFAULT 0,
+      total_categories INT NOT NULL DEFAULT 0,
+      enriched_events INT NOT NULL DEFAULT 0,
+      enriched_categories INT NOT NULL DEFAULT 0,
+      access_routes_count INT NOT NULL DEFAULT 0,
+      accommodations_count INT NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `)
+}
+
+async function queryCount(client, sql) {
+  const { rows } = await client.query(sql)
+  return parseInt(rows[0].count, 10)
+}
+
+async function collectStats(client) {
+  const [
+    totalEvents,
+    totalCategories,
+    enrichedEvents,
+    enrichedCategories,
+    accessRoutes,
+    accommodations,
+  ] = await Promise.all([
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE collected_at IS NOT NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE entry_fee IS NOT NULL`),
+    queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.access_routes`),
+    queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.accommodations`),
+  ])
+  return { totalEvents, totalCategories, enrichedEvents, enrichedCategories, accessRoutes, accommodations }
+}
+
+async function upsertSnapshot(client, stats) {
+  const today = new Date().toISOString().slice(0, 10)
+  await client.query(`
+    INSERT INTO ${SCHEMA}.crawl_daily_stats
+      (stat_date, total_events, total_categories, enriched_events, enriched_categories, access_routes_count, accommodations_count)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    ON CONFLICT (stat_date) DO UPDATE SET
+      total_events = EXCLUDED.total_events,
+      total_categories = EXCLUDED.total_categories,
+      enriched_events = EXCLUDED.enriched_events,
+      enriched_categories = EXCLUDED.enriched_categories,
+      access_routes_count = EXCLUDED.access_routes_count,
+      accommodations_count = EXCLUDED.accommodations_count
+  `, [today, stats.totalEvents, stats.totalCategories, stats.enrichedEvents, stats.enrichedCategories, stats.accessRoutes, stats.accommodations])
+}
+
+async function getHistory(client, days = 7) {
+  const { rows } = await client.query(`
+    SELECT stat_date, total_events, total_categories, enriched_events, enriched_categories,
+           access_routes_count, accommodations_count
+    FROM ${SCHEMA}.crawl_daily_stats
+    ORDER BY stat_date DESC
+    LIMIT $1
+  `, [days])
+  return rows.reverse() // oldest first
+}
+
+async function getErrorBreakdown(client) {
+  const { rows } = await client.query(`
+    SELECT last_error_type, count(*) as cnt
+    FROM ${SCHEMA}.events
+    WHERE collected_at IS NULL
+    GROUP BY last_error_type
+    ORDER BY cnt DESC
+  `)
+  return rows
+}
+
+// ---------------------------------------------------------------------------
+// GitHub Actions status
+// ---------------------------------------------------------------------------
+
+async function getWorkflowRuns() {
+  if (!GITHUB_TOKEN || !GITHUB_REPOSITORY) return null
+  const workflows = ['crawl-collect.yml', 'crawl-enrich.yml']
+  const results = []
+  for (const wf of workflows) {
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/${wf}/runs?per_page=3&status=completed`,
+        { headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: 'application/vnd.github+json' } }
+      )
+      if (!res.ok) continue
+      const data = await res.json()
+      const runs = (data.workflow_runs || []).slice(0, 3).map((r) => ({
+        name: wf.replace('.yml', ''),
+        status: r.conclusion,
+        date: r.updated_at?.slice(0, 16).replace('T', ' '),
+      }))
+      results.push(...runs)
+    } catch { /* ignore */ }
+  }
+  return results.length > 0 ? results : null
+}
+
+// ---------------------------------------------------------------------------
+// Report formatting
+// ---------------------------------------------------------------------------
+
+function fmt(n) {
+  return n.toLocaleString('ja-JP')
+}
+
+function diff(current, previous) {
+  if (previous == null) return ''
+  const d = current - previous
+  return d >= 0 ? ` (+${d})` : ` (${d})`
+}
+
+function pct(done, total) {
+  if (total === 0) return '0.0%'
+  return (done / total * 100).toFixed(1) + '%'
+}
+
+function estimateDays(backlog, history, field) {
+  if (history.length < 2) return '?'
+  // Average daily consumption over available history
+  const first = history[0]
+  const last = history[history.length - 1]
+  const days = Math.max(1, history.length - 1)
+  const consumed = last[field] - first[field]
+  const rate = consumed / days
+  if (rate <= 0) return '停滞中'
+  return Math.ceil(backlog / rate).toString()
+}
+
+function barGraph(history, valueKey, maxWidth = 20) {
+  const values = history.map((h) => h[valueKey])
+  const maxVal = Math.max(...values, 1)
+  return history.map((h) => {
+    const val = h[valueKey]
+    const barLen = Math.round((val / maxVal) * maxWidth)
+    const bar = '\u2588'.repeat(barLen)
+    const dateStr = h.stat_date instanceof Date
+      ? `${String(h.stat_date.getMonth() + 1).padStart(2, '0')}/${String(h.stat_date.getDate()).padStart(2, '0')}`
+      : String(h.stat_date).slice(5, 10).replace('-', '/')
+    return `  ${dateStr}  ${bar}  ${val}`
+  }).join('\n')
+}
+
+function buildReport(stats, yesterday, history, errors, workflowRuns) {
+  const today = new Date().toISOString().slice(0, 10)
+
+  const eventBacklog = stats.totalEvents - stats.enrichedEvents
+  const catBacklog = stats.totalCategories - stats.enrichedCategories
+  const accessBacklog = stats.enrichedEvents - stats.accessRoutes
+  const accomBacklog = stats.enrichedEvents - stats.accommodations
+
+  const lines = []
+  lines.push(`\ud83d\udcca \u30af\u30ed\u30fc\u30eb\u9032\u6357\u30ec\u30dd\u30fc\u30c8\uff08${today}\uff09`)
+  lines.push('')
+
+  // --- Summary ---
+  lines.push('\u25a0 \u5168\u4f53\u30b5\u30de\u30ea')
+  lines.push(`  \u30ec\u30fc\u30b9\u6570:        ${fmt(stats.totalEvents)}${diff(stats.totalEvents, yesterday?.total_events)}`)
+  lines.push(`  \u30ab\u30c6\u30b4\u30ea\u6570:     ${fmt(stats.totalCategories)}${diff(stats.totalCategories, yesterday?.total_categories)}`)
+  lines.push('')
+
+  // --- Enrich progress ---
+  lines.push('\u25a0 Enrich \u9032\u6357')
+  lines.push(`  ${''.padEnd(20)} ${'完了'.padStart(6)}  ${'未完了'.padStart(6)}  ${'完了率'.padStart(6)}  ${'前日比'.padStart(6)}`)
+
+  const enrichRows = [
+    { label: '\u30a4\u30d9\u30f3\u30c8\u57fa\u672c\u60c5\u5831', done: stats.enrichedEvents, total: stats.totalEvents, prevDone: yesterday?.enriched_events },
+    { label: '\u30ab\u30c6\u30b4\u30ea\u8a73\u7d30', done: stats.enrichedCategories, total: stats.totalCategories, prevDone: yesterday?.enriched_categories },
+    { label: '\u30a2\u30af\u30bb\u30b9\u60c5\u5831', done: stats.accessRoutes, total: stats.enrichedEvents, prevDone: yesterday?.access_routes_count },
+    { label: '\u5bbf\u6cca\u60c5\u5831', done: stats.accommodations, total: stats.enrichedEvents, prevDone: yesterday?.accommodations_count },
+  ]
+  for (const r of enrichRows) {
+    const remaining = r.total - r.done
+    const dayDiff = r.prevDone != null ? diff(r.done, r.prevDone) : ''
+    lines.push(`  ${r.label.padEnd(18)} ${fmt(r.done).padStart(6)}  ${fmt(remaining).padStart(6)}  ${pct(r.done, r.total).padStart(6)}  ${dayDiff.padStart(6)}`)
+  }
+  lines.push('')
+
+  // --- Backlog estimate ---
+  lines.push('\u25a0 \u30d0\u30c3\u30af\u30ed\u30b0\u6d88\u5316\u898b\u8fbc\u307f')
+  const eventEst = estimateDays(eventBacklog, history, 'enriched_events')
+  const catEst = estimateDays(catBacklog, history, 'enriched_categories')
+  lines.push(`  \u30a4\u30d9\u30f3\u30c8\u57fa\u672c: ${eventBacklog}\u4ef6\u6b8b \u2192 \u7d04${eventEst}\u65e5\u5f8c\u306b\u5b8c\u4e86`)
+  lines.push(`  \u30ab\u30c6\u30b4\u30ea\u8a73\u7d30: ${catBacklog}\u4ef6\u6b8b \u2192 \u7d04${catEst}\u65e5\u5f8c\u306b\u5b8c\u4e86`)
+  lines.push('')
+
+  // --- Error breakdown ---
+  lines.push('\u25a0 Enrich \u7a7a\u632f\u308a\u5185\u8a33')
+  if (errors.length === 0) {
+    lines.push('  \u306a\u3057')
+  } else {
+    for (const e of errors) {
+      const label = e.last_error_type ?? '\u5206\u985e\u4e0d\u660e(null)'
+      lines.push(`  ${label.padEnd(16)} ${e.cnt}\u4ef6`)
+    }
+  }
+  lines.push('')
+
+  // --- Backlog trend graph ---
+  if (history.length >= 2) {
+    lines.push('\u25a0 \u30d0\u30c3\u30af\u30ed\u30b0\u63a8\u79fb\uff08\u76f4\u8fd17\u65e5 - \u30a4\u30d9\u30f3\u30c8\u672a\u51e6\u7406\u6570\uff09')
+    const backlogHistory = history.map((h) => ({
+      ...h,
+      _backlog: h.total_events - h.enriched_events,
+    }))
+    lines.push(barGraph(backlogHistory, '_backlog'))
+    lines.push('')
+  }
+
+  // --- Workflow runs ---
+  if (workflowRuns) {
+    lines.push('\u25a0 \u30b8\u30e7\u30d6\u5b9f\u884c\u72b6\u6cc1')
+    for (const r of workflowRuns) {
+      const icon = r.status === 'success' ? '\u2705' : r.status === 'failure' ? '\u274c' : '\u26a0\ufe0f'
+      lines.push(`  ${icon} ${r.name}  ${r.status}  ${r.date}`)
+    }
+    lines.push('')
+  }
+
+  return lines.join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// Delivery: Telegram
+// ---------------------------------------------------------------------------
+
+const TELEGRAM_MAX_LENGTH = 4096
+
+async function sendTelegram(text) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    console.log('[Telegram] TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set, skipping')
+    return
+  }
+
+  // Split into chunks if needed
+  const chunks = []
+  if (text.length <= TELEGRAM_MAX_LENGTH) {
+    chunks.push(text)
+  } else {
+    const lines = text.split('\n')
+    let current = ''
+    for (const line of lines) {
+      if (current.length + line.length + 1 > TELEGRAM_MAX_LENGTH) {
+        chunks.push(current)
+        current = line
+      } else {
+        current += (current ? '\n' : '') + line
+      }
+    }
+    if (current) chunks.push(current)
+  }
+
+  for (const chunk of chunks) {
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text: chunk,
+        parse_mode: 'HTML',
+      }),
+    })
+    if (!res.ok) {
+      const body = await res.text()
+      console.error(`[Telegram] Failed to send: ${res.status} ${body}`)
+      // Retry without parse_mode if HTML caused an error
+      const retry = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_CHAT_ID,
+          text: chunk,
+        }),
+      })
+      if (!retry.ok) {
+        console.error(`[Telegram] Retry also failed: ${retry.status}`)
+      }
+    }
+  }
+  console.log(`[Telegram] Report sent (${chunks.length} message(s))`)
+}
+
+// ---------------------------------------------------------------------------
+// Delivery: GitHub Issue comment
+// ---------------------------------------------------------------------------
+
+const REPORT_ISSUE_TITLE = '\ud83d\udcca Daily Crawl Report'
+const REPORT_ISSUE_LABEL = 'daily-report'
+
+async function findOrCreateReportIssue() {
+  if (!GITHUB_TOKEN || !GITHUB_REPOSITORY) {
+    console.log('[GitHub] GITHUB_TOKEN or GITHUB_REPOSITORY not set, skipping')
+    return null
+  }
+
+  const headers = {
+    Authorization: `Bearer ${GITHUB_TOKEN}`,
+    Accept: 'application/vnd.github+json',
+  }
+
+  // Search for existing report issue
+  const searchRes = await fetch(
+    `https://api.github.com/repos/${GITHUB_REPOSITORY}/issues?labels=${REPORT_ISSUE_LABEL}&state=open&per_page=1`,
+    { headers }
+  )
+  if (searchRes.ok) {
+    const issues = await searchRes.json()
+    if (issues.length > 0) {
+      return issues[0].number
+    }
+  }
+
+  // Ensure the label exists
+  try {
+    await fetch(`https://api.github.com/repos/${GITHUB_REPOSITORY}/labels`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: REPORT_ISSUE_LABEL, color: '0075ca', description: 'Daily crawl report thread' }),
+    })
+  } catch { /* label may already exist */ }
+
+  // Create new issue
+  const createRes = await fetch(`https://api.github.com/repos/${GITHUB_REPOSITORY}/issues`, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: REPORT_ISSUE_TITLE,
+      body: 'This issue collects daily crawl progress reports.\nNew reports are posted as comments automatically.',
+      labels: [REPORT_ISSUE_LABEL],
+    }),
+  })
+  if (!createRes.ok) {
+    console.error(`[GitHub] Failed to create issue: ${createRes.status}`)
+    return null
+  }
+  const issue = await createRes.json()
+  console.log(`[GitHub] Created report issue #${issue.number}`)
+  return issue.number
+}
+
+async function postGitHubComment(issueNumber, text) {
+  if (!GITHUB_TOKEN || !GITHUB_REPOSITORY || !issueNumber) return
+
+  // Wrap in code block for monospace formatting
+  const body = '```\n' + text + '\n```'
+
+  const res = await fetch(
+    `https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${issueNumber}/comments`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ body }),
+    }
+  )
+  if (!res.ok) {
+    console.error(`[GitHub] Failed to post comment: ${res.status}`)
+  } else {
+    console.log(`[GitHub] Comment posted on issue #${issueNumber}`)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
+async function run() {
+  const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
+  await client.connect()
+
+  try {
+    // Ensure stats table exists
+    await ensureStatsTable(client)
+
+    // Collect current stats
+    const stats = await collectStats(client)
+    console.log('Current stats:', stats)
+
+    // Save snapshot
+    await upsertSnapshot(client, stats)
+
+    // Get history (including today's just-saved snapshot)
+    const history = await getHistory(client, 7)
+    const yesterday = history.length >= 2 ? history[history.length - 2] : null
+
+    // Error breakdown
+    const errors = await getErrorBreakdown(client)
+
+    // GitHub Actions status
+    const workflowRuns = await getWorkflowRuns()
+
+    // Build report
+    const report = buildReport(stats, yesterday, history, errors, workflowRuns)
+
+    console.log('\n' + report)
+
+    if (DRY_RUN) {
+      console.log('\n[dry-run] Skipping delivery')
+      return
+    }
+
+    // Send via Telegram
+    await sendTelegram(report)
+
+    // Post as GitHub Issue comment
+    const issueNumber = await findOrCreateReportIssue()
+    await postGitHubComment(issueNumber, report)
+
+  } finally {
+    await client.end()
+  }
+}
+
+run().catch((e) => {
+  console.error(e)
+  process.exit(1)
+})

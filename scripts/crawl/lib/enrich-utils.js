@@ -63,6 +63,21 @@ const RACE_TYPE_CLASSIFY_PROMPT = `あなたはレースイベントの分類エ
 
 race_type の値のみを返してください（例: marathon）。説明は不要です。`
 
+// --- 言語検出 ---
+
+/**
+ * テキストの言語をヒューリスティックに検出する（LLM不使用）
+ * 日本語文字（ひらがな・カタカナ・漢字）の比率で判定
+ * @param {string} text - 検出対象テキスト
+ * @returns {'ja' | 'en'} 検出された言語
+ */
+export function detectLanguage(text) {
+  if (!text || text.length === 0) return 'ja'
+  const jaChars = text.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/g)
+  const ratio = (jaChars?.length || 0) / text.length
+  return ratio > 0.1 ? 'ja' : 'en'
+}
+
 // --- HTML 取得・解析 ---
 
 export async function fetchHtml(url, timeoutMs = 15000) {

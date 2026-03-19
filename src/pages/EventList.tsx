@@ -1,13 +1,23 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Helmet } from 'react-helmet-async'
+import { SlidersHorizontal } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import type { EventWithCategories, Category } from '../types/event'
 import EventMap from '../components/EventMap'
-import PriceHistogramSlider from '../components/PriceHistogramSlider'
-import '../App.css'
-import './EventList.css'
+import { EventCard } from '../components/EventCard'
+import { EventCardSkeleton } from '../components/EventCardSkeleton'
+import { FiltersSidebar } from '../components/FiltersSidebar'
+import { Header } from '../components/Header'
+import { Button } from '../components/ui/button'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '../components/ui/sheet'
 
 /** interval 文字列から時間数を取得（フィルタ用） */
 function parseIntervalHours(v: string | null): number | null {
@@ -27,19 +37,6 @@ function parseIntervalHours(v: string | null): number | null {
   if (dayMatch) hours += parseInt(dayMatch[1], 10) * 24
   if (minMatch) hours += parseInt(minMatch[1], 10) / 60
   return hours > 0 ? hours : null
-}
-
-/** 日付文字列に曜日を付与（例: "2026-05-16" → "2026-05-16（土）"） */
-function formatDateWithDay(dateStr: string): string {
-  const days = ['日', '月', '火', '水', '木', '金', '土']
-  const d = new Date(dateStr + 'T00:00:00')
-  if (isNaN(d.getTime())) return dateStr
-  return `${dateStr}（${days[d.getDay()]}）`
-}
-
-/** timestamptz を JST 表示に変換 */
-function formatJST(ts: string): string {
-  return new Date(ts).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })
 }
 
 /** 距離レンジの定義 */
@@ -151,12 +148,12 @@ function EventList() {
 
   /** 選択中のレース種別に応じたカテゴリ一覧（#28） */
   const availableCategories = useMemo(() => {
-    const filtered =
+    const filteredEvts =
       raceTypes.size > 0
         ? events.filter((e) => e.race_type && raceTypes.has(e.race_type))
         : events
     const names = new Set<string>()
-    filtered.forEach((e) => {
+    filteredEvts.forEach((e) => {
       (e.categories ?? []).forEach((c) => {
         if (c.name) names.add(c.name)
       })
@@ -287,6 +284,7 @@ function EventList() {
 
   const { t } = useTranslation()
   const { lang } = useParams<{ lang: string }>()
+  const location = useLocation()
   const langPrefix = `/${lang || 'ja'}`
 
   const raceTypeLabel = (type: string | null) => {
@@ -294,14 +292,49 @@ function EventList() {
     return t(`raceType.${type}`, type)
   }
 
-  const entryPeriodText = (e: EventWithCategories) => {
-    if (e.entry_start && e.entry_end) return `${e.entry_start}〜${e.entry_end}`
-    if (e.entry_start_typical && e.entry_end_typical) return `${e.entry_start_typical}〜${e.entry_end_typical}`
-    return null
+  const handleCostRangeChange = (newMin: number, newMax: number) => {
+    setCostMin(newMin)
+    setCostMax(newMax)
   }
 
-  if (loading) return <p className="event-list-loading">読み込み中...</p>
-  if (error) return <p className="event-list-error">エラー: {error}</p>
+  const filterContent = (
+    <FiltersSidebar
+      availableRaceTypes={availableRaceTypes}
+      raceTypes={raceTypes}
+      onRaceTypeToggle={toggleRaceType}
+      raceTypeLabel={raceTypeLabel}
+      availableCategories={availableCategories}
+      selectedCategories={selectedCategories}
+      onCategoryToggle={toggleCategory}
+      availableMonths={availableMonths}
+      selectedMonths={selectedMonths}
+      onMonthToggle={toggleMonth}
+      distanceRanges={distanceRanges}
+      onDistanceRangeToggle={toggleDistanceRange}
+      distanceRangeOptions={DISTANCE_RANGES}
+      timeLimitMin={timeLimitMin}
+      onTimeLimitChange={setTimeLimitMin}
+      costPrices={costPrices}
+      costMin={costMin}
+      costMax={costMax}
+      costGlobalMax={costGlobalMax}
+      onCostRangeChange={handleCostRangeChange}
+      entryStatus={entryStatus}
+      onEntryStatusChange={setEntryStatus}
+      showPastEvents={showPastEvents}
+      onShowPastEventsChange={setShowPastEvents}
+      t={t}
+      lang={lang}
+    />
+  )
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-12 text-center">
+        <p className="text-destructive">エラー: {error}</p>
+      </div>
+    )
+  }
 
   return (
     <>
@@ -311,243 +344,128 @@ function EventList() {
         <meta property="og:title" content="エンデュランス大会を探す | yabai.travel" />
         <meta property="og:description" content="トレラン・スパルタン・HYROX・マラソンなどエンデュランス系大会の情報、アクセス・宿泊コストをまとめて比較できるポータルサイト。" />
         <meta property="og:url" content="https://yabai-travel.vercel.app/ja" />
+        <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+        <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+        <link rel="alternate" hrefLang="en" href={`https://yabai-travel.vercel.app${location.pathname}?lang=en`} />
+        <link rel="alternate" hrefLang="x-default" href={`https://yabai-travel.vercel.app${location.pathname}`} />
       </Helmet>
-    <div className="event-list-page">
-      <header className="app-header">
-        <h1>
-          <Link to={langPrefix}>{t('site.title')}</Link>
-        </h1>
-        <p className="app-subtitle">{t('site.subtitle')}</p>
-        <p className="app-stats">
-          {lastUpdated && <span>{t('stats.lastUpdated')}: {formatJST(lastUpdated)}</span>}
-          {weeklyNewCount > 0 && <span>{t('stats.weeklyNew')}: {weeklyNewCount}</span>}
-        </p>
-      </header>
 
-      <section className="filters">
-        <div className="filter-group filter-race-types">
-          <label>{t('filter.raceType')}</label>
-          <div className="filter-checkboxes">
-            {availableRaceTypes.map((t) => (
-              <label key={t} className="filter-checkbox">
-                <input
-                  type="checkbox"
-                  checked={raceTypes.has(t)}
-                  onChange={() => toggleRaceType(t)}
-                />
-                <span>{raceTypeLabel(t)}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-        {availableCategories.length > 0 && (
-          <div className="filter-group filter-categories">
-            <label>{t('filter.category')}</label>
-            <div className="filter-checkboxes filter-categories-inner">
-              {availableCategories.slice(0, 20).map((name) => (
-                <label key={name} className="filter-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={selectedCategories.has(name)}
-                    onChange={() => toggleCategory(name)}
-                  />
-                  <span>{name}</span>
-                </label>
-              ))}
-              {availableCategories.length > 20 && (
-                <span className="filter-more">他{availableCategories.length - 20}件</span>
-              )}
+      <div className="mx-auto max-w-6xl px-4 py-6 md:px-6">
+        <Header
+          title={t('site.title')}
+          subtitle={t('site.subtitle')}
+          lastUpdated={lastUpdated}
+          weeklyNewCount={weeklyNewCount}
+          statsLastUpdatedLabel={t('stats.lastUpdated')}
+          statsWeeklyNewLabel={t('stats.weeklyNew')}
+        />
+
+        <div className="flex gap-6 lg:gap-8">
+          {/* Desktop Sidebar */}
+          <aside className="hidden w-72 shrink-0 lg:block">
+            <div className="sticky top-6 rounded-xl border border-border bg-card p-5 shadow-sm">
+              {filterContent}
+            </div>
+          </aside>
+
+          {/* Main Content */}
+          <div className="min-w-0 flex-1">
+            {/* Toolbar */}
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {/* Mobile Filter Button */}
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="sm" className="lg:hidden">
+                      <SlidersHorizontal className="mr-1.5 h-4 w-4" />
+                      {lang === 'en' ? 'Filters' : 'フィルター'}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-80 overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle>{lang === 'en' ? 'Filters' : 'フィルター'}</SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-4 px-4">
+                      {filterContent}
+                    </div>
+                  </SheetContent>
+                </Sheet>
+
+                <span className="text-sm text-muted-foreground">
+                  {loading ? '...' : `${filtered.length} ${lang === 'en' ? 'events' : '件'}`}
+                </span>
+              </div>
+            </div>
+
+            {/* Map */}
+            {!loading && (
+              <div className="mb-6">
+                <EventMap events={filtered} langPrefix={langPrefix} raceTypeLabel={raceTypeLabel} />
+              </div>
+            )}
+
+            {/* Event List */}
+            {loading ? (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <EventCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16">
+                <p className="text-base font-medium text-foreground">
+                  {t('event.empty')}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {lang === 'en' ? 'Try adjusting your filters' : 'フィルターを調整してみてください'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                {filtered.map((event) => {
+                  const matchingCats = getMatchingCategories(event)
+                  // フィルタで1件に絞られた場合は直接カテゴリへ、それ以外はイベント詳細へ (#33)
+                  const cardLink = hasAnyFilter && matchingCats.length === 1
+                    ? `${langPrefix}/events/${event.id}/categories/${matchingCats[0].id}`
+                    : `${langPrefix}/events/${event.id}`
+                  // フィルタ適用中は合致するカテゴリチップのみ表示 (#33)
+                  const chipsToShow = hasAnyFilter && matchingCats.length > 0
+                    ? matchingCats
+                    : (event.categories ?? [])
+                  // enrich完了判定: location + カテゴリ充足度 (#63, #71)
+                  const cats = event.categories ?? []
+                  const isEnriched = event.location != null && (
+                    cats.length === 0 || cats.some(c => c.distance_km != null || c.elevation_gain != null)
+                  )
+                  return (
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      langPrefix={langPrefix}
+                      raceTypeLabel={raceTypeLabel}
+                      cardLink={cardLink}
+                      chipsToShow={chipsToShow}
+                      isEnriched={isEnriched}
+                      t={t}
+                      lang={lang}
+                    />
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="mt-8 border-t border-border pt-4 text-center">
+              <Link
+                to={`${langPrefix}/sources`}
+                className="text-sm text-muted-foreground transition-colors hover:text-primary"
+              >
+                {lang === 'en' ? 'Data Sources' : '情報取得元'}
+              </Link>
             </div>
           </div>
-        )}
-        <div className="filter-group filter-months">
-          <label>{t('filter.month')}</label>
-          <div className="filter-chips">
-            {availableMonths.map((ym) => {
-              const m = parseInt(ym.slice(5, 7), 10)
-              return (
-                <button
-                  key={ym}
-                  type="button"
-                  className={`filter-chip${selectedMonths.has(ym) ? ' filter-chip--active' : ''}`}
-                  onClick={() => toggleMonth(ym)}
-                >
-                  {m}月
-                </button>
-              )
-            })}
-          </div>
         </div>
-        <div className="filter-group filter-distance">
-          <label>{t('filter.distance')}</label>
-          <div className="filter-chips">
-            {DISTANCE_RANGES.map((range, idx) => (
-              <button
-                key={idx}
-                type="button"
-                className={`filter-chip${distanceRanges.has(idx) ? ' filter-chip--active' : ''}`}
-                onClick={() => toggleDistanceRange(idx)}
-              >
-                {range.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="filter-group">
-          <label htmlFor="timeLimitMin">{t('filter.timeLimit')}</label>
-          <select
-            id="timeLimitMin"
-            value={timeLimitMin}
-            onChange={(e) => setTimeLimitMin(e.target.value)}
-          >
-            <option value="">{t('filter.noLimit')}</option>
-            <option value="6">{t('filter.hoursOrMore', { hours: 6 })}</option>
-            <option value="12">{t('filter.hoursOrMore', { hours: 12 })}</option>
-            <option value="24">{t('filter.hoursOrMore', { hours: 24 })}</option>
-            <option value="36">{t('filter.hoursOrMore', { hours: 36 })}</option>
-          </select>
-        </div>
-        <div className="filter-group">
-          <label>{lang === 'en' ? 'Est. Cost' : 'コスト目安'}</label>
-          <PriceHistogramSlider
-            prices={costPrices}
-            min={costMin}
-            max={costMax >= Infinity ? costGlobalMax : costMax}
-            onRangeChange={(newMin, newMax) => {
-              setCostMin(newMin)
-              setCostMax(newMax >= costGlobalMax ? Infinity : newMax)
-            }}
-            currency={lang === 'en' ? '$' : '¥'}
-          />
-        </div>
-        <div className="filter-group">
-          <label htmlFor="entryStatus">{t('filter.entryStatus')}</label>
-          <select
-            id="entryStatus"
-            value={entryStatus}
-            onChange={(e) => setEntryStatus(e.target.value)}
-          >
-            <option value="active">{t('filter.entryActive')}</option>
-            <option value="open">{t('filter.entryOpen')}</option>
-            <option value="upcoming">{t('filter.entryUpcoming')}</option>
-            <option value="closed">{t('filter.entryClosed')}</option>
-            <option value="">{t('filter.entryAll')}</option>
-          </select>
-        </div>
-        <div className="filter-group">
-          <label className="filter-checkbox">
-            <input
-              type="checkbox"
-              checked={showPastEvents}
-              onChange={(e) => setShowPastEvents(e.target.checked)}
-            />
-            <span>{t('filter.showPast')}</span>
-          </label>
-        </div>
-      </section>
-
-      <EventMap events={filtered} langPrefix={langPrefix} raceTypeLabel={raceTypeLabel} />
-
-      <section className="event-list">
-        {filtered.length === 0 ? (
-          <p className="empty">{t('event.empty')}</p>
-        ) : (
-          <ul>
-            {filtered.map((event) => {
-              const matchingCats = getMatchingCategories(event)
-              // フィルタで1件に絞られた場合は直接カテゴリへ、それ以外はイベント詳細へ (#33)
-              const cardLink = hasAnyFilter && matchingCats.length === 1
-                ? `${langPrefix}/events/${event.id}/categories/${matchingCats[0].id}`
-                : `${langPrefix}/events/${event.id}`
-              // フィルタ適用中は合致するカテゴリチップのみ表示 (#33)
-              const chipsToShow = hasAnyFilter && matchingCats.length > 0
-                ? matchingCats
-                : (event.categories ?? [])
-              // enrich完了判定: location + カテゴリ充足度 (#63, #71)
-              const cats = event.categories ?? []
-              const isEnriched = event.location != null && (
-                cats.length === 0 || cats.some(c => c.distance_km != null || c.elevation_gain != null)
-              )
-              return (
-                <li key={event.id} className={`event-card${isEnriched ? '' : ' event-card--pending'}`}>
-                  <div className="event-card-inner">
-                    {isEnriched ? (
-                    <Link to={cardLink} className="event-card-main">
-                      <div className="event-main">
-                        <h2>{event.name}</h2>
-                        <p className="event-meta">
-                          <span>
-                            {event.event_date_end && event.event_date && event.event_date_end !== event.event_date
-                              ? `${formatDateWithDay(event.event_date)}〜${formatDateWithDay(event.event_date_end)}`
-                              : event.event_date ? formatDateWithDay(event.event_date) : null}
-                          </span>
-                          {event.country && <span> / {event.country}</span>}
-                          {event.location && <span> / {event.location}</span>}
-                        </p>
-                        {entryPeriodText(event) && (
-                          <p className="event-entry-period">{t('event.entry')}: {entryPeriodText(event)}</p>
-                        )}
-                        {event.total_cost_estimate && (
-                          <p className="event-entry-period">{lang === 'en' ? 'Est.' : '目安'}: ¥{parseInt(event.total_cost_estimate, 10).toLocaleString()}</p>
-                        )}
-                      </div>
-                      <div className="event-card-badges">
-                        <span className={`badge badge-${event.race_type ?? 'other'}`}>
-                          {raceTypeLabel(event.race_type)}
-                        </span>
-                      </div>
-                    </Link>
-                    ) : (
-                    <div className="event-card-main event-card-main--disabled">
-                      <div className="event-main">
-                        <h2>{event.name}</h2>
-                        <p className="event-meta">
-                          <span>
-                            {event.event_date_end && event.event_date && event.event_date_end !== event.event_date
-                              ? `${formatDateWithDay(event.event_date)}〜${formatDateWithDay(event.event_date_end)}`
-                              : event.event_date ? formatDateWithDay(event.event_date) : null}
-                          </span>
-                          {event.country && <span> / {event.country}</span>}
-                        </p>
-                      </div>
-                      <div className="event-card-badges">
-                        <span className={`badge badge-${event.race_type ?? 'other'}`}>
-                          {raceTypeLabel(event.race_type)}
-                        </span>
-                        <span className="badge badge-pending">{t('event.pending')}</span>
-                      </div>
-                    </div>
-                    )}
-                    {isEnriched && chipsToShow.length > 0 && (
-                      <div className="event-category-chips">
-                        {chipsToShow.map((cat) => (
-                          <Link
-                            key={cat.id}
-                            to={`${langPrefix}/events/${event.id}/categories/${cat.id}`}
-                            className="category-chip"
-                            title={
-                              cat.distance_km != null || cat.elevation_gain != null
-                                ? `${cat.distance_km != null ? `${cat.distance_km}km` : ''} ${cat.elevation_gain != null ? `D+${cat.elevation_gain}m` : ''}`.trim()
-                                : undefined
-                            }
-                          >
-                            {cat.name}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </section>
-
-      <footer className="app-footer">
-        <Link to={`${langPrefix}/sources`}>{lang === 'en' ? 'Data Sources' : '情報取得元'}</Link>
-      </footer>
-    </div>
+      </div>
     </>
   )
 }

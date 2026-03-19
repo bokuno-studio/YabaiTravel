@@ -57,6 +57,7 @@ export type Event = {
   updated_at: string | null
   enrich_attempt_count?: number
   enrich_quality?: string | null
+  source_language?: 'ja' | 'en' | null
   // _en columns
   name_en?: string | null
   weather_forecast_en?: string | null

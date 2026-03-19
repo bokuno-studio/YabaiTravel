@@ -14,6 +14,7 @@ import {
   loadEnv, fetchHtml, extractRelevantContent, extractExternalOfficialLinks,
   extractRelevantLinks, callLlm, fetchTavilySearch, isPortalUrl,
   reclassifyRaceType, AGGREGATOR_DOMAINS, extractAndSaveCourseMap,
+  detectLanguage,
 } from './lib/enrich-utils.js'
 
 loadEnv()
@@ -76,6 +77,61 @@ const EVENT_SYSTEM_PROMPT = `あなたはレースイベントの情報抽出エ
 - 日付は YYYY-MM-DD 形式
 - JSON のみ返す`
 
+const EVENT_SYSTEM_PROMPT_EN = `You are an expert at extracting race event information.
+Extract the basic event information and unique course list from the given page content in JSON format.
+
+{
+  "event": {
+    "name": "Official event name (pure text only, no HTML tags, symbols, line breaks, or extra spaces)",
+    "event_date": "YYYY-MM-DD (first day of the event)",
+    "event_date_end": "YYYY-MM-DD (last day if multi-day event)",
+    "location": "Venue location. Format: 'City, Country'",
+    "country": "Country name (in English)",
+    "race_type": "marathon|trail|triathlon|cycling|duathlon|rogaining|spartan|hyrox|tough_mudder|obstacle|adventure|devils_circuit|strong_viking|other",
+    "official_url": "Official website URL of the event (NOT portal or registration sites like runnet.jp, sportsentry.ne.jp, moshicom.com, l-tike.com)",
+    "entry_url": "Registration URL",
+    "entry_start": "YYYY-MM-DD",
+    "entry_end": "YYYY-MM-DD",
+    "reception_place": "Check-in / registration location",
+    "start_place": "Start location",
+    "weather_forecast": "Expected weather during event period (temperature, conditions, recommended gear)",
+    "visa_info": "Visa information for the race location (for international travelers)",
+    "recovery_facilities": "Recovery facilities near the venue",
+    "photo_spots": "Photo spots and tourist attractions nearby",
+    "description": "Event description (140 chars max in English. Briefly cover key features, appeal, and course overview)",
+    "latitude": "Venue latitude (decimal, e.g., 35.6762)",
+    "longitude": "Venue longitude (decimal, e.g., 139.6503)"
+  },
+  "courses": [
+    { "name": "Course name", "distance_km": number }
+  ]
+}
+
+Course extraction rules:
+- Output only unique courses (different distances/routes)
+- The following are NOT course differences — merge them into one:
+  - Entry categories (general / R.LEAGUE / early bird / late entry)
+  - Gender categories (men / women)
+  - Age categories (open / masters / junior / kids / children / etc.)
+  - Wave start differences (Wave 1 / Wave 2 / ...)
+  - Team size differences (solo / pairs / teams)
+  - Price-only differences (same course, different pricing plans)
+  - Same distance with different names (e.g., "Full Marathon" and "Marathon" are both 42.195km — use one)
+- Example: "10km Men", "10km Women", "R.LEAGUE 10km" → { "name": "10km", "distance_km": 10 } as one entry
+- Keep course names simple (e.g., "Full Marathon", "Half Marathon", "10km", "Short", "Long")
+- Do NOT include participation requirements/age limits in course names
+- Exclude these from courses:
+  - Spectators / Supporters
+  - Volunteers
+  - Pacers
+  - Staff / Crew
+  - Kids fun run / non-competitive experience events
+
+Other:
+- Use null for items not found on the page
+- Dates in YYYY-MM-DD format
+- Return JSON only`
+
 /**
  * 単一イベントの基本情報 + コース一覧を抽出
  */
@@ -117,6 +173,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
 
     let extracted = { event: {}, courses: [] }
     let totalTokens = 0
+    let sourceLang = 'ja' // デフォルトは日本語
 
     if (!fetchFailed && html) {
       // 直接取得成功 → LLM 抽出
@@ -128,9 +185,15 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
         )
         return { success: false, eventId, error: 'page content too short' }
       }
-      const result = await callLlm(anthropic, EVENT_SYSTEM_PROMPT, `「${name}」の公式ページ内容:\n\n${content}`)
+      sourceLang = detectLanguage(content)
+      const prompt = sourceLang === 'en' ? EVENT_SYSTEM_PROMPT_EN : EVENT_SYSTEM_PROMPT
+      const userMsg = sourceLang === 'en'
+        ? `Official page content for "${name}":\n\n${content}`
+        : `「${name}」の公式ページ内容:\n\n${content}`
+      const result = await callLlm(anthropic, prompt, userMsg)
       totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
       extracted = result
+      console.log(`  [lang] ${name?.slice(0, 40)} | detected: ${sourceLang}`)
     } else {
       // Tavily フォールバック
       const query = `${name} 公式サイト エントリー 開催日 距離`
@@ -155,7 +218,14 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
       for (const result of searchResults) {
         if (result.content.length < 50) continue
         try {
-          const searchExtracted = await callLlm(anthropic, EVENT_SYSTEM_PROMPT, `「${name}」に関する情報:\n\n${result.content}`)
+          // Tavily 結果の言語を検出してプロンプトを切り替え
+          const searchLang = detectLanguage(result.content)
+          if (sourceLang === 'ja' && searchLang === 'en') sourceLang = 'en' // 英語コンテンツ発見時に更新
+          const searchPrompt = searchLang === 'en' ? EVENT_SYSTEM_PROMPT_EN : EVENT_SYSTEM_PROMPT
+          const searchUserMsg = searchLang === 'en'
+            ? `Information about "${name}":\n\n${result.content}`
+            : `「${name}」に関する情報:\n\n${result.content}`
+          const searchExtracted = await callLlm(anthropic, searchPrompt, searchUserMsg)
           totalTokens += (searchExtracted._usage?.input_tokens || 0) + (searchExtracted._usage?.output_tokens || 0)
           const ae = searchExtracted.event || {}
           const e = extracted.event || {}
@@ -200,7 +270,13 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
           fetchFailed = false
           const content = extractRelevantContent(html)
           if (content.length >= 50) {
-            const directResult = await callLlm(anthropic, EVENT_SYSTEM_PROMPT, `「${name}」の公式ページ内容:\n\n${content}`)
+            const directLang = detectLanguage(content)
+            if (directLang === 'en') sourceLang = 'en'
+            const directPrompt = directLang === 'en' ? EVENT_SYSTEM_PROMPT_EN : EVENT_SYSTEM_PROMPT
+            const directUserMsg = directLang === 'en'
+              ? `Official page content for "${name}":\n\n${content}`
+              : `「${name}」の公式ページ内容:\n\n${content}`
+            const directResult = await callLlm(anthropic, directPrompt, directUserMsg)
             totalTokens += (directResult._usage?.input_tokens || 0) + (directResult._usage?.output_tokens || 0)
             // マージ（直接取得結果を優先）
             const de = directResult.event || {}
@@ -230,7 +306,12 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
           const linkHtml = await fetchHtml(link)
           const linkContent = extractRelevantContent(linkHtml, 5000)
           if (linkContent.length < 50) continue
-          const linkResult = await callLlm(anthropic, EVENT_SYSTEM_PROMPT, `「${name}」の関連ページ内容:\n\n${linkContent}`)
+          const linkLang = detectLanguage(linkContent)
+          const linkPrompt = linkLang === 'en' ? EVENT_SYSTEM_PROMPT_EN : EVENT_SYSTEM_PROMPT
+          const linkUserMsg = linkLang === 'en'
+            ? `Related page content for "${name}":\n\n${linkContent}`
+            : `「${name}」の関連ページ内容:\n\n${linkContent}`
+          const linkResult = await callLlm(anthropic, linkPrompt, linkUserMsg)
           totalTokens += (linkResult._usage?.input_tokens || 0) + (linkResult._usage?.output_tokens || 0)
           const le = linkResult.event || {}
           const e = extracted.event || {}
@@ -264,37 +345,86 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
     const newOfficialUrl = e.official_url && !isPortalUrl(e.official_url) ? e.official_url : null
     const isPortalReplace = isPortalUrl(officialUrl)
 
-    await client.query(
-      `UPDATE ${SCHEMA}.events SET
-        name            = COALESCE(name, $1),
-        event_date      = ${isPortalReplace ? 'COALESCE($2, event_date)' : 'COALESCE(event_date, $2)'},
-        location        = COALESCE(location, $3),
-        country         = COALESCE(country, $4),
-        race_type       = CASE WHEN race_type IS NULL OR race_type = 'other' THEN COALESCE($5, race_type) ELSE race_type END,
-        entry_url       = COALESCE(entry_url, $6),
-        entry_start     = COALESCE(entry_start, $7),
-        entry_end       = COALESCE(entry_end, $8),
-        reception_place = COALESCE(reception_place, $9),
-        start_place     = COALESCE(start_place, $10),
-        weather_forecast     = COALESCE(weather_forecast, $11),
-        visa_info            = COALESCE(visa_info, $12),
-        recovery_facilities  = COALESCE(recovery_facilities, $13),
-        photo_spots          = COALESCE(photo_spots, $14),
-        official_url    = ${isPortalReplace ? 'COALESCE($15, official_url)' : 'COALESCE(official_url, $15)'},
-        description          = COALESCE(description, $17),
-        latitude             = COALESCE(latitude, $18),
-        longitude            = COALESCE(longitude, $19)
-       WHERE id = $16`,
-      [
-        e.name || null, e.event_date || null, e.location || null, e.country || null,
-        finalRaceType || null, e.entry_url || null, e.entry_start || null, e.entry_end || null,
-        e.reception_place || null, e.start_place || null, e.weather_forecast || null,
-        e.visa_info || null, e.recovery_facilities || null, e.photo_spots || null,
-        newOfficialUrl, eventId, e.description || null,
-        e.latitude != null ? parseFloat(e.latitude) : null,
-        e.longitude != null ? parseFloat(e.longitude) : null,
-      ]
-    )
+    if (sourceLang === 'en') {
+      // 英語ソース: 抽出結果を _en カラムに保存し、日本語カラムにもフォールバックとして保存
+      // （翻訳モジュールが後から en→ja 翻訳して日本語カラムを上書きする）
+      await client.query(
+        `UPDATE ${SCHEMA}.events SET
+          name            = COALESCE(name, $1),
+          name_en         = COALESCE(name_en, $1),
+          event_date      = ${isPortalReplace ? 'COALESCE($2, event_date)' : 'COALESCE(event_date, $2)'},
+          location        = COALESCE(location, $3),
+          location_en     = COALESCE(location_en, $3),
+          country         = COALESCE(country, $4),
+          country_en      = COALESCE(country_en, $4),
+          race_type       = CASE WHEN race_type IS NULL OR race_type = 'other' THEN COALESCE($5, race_type) ELSE race_type END,
+          entry_url       = COALESCE(entry_url, $6),
+          entry_start     = COALESCE(entry_start, $7),
+          entry_end       = COALESCE(entry_end, $8),
+          reception_place    = COALESCE(reception_place, $9),
+          reception_place_en = COALESCE(reception_place_en, $9),
+          start_place        = COALESCE(start_place, $10),
+          start_place_en     = COALESCE(start_place_en, $10),
+          weather_forecast    = COALESCE(weather_forecast, $11),
+          weather_forecast_en = COALESCE(weather_forecast_en, $11),
+          visa_info            = COALESCE(visa_info, $12),
+          visa_info_en         = COALESCE(visa_info_en, $12),
+          recovery_facilities    = COALESCE(recovery_facilities, $13),
+          recovery_facilities_en = COALESCE(recovery_facilities_en, $13),
+          photo_spots    = COALESCE(photo_spots, $14),
+          photo_spots_en = COALESCE(photo_spots_en, $14),
+          official_url    = ${isPortalReplace ? 'COALESCE($15, official_url)' : 'COALESCE(official_url, $15)'},
+          description      = COALESCE(description, $17),
+          description_en   = COALESCE(description_en, $17),
+          latitude             = COALESCE(latitude, $18),
+          longitude            = COALESCE(longitude, $19),
+          source_language      = COALESCE(source_language, 'en')
+         WHERE id = $16`,
+        [
+          e.name || null, e.event_date || null, e.location || null, e.country || null,
+          finalRaceType || null, e.entry_url || null, e.entry_start || null, e.entry_end || null,
+          e.reception_place || null, e.start_place || null, e.weather_forecast || null,
+          e.visa_info || null, e.recovery_facilities || null, e.photo_spots || null,
+          newOfficialUrl, eventId, e.description || null,
+          e.latitude != null ? parseFloat(e.latitude) : null,
+          e.longitude != null ? parseFloat(e.longitude) : null,
+        ]
+      )
+    } else {
+      // 日本語ソース: 従来どおり日本語カラムに保存
+      await client.query(
+        `UPDATE ${SCHEMA}.events SET
+          name            = COALESCE(name, $1),
+          event_date      = ${isPortalReplace ? 'COALESCE($2, event_date)' : 'COALESCE(event_date, $2)'},
+          location        = COALESCE(location, $3),
+          country         = COALESCE(country, $4),
+          race_type       = CASE WHEN race_type IS NULL OR race_type = 'other' THEN COALESCE($5, race_type) ELSE race_type END,
+          entry_url       = COALESCE(entry_url, $6),
+          entry_start     = COALESCE(entry_start, $7),
+          entry_end       = COALESCE(entry_end, $8),
+          reception_place = COALESCE(reception_place, $9),
+          start_place     = COALESCE(start_place, $10),
+          weather_forecast     = COALESCE(weather_forecast, $11),
+          visa_info            = COALESCE(visa_info, $12),
+          recovery_facilities  = COALESCE(recovery_facilities, $13),
+          photo_spots          = COALESCE(photo_spots, $14),
+          official_url    = ${isPortalReplace ? 'COALESCE($15, official_url)' : 'COALESCE(official_url, $15)'},
+          description          = COALESCE(description, $17),
+          latitude             = COALESCE(latitude, $18),
+          longitude            = COALESCE(longitude, $19),
+          source_language      = COALESCE(source_language, 'ja')
+         WHERE id = $16`,
+        [
+          e.name || null, e.event_date || null, e.location || null, e.country || null,
+          finalRaceType || null, e.entry_url || null, e.entry_start || null, e.entry_end || null,
+          e.reception_place || null, e.start_place || null, e.weather_forecast || null,
+          e.visa_info || null, e.recovery_facilities || null, e.photo_spots || null,
+          newOfficialUrl, eventId, e.description || null,
+          e.latitude != null ? parseFloat(e.latitude) : null,
+          e.longitude != null ? parseFloat(e.longitude) : null,
+        ]
+      )
+    }
 
     // コースを categories に INSERT（name + distance_km のみ）
     for (const course of extracted.courses || []) {

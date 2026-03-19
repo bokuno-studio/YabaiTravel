@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom'
+import { Routes, Route, Navigate, Outlet, useParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
 import EventList from './pages/EventList'
@@ -6,6 +6,9 @@ import EventDetail from './pages/EventDetail'
 import CategoryDetail from './pages/CategoryDetail'
 import Sources from './pages/Sources'
 import SportGuide from './pages/SportGuide'
+import Pricing from './pages/Pricing'
+import PaymentSuccess from './pages/PaymentSuccess'
+import PaymentCancel from './pages/PaymentCancel'
 import SideMenu from './components/SideMenu'
 
 /** パスの :lang から i18n 言語を設定し、子ルートを描画 */
@@ -33,30 +36,44 @@ function LangLayout() {
   )
 }
 
-/** ブラウザ言語でリダイレクト */
+/** ブラウザ言語でリダイレクト（SSR 時は /ja にフォールバック） */
 function DefaultRedirect() {
-  const browserLang = navigator.language.startsWith('ja') ? 'ja' : 'en'
+  const browserLang =
+    typeof navigator !== 'undefined' && navigator.language.startsWith('ja')
+      ? 'ja'
+      : typeof navigator !== 'undefined'
+        ? 'en'
+        : 'ja'
   return <Navigate to={`/${browserLang}`} replace />
 }
 
-function App() {
+/** 旧URL互換リダイレクト（useLocation で SSR 安全に pathname を取得） */
+function LegacyRedirect() {
+  const location = useLocation()
+  return <Navigate to={`/ja${location.pathname}`} replace />
+}
+
+/** ルート定義（BrowserRouter / StaticRouter の中で使う） */
+function AppRoutes() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/:lang" element={<LangLayout />}>
-          <Route index element={<EventList />} />
-          <Route path="events/:eventId" element={<EventDetail />} />
-          <Route path="events/:eventId/categories/:categoryId" element={<CategoryDetail />} />
-          <Route path="sources" element={<Sources />} />
-          <Route path="guide/:sport" element={<SportGuide />} />
-        </Route>
-        <Route path="/" element={<DefaultRedirect />} />
-        {/* 旧URL互換 */}
-        <Route path="/events/:eventId/categories/:categoryId" element={<Navigate to={`/ja${window.location.pathname}`} replace />} />
-        <Route path="/events/:eventId" element={<Navigate to={`/ja${window.location.pathname}`} replace />} />
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route path="/:lang" element={<LangLayout />}>
+        <Route index element={<EventList />} />
+        <Route path="events/:eventId" element={<EventDetail />} />
+        <Route path="events/:eventId/categories/:categoryId" element={<CategoryDetail />} />
+        <Route path="sources" element={<Sources />} />
+        <Route path="guide/:sport" element={<SportGuide />} />
+        <Route path="pricing" element={<Pricing />} />
+        <Route path="payment/success" element={<PaymentSuccess />} />
+        <Route path="payment/cancel" element={<PaymentCancel />} />
+      </Route>
+      <Route path="/" element={<DefaultRedirect />} />
+      {/* 旧URL互換 */}
+      <Route path="/events/:eventId/categories/:categoryId" element={<LegacyRedirect />} />
+      <Route path="/events/:eventId" element={<LegacyRedirect />} />
+    </Routes>
   )
 }
 
-export default App
+export { AppRoutes }
+export default AppRoutes
