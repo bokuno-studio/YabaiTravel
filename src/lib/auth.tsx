@@ -42,6 +42,22 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
   return data as UserProfile
 }
 
+/** Dev mock: localStorage に yabai_mock_auth があればそれを使う */
+function getDevMock(): { user: User; profile: UserProfile; session: Session } | null {
+  try {
+    const raw = localStorage.getItem('yabai_mock_auth')
+    if (!raw) return null
+    const mock = JSON.parse(raw)
+    return {
+      user: mock.user as User,
+      profile: mock.profile as UserProfile,
+      session: { access_token: 'mock-token', user: mock.user } as Session,
+    }
+  } catch {
+    return null
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -58,6 +74,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    // Check for dev mock first
+    const mock = getDevMock()
+    if (mock) {
+      setUser(mock.user)
+      setProfile(mock.profile)
+      setSession(mock.session)
+      setLoading(false)
+      return
+    }
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s)
@@ -92,10 +118,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = useCallback(async () => {
+    localStorage.removeItem('yabai_mock_auth')
     const { error } = await supabase.auth.signOut()
     if (error) {
       console.error('Sign-out error:', error.message)
     }
+    setUser(null)
+    setProfile(null)
+    setSession(null)
   }, [])
 
   const isSupporter = profile?.membership === 'supporter'
