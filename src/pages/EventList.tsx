@@ -324,12 +324,18 @@ function EventList() {
     lang,
   }
 
-  // Inject filters into sidebar via context
+  // Inject filters into sidebar via context (dependency on filter state to avoid infinite loop)
   const { setFilterNode } = useSidebarFilter()
+  const filterDepsKey = JSON.stringify([
+    [...selectedRaceTypes], [...selectedMonths], [...selectedCategories],
+    [...distanceRanges], timeLimitMin, costMin, costMax, entryStatus, showPastEvents,
+    raceTypes.length, loading,
+  ])
   useEffect(() => {
     setFilterNode(<SidebarFilters {...filterProps} />)
     return () => setFilterNode(null)
-  })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterDepsKey])
 
   const activeChips = getActiveFilterChips(filterProps)
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
