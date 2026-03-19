@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run db:migrate && node scripts/generate-sitemap.js; tsc -b && vite build",
-    "build:skip-db": "node scripts/generate-sitemap.js; tsc -b && vite build",
+    "build": "npm run db:migrate && node scripts/generate-sitemap.js; tsc -b && vite build && npm run build:ssr",
+    "build:skip-db": "node scripts/generate-sitemap.js; tsc -b && vite build && npm run build:ssr",
     "build:ssr": "vite build --ssr src/entry-server.tsx --outDir dist/server && node scripts/build-ssr-handler.js",
     "preview:ssr": "node server.js",
     "lint": "eslint .",

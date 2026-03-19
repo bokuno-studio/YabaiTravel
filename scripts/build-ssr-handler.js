@@ -12,9 +12,9 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
 
-const templatePath = path.resolve(ROOT, 'dist/client/index.html')
+const templatePath = path.resolve(ROOT, 'dist/index.html')
 if (!fs.existsSync(templatePath)) {
-  console.error('Error: dist/client/index.html が見つかりません。先に vite build を実行してください。')
+  console.error('Error: dist/index.html が見つかりません。先に vite build を実行してください。')
   process.exit(1)
 }
 

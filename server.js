@@ -17,7 +17,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
  */
 export async function renderPage(url) {
   // クライアントビルド済みの index.html をテンプレートとして読み込み
-  const templatePath = path.resolve(__dirname, 'dist/client/index.html')
+  const templatePath = path.resolve(__dirname, 'dist/index.html')
   let template = fs.readFileSync(templatePath, 'utf-8')
 
   // SSR バンドルを読み込み
@@ -52,8 +52,8 @@ if (process.argv[1] && process.argv[1].endsWith('server.js')) {
   const app = express()
 
   // 静的アセットを配信
-  app.use('/assets', express.static(path.resolve(__dirname, 'dist/client/assets')))
-  app.use(express.static(path.resolve(__dirname, 'dist/client'), { index: false }))
+  app.use('/assets', express.static(path.resolve(__dirname, 'dist/assets')))
+  app.use(express.static(path.resolve(__dirname, 'dist'), { index: false }))
 
   // すべてのリクエストを SSR で処理
   app.get('*', async (req, res) => {
