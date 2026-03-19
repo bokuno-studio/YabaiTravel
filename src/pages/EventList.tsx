@@ -7,9 +7,11 @@ import type { EventWithCategories, Category } from '../types/event'
 import EventMap from '../components/EventMap'
 import { EventCard } from '../components/EventCard'
 import { EventCardSkeleton } from '../components/EventCardSkeleton'
-import { FilterChipBar, DetailedFilterSheet } from '../components/FiltersSidebar'
+import { FilterBar } from '../components/FiltersSidebar'
 import type { FiltersSidebarProps } from '../components/FiltersSidebar'
 import { Header } from '../components/Header'
+import { Button } from '@/components/ui/button'
+import { MapIcon, MapPinOff } from 'lucide-react'
 
 /** interval 文字列から時間数を取得（フィルタ用） */
 function parseIntervalHours(v: string | null): number | null {
@@ -58,6 +60,7 @@ function EventList() {
   const [showPastEvents, setShowPastEvents] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
   const [weeklyNewCount, setWeeklyNewCount] = useState<number>(0)
+  const [showMap, setShowMap] = useState(false)
 
   useEffect(() => {
     async function fetchEvents() {
@@ -350,32 +353,39 @@ function EventList() {
           statsWeeklyNewLabel={t('stats.weeklyNew')}
         />
 
-        {/* Filter chip bar + detailed filter button */}
-        <div className="mb-4 flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <FilterChipBar
-              availableRaceTypes={availableRaceTypes}
-              raceTypes={raceTypes}
-              onRaceTypeToggle={toggleRaceType}
-              raceTypeLabel={raceTypeLabel}
-              availableMonths={availableMonths}
-              selectedMonths={selectedMonths}
-              onMonthToggle={toggleMonth}
-            />
-          </div>
-          <DetailedFilterSheet {...filterProps} />
+        {/* Unified filter bar: active chips + 絞り込み button */}
+        <div className="mb-4">
+          <FilterBar {...filterProps} />
         </div>
 
-        {/* Toolbar: result count */}
+        {/* Toolbar: result count + map toggle */}
         <div className="mb-4 flex items-center justify-between">
           <span className="text-sm text-muted-foreground">
             {loading ? '...' : `${filtered.length} ${lang === 'en' ? 'events' : '件'}`}
           </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowMap((prev) => !prev)}
+            className="text-xs text-muted-foreground"
+          >
+            {showMap ? (
+              <>
+                <MapPinOff className="mr-1 h-3.5 w-3.5" />
+                {lang === 'en' ? 'Hide Map' : '地図を非表示'}
+              </>
+            ) : (
+              <>
+                <MapIcon className="mr-1 h-3.5 w-3.5" />
+                {lang === 'en' ? 'Show Map' : '地図を表示'}
+              </>
+            )}
+          </Button>
         </div>
 
-        {/* Map */}
-        {!loading && (
-          <div className="mb-6">
+        {/* Map (toggle, max height 300px) */}
+        {!loading && showMap && (
+          <div className="mb-6 max-h-[300px] overflow-hidden rounded-xl">
             <EventMap events={filtered} langPrefix={langPrefix} raceTypeLabel={raceTypeLabel} />
           </div>
         )}

@@ -115,31 +115,37 @@ export function EventCard({
 
   return (
     <Card className={cn(
-      'group overflow-hidden border-t-4 bg-white shadow-sm py-0',
+      'group overflow-hidden border-t-4 bg-white shadow-sm py-0 flex flex-col',
       borderColor,
       'transition-all duration-200 hover:shadow-md',
     )}>
-      <CardContent className="p-0">
-        <Link to={cardLink} className="block no-underline">
-          {/* Card body */}
-          <div className="p-4">
-            <div className="flex items-start gap-2 mb-2">
+      <CardContent className="flex flex-1 flex-col p-0">
+        <Link to={cardLink} className="block flex-1 no-underline">
+          <div className="flex h-full flex-col p-4">
+            {/* 1. Race type badge (top-left, small) */}
+            <div className="mb-2">
               <Badge
                 className={cn('shrink-0 text-[10px] px-1.5 py-0.5', badgeBg)}
               >
                 {raceTypeLabel(event.race_type)}
               </Badge>
             </div>
+
+            {/* 2. Event name (bold, 2 lines max) */}
             <h3 className="text-sm font-semibold text-foreground line-clamp-2 leading-snug mb-2">
               {event.name}
             </h3>
-            <div className="space-y-1">
+
+            {/* 3-4. Date and Location */}
+            <div className="space-y-1 mb-auto">
+              {/* 3. Date with day of week */}
               {dateText && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Calendar className="h-3 w-3 shrink-0 text-primary/70" />
                   <span>{dateText}</span>
                 </div>
               )}
+              {/* 4. Location (country / city) */}
               {(event.country || event.location) && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <MapPin className="h-3 w-3 shrink-0 text-primary/70" />
@@ -150,23 +156,28 @@ export function EventCard({
                   </span>
                 </div>
               )}
-              <div className="flex items-center justify-between">
-                {entryPeriod && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {t('event.entry')}: {entryPeriod}
-                  </p>
-                )}
-                {costEstimate && (
-                  <div className="flex items-center gap-1 text-xs font-semibold text-primary">
-                    <Banknote className="h-3 w-3" />
-                    <span>{lang === 'en' ? 'Est.' : '目安'} {costEstimate}</span>
-                  </div>
-                )}
-              </div>
+            </div>
+
+            {/* 5-6. Entry period (left) + Cost estimate (right) - always at bottom */}
+            <div className="mt-2 flex items-end justify-between gap-2">
+              {entryPeriod ? (
+                <p className="text-[11px] text-muted-foreground leading-tight">
+                  {t('event.entry')}: {entryPeriod}
+                </p>
+              ) : (
+                <span />
+              )}
+              {costEstimate && (
+                <div className="flex shrink-0 items-center gap-1 text-xs font-semibold text-primary">
+                  <Banknote className="h-3 w-3" />
+                  <span>{lang === 'en' ? 'Est.' : '目安'} {costEstimate}</span>
+                </div>
+              )}
             </div>
           </div>
         </Link>
 
+        {/* 7. Category chips (bottom, separate border-t section) */}
         {chipsToShow.length > 0 && (
           <div className="flex flex-wrap gap-1 border-t border-border/40 px-3 py-2">
             {chipsToShow.map((cat) => (
