@@ -1,6 +1,5 @@
 import { useParams, Link } from 'react-router-dom'
 import { useState, useEffect, useCallback } from 'react'
-import { Helmet } from 'react-helmet-async'
 import {
   ChevronUp,
   MessageSquare,
@@ -460,19 +459,17 @@ function Feedback() {
 
   return (
     <>
-      <Helmet>
-        <title>
-          {isEn ? 'Ideas | yabai.travel' : 'みんなのアイデア | yabai.travel'}
-        </title>
-        <meta
-          name="description"
-          content={
-            isEn
-              ? 'Ideas from Crew members.'
-              : 'Crewからのみんなのアイデアです。'
-          }
-        />
-      </Helmet>
+      <title>
+        {isEn ? 'Ideas | yabai.travel' : 'みんなのアイデア | yabai.travel'}
+      </title>
+      <meta
+        name="description"
+        content={
+          isEn
+            ? 'Ideas from Crew members.'
+            : 'Crewからのみんなのアイデアです。'
+        }
+      />
 
       <div className="mx-auto max-w-3xl px-4 py-6">
         {/* Header */}

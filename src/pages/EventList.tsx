@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Helmet } from 'react-helmet-async'
 import { supabase } from '../lib/supabaseClient'
 import type { EventWithCategories, Category } from '../types/event'
 import EventMap from '../components/EventMap'
@@ -328,17 +327,15 @@ function EventList() {
 
   return (
     <>
-      <Helmet>
-        <title>エンデュランス大会を探す | yabai.travel</title>
-        <meta name="description" content="トレラン・スパルタン・HYROX・マラソンなどエンデュランス系大会の情報、アクセス・宿泊コストをまとめて比較できるポータルサイト。" />
-        <meta property="og:title" content="エンデュランス大会を探す | yabai.travel" />
-        <meta property="og:description" content="トレラン・スパルタン・HYROX・マラソンなどエンデュランス系大会の情報、アクセス・宿泊コストをまとめて比較できるポータルサイト。" />
-        <meta property="og:url" content="https://yabai-travel.vercel.app/ja" />
-        <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
-        <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
-        <link rel="alternate" hrefLang="en" href={`https://yabai-travel.vercel.app${location.pathname}?lang=en`} />
-        <link rel="alternate" hrefLang="x-default" href={`https://yabai-travel.vercel.app${location.pathname}`} />
-      </Helmet>
+      <title>エンデュランス大会を探す | yabai.travel</title>
+      <meta name="description" content="トレラン・スパルタン・HYROX・マラソンなどエンデュランス系大会の情報、アクセス・宿泊コストをまとめて比較できるポータルサイト。" />
+      <meta property="og:title" content="エンデュランス大会を探す | yabai.travel" />
+      <meta property="og:description" content="トレラン・スパルタン・HYROX・マラソンなどエンデュランス系大会の情報、アクセス・宿泊コストをまとめて比較できるポータルサイト。" />
+      <meta property="og:url" content="https://yabai-travel.vercel.app/ja" />
+      <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+      <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+      <link rel="alternate" hrefLang="en" href={`https://yabai-travel.vercel.app${location.pathname}?lang=en`} />
+      <link rel="alternate" hrefLang="x-default" href={`https://yabai-travel.vercel.app${location.pathname}`} />
 
       <div className="mx-auto max-w-7xl px-4 py-6 md:px-6">
         <Header
