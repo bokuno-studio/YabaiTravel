@@ -27,6 +27,43 @@ async function getRawBody(req: VercelRequest): Promise<Buffer> {
   return Buffer.concat(chunks)
 }
 
+async function getCustomerEmail(customerId: string): Promise<string | null> {
+  try {
+    const customer = await stripe.customers.retrieve(customerId)
+    if (customer.deleted) return null
+    return customer.email || null
+  } catch {
+    return null
+  }
+}
+
+async function updateMembershipByEmail(email: string, membership: 'supporter' | 'free', stripeCustomerId?: string, stripeSubscriptionId?: string) {
+  // First try to find the user by email in auth.users via service role
+  const { data: users } = await supabase.auth.admin.listUsers()
+  const user = users?.users?.find((u) => u.email === email)
+
+  if (!user) {
+    console.log(`No user found with email ${email}, updating subscription record only`)
+    return
+  }
+
+  const updateData: Record<string, unknown> = {
+    membership,
+    updated_at: new Date().toISOString(),
+  }
+  if (stripeCustomerId) updateData.stripe_customer_id = stripeCustomerId
+  if (stripeSubscriptionId) updateData.stripe_subscription_id = stripeSubscriptionId
+
+  const { error } = await supabase
+    .from('user_profiles')
+    .update(updateData)
+    .eq('id', user.id)
+
+  if (error) {
+    console.error(`Failed to update user_profiles for ${email}:`, error)
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
@@ -51,27 +88,100 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: `Webhook Error: ${message}` })
   }
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session
 
-    const email = session.customer_email || session.customer_details?.email
-    if (!email) {
-      console.error('No email found in checkout session')
-      return res.status(200).json({ received: true })
+        if (session.mode === 'subscription') {
+          const email = session.customer_email || session.customer_details?.email
+          if (email) {
+            await updateMembershipByEmail(
+              email,
+              'supporter',
+              session.customer as string,
+              session.subscription as string
+            )
+          }
+
+          // Also record in subscriptions table
+          const { error } = await supabase.from('subscriptions').insert({
+            stripe_customer_id: session.customer as string,
+            stripe_subscription_id: session.subscription as string,
+            email: email || '',
+            status: 'active',
+            plan: 'supporter',
+            current_period_start: new Date().toISOString(),
+          })
+
+          if (error) {
+            console.error('Failed to insert subscription:', error)
+          }
+        }
+        // For one-time donations (mode === 'payment'), no membership change needed
+        break
+      }
+
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as Stripe.Subscription
+        const customerId = typeof subscription.customer === 'string'
+          ? subscription.customer
+          : subscription.customer.id
+
+        const email = await getCustomerEmail(customerId)
+        if (email) {
+          await updateMembershipByEmail(email, 'free')
+        }
+
+        // Update subscriptions table
+        const { error } = await supabase
+          .from('subscriptions')
+          .update({
+            status: 'cancelled',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_subscription_id', subscription.id)
+
+        if (error) {
+          console.error('Failed to update subscription status:', error)
+        }
+        break
+      }
+
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription
+        const customerId = typeof subscription.customer === 'string'
+          ? subscription.customer
+          : subscription.customer.id
+
+        const email = await getCustomerEmail(customerId)
+
+        if (email) {
+          if (subscription.status === 'active') {
+            await updateMembershipByEmail(email, 'supporter', customerId, subscription.id)
+          } else if (subscription.status === 'canceled' || subscription.status === 'unpaid' || subscription.status === 'past_due') {
+            await updateMembershipByEmail(email, 'free')
+          }
+        }
+
+        // Update subscriptions table
+        const newStatus = subscription.status === 'active' ? 'active' : 'cancelled'
+        const { error } = await supabase
+          .from('subscriptions')
+          .update({
+            status: newStatus,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_subscription_id', subscription.id)
+
+        if (error) {
+          console.error('Failed to update subscription:', error)
+        }
+        break
+      }
     }
-
-    const { error } = await supabase.from('subscriptions').insert({
-      stripe_customer_id: session.customer as string,
-      stripe_subscription_id: session.subscription as string,
-      email,
-      status: 'active',
-      plan: 'community',
-      current_period_start: new Date().toISOString(),
-    })
-
-    if (error) {
-      console.error('Failed to insert subscription:', error)
-    }
+  } catch (err) {
+    console.error('Error processing webhook event:', err)
   }
 
   return res.status(200).json({ received: true })

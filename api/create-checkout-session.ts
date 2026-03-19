@@ -12,30 +12,66 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const { mode, amount, currency, lang } = req.body || {}
     const origin = req.headers.origin || 'https://yabai-travel.vercel.app'
+    const langPrefix = lang === 'en' ? '/en' : '/ja'
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'jpy',
-            product_data: {
-              name: 'コミュニティメンバー',
-              description: 'yabai.travel コミュニティアクセス（掲示板・変更提案機能）',
+    let sessionParams: Stripe.Checkout.SessionCreateParams
+
+    if (mode === 'donation') {
+      const donationCurrency = currency || 'jpy'
+      const donationAmount = amount || (donationCurrency === 'jpy' ? 500 : 500) // 500 JPY or $5 (500 cents)
+
+      sessionParams = {
+        mode: 'payment',
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: donationCurrency,
+              product_data: {
+                name: 'yabai.travel 応援',
+                description: lang === 'en'
+                  ? 'One-time donation to yabai.travel'
+                  : 'yabai.travel への応援寄付',
+              },
+              unit_amount: donationAmount,
             },
-            unit_amount: 100,
-            recurring: {
-              interval: 'month',
-            },
+            quantity: 1,
           },
-          quantity: 1,
-        },
-      ],
-      success_url: `${origin}/ja/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/ja/payment/cancel`,
-    })
+        ],
+        success_url: `${origin}${langPrefix}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}${langPrefix}/payment/cancel`,
+      }
+    } else {
+      // subscription mode (default)
+      sessionParams = {
+        mode: 'subscription',
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: 'yabai.travel Supporter Membership',
+                description: lang === 'en'
+                  ? 'Monthly supporter membership'
+                  : '応援メンバー（月額）',
+              },
+              unit_amount: 1000, // $10
+              recurring: {
+                interval: 'month',
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${origin}${langPrefix}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}${langPrefix}/payment/cancel`,
+      }
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams)
 
     return res.status(200).json({ url: session.url })
   } catch (err) {

@@ -11,6 +11,7 @@ import Feedback from './pages/Feedback'
 import PaymentSuccess from './pages/PaymentSuccess'
 import PaymentCancel from './pages/PaymentCancel'
 import SideMenu from './components/SideMenu'
+import FeedbackWidget from './components/FeedbackWidget'
 
 /** パスの :lang から i18n 言語を設定し、子ルートを描画 */
 function LangLayout() {
@@ -33,6 +34,7 @@ function LangLayout() {
       <div className="min-[960px]:ml-60 min-[960px]:pl-6">
         <Outlet />
       </div>
+      <FeedbackWidget />
     </>
   )
 }

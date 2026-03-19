@@ -1,6 +1,7 @@
 import { Link, useParams, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { Search, Heart, MessageSquare, Info, ChevronDown, Menu, X } from 'lucide-react'
+import AuthButton from './AuthButton'
 
 const SPORT_GUIDES = [
   { key: 'marathon', ja: 'マラソン', en: 'Marathon' },
@@ -163,6 +164,14 @@ function SideMenuContent({
           <Info className="h-4 w-4" />
           {isEn ? 'Data Sources' : '情報取得元'}
         </Link>
+      </div>
+
+      {/* Spacer to push auth to bottom */}
+      <div className="flex-1" />
+
+      {/* Auth */}
+      <div className="border-t border-border pt-2">
+        <AuthButton isEn={isEn} onNavigate={onNavigate} />
       </div>
     </div>
   )
