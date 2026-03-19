@@ -102,6 +102,15 @@ function SideMenu() {
               {isEn ? 'Feedback' : '要望・フィードバック'}
             </a>
           </li>
+          <li>
+            <Link
+              to={`${langPrefix}/pricing`}
+              className={location.pathname.includes('/pricing') ? 'active' : ''}
+              onClick={() => setMobileOpen(false)}
+            >
+              {isEn ? 'Support Us' : '応援してください'}
+            </Link>
+          </li>
         </ul>
       </div>
 
