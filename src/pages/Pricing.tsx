@@ -4,18 +4,20 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { createSquareCheckout } from '@/lib/square'
+import { createSquareCheckout, cancelMembership } from '@/lib/square'
 import { useAuth } from '@/lib/auth'
 
 function Pricing() {
   const { lang } = useParams<{ lang: string }>()
   const isEn = lang === 'en'
-  const { user, isSupporter, signInWithGoogle } = useAuth()
+  const { user, session, isSupporter, signInWithGoogle } = useAuth()
 
   const [donationAmount, setDonationAmount] = useState(isEn ? '5' : '500')
   const [donationLoading, setDonationLoading] = useState(false)
   const [subscriptionLoading, setSubscriptionLoading] = useState(false)
+  const [cancelLoading, setCancelLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [cancelConfirm, setCancelConfirm] = useState(false)
 
   const handleDonate = async () => {
     setDonationLoading(true)
@@ -48,11 +50,37 @@ function Pricing() {
       const url = await createSquareCheckout({
         mode: 'subscription',
         lang,
+        email: user?.email || undefined,
+        displayName: user?.user_metadata?.full_name || user?.user_metadata?.name || undefined,
+        userId: user?.id,
       })
       window.location.href = url
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
       setSubscriptionLoading(false)
+    }
+  }
+
+  const handleCancel = async () => {
+    if (!cancelConfirm) {
+      setCancelConfirm(true)
+      return
+    }
+
+    setCancelLoading(true)
+    setError(null)
+    try {
+      const accessToken = session?.access_token
+      if (!accessToken) {
+        throw new Error(isEn ? 'Not authenticated' : '認証されていません')
+      }
+      await cancelMembership(accessToken)
+      // Reload page to reflect updated membership
+      window.location.reload()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+      setCancelLoading(false)
+      setCancelConfirm(false)
     }
   }
 
@@ -137,8 +165,8 @@ function Pricing() {
             </Button>
             <p className="text-xs text-muted-foreground text-center">
               {isEn
-                ? 'You will be redirected to Stripe for secure payment.'
-                : 'Stripe の安全な決済ページにリダイレクトされます。'}
+                ? 'You will be redirected to Square for secure payment.'
+                : 'Square の安全な決済ページにリダイレクトされます。'}
             </p>
           </CardFooter>
         </Card>
@@ -181,10 +209,52 @@ function Pricing() {
 
           <CardFooter className="flex-col gap-3">
             {isSupporter ? (
-              <div className="w-full text-center py-2">
-                <Badge className="bg-green-100 text-green-800 border-green-200 text-sm px-3 py-1">
-                  ✓ {isEn ? "You're Crew!" : 'Crewメンバーです'}
-                </Badge>
+              <div className="w-full space-y-3">
+                <div className="text-center py-2">
+                  <Badge className="bg-green-100 text-green-800 border-green-200 text-sm px-3 py-1">
+                    &#10003; {isEn ? "You're Crew!" : 'Crewメンバーです'}
+                  </Badge>
+                </div>
+                {cancelConfirm ? (
+                  <div className="space-y-2">
+                    <p className="text-sm text-center text-muted-foreground">
+                      {isEn
+                        ? 'Are you sure? You will lose Crew benefits immediately.'
+                        : '本当にキャンセルしますか？Crew特典はすぐに無効になります。'}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        className="flex-1"
+                        size="sm"
+                        variant="destructive"
+                        onClick={handleCancel}
+                        disabled={cancelLoading}
+                      >
+                        {cancelLoading
+                          ? (isEn ? 'Cancelling...' : 'キャンセル中...')
+                          : (isEn ? 'Yes, cancel' : 'はい、キャンセル')}
+                      </Button>
+                      <Button
+                        className="flex-1"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setCancelConfirm(false)}
+                        disabled={cancelLoading}
+                      >
+                        {isEn ? 'Keep membership' : '継続する'}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    className="w-full"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCancel}
+                  >
+                    {isEn ? 'Cancel membership' : 'メンバーシップをキャンセル'}
+                  </Button>
+                )}
               </div>
             ) : !user ? (
               <>
@@ -215,8 +285,8 @@ function Pricing() {
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">
                   {isEn
-                    ? 'You will be redirected to Stripe for secure payment.'
-                    : 'Stripe の安全な決済ページにリダイレクトされます。'}
+                    ? 'You will be redirected to Square for secure payment.'
+                    : 'Square の安全な決済ページにリダイレクトされます。'}
                 </p>
               </>
             )}
