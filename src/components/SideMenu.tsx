@@ -93,14 +93,13 @@ function SideMenu() {
             </Link>
           </li>
           <li>
-            <a
-              href="https://omnivoc-nu.vercel.app/board/yabai-travel"
-              target="_blank"
-              rel="noreferrer"
+            <Link
+              to={`${langPrefix}/feedback`}
+              className={location.pathname.includes('/feedback') ? 'active' : ''}
               onClick={() => setMobileOpen(false)}
             >
               {isEn ? 'Feedback' : '要望・フィードバック'}
-            </a>
+            </Link>
           </li>
           <li>
             <Link

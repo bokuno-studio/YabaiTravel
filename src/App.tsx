@@ -7,6 +7,7 @@ import CategoryDetail from './pages/CategoryDetail'
 import Sources from './pages/Sources'
 import SportGuide from './pages/SportGuide'
 import Pricing from './pages/Pricing'
+import Feedback from './pages/Feedback'
 import PaymentSuccess from './pages/PaymentSuccess'
 import PaymentCancel from './pages/PaymentCancel'
 import SideMenu from './components/SideMenu'
@@ -63,6 +64,7 @@ function AppRoutes() {
         <Route path="events/:eventId/categories/:categoryId" element={<CategoryDetail />} />
         <Route path="sources" element={<Sources />} />
         <Route path="guide/:sport" element={<SportGuide />} />
+        <Route path="feedback" element={<Feedback />} />
         <Route path="pricing" element={<Pricing />} />
         <Route path="payment/success" element={<PaymentSuccess />} />
         <Route path="payment/cancel" element={<PaymentCancel />} />

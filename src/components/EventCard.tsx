@@ -16,41 +16,42 @@ interface EventCardProps {
   lang: string | undefined
 }
 
-const raceTypeColors: Record<string, string> = {
-  trail: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  hyrox: 'bg-amber-50 text-amber-700 border-amber-200',
-  spartan: 'bg-rose-50 text-rose-700 border-rose-200',
-  marathon: 'bg-sky-50 text-sky-700 border-sky-200',
-  ultra: 'bg-violet-50 text-violet-700 border-violet-200',
-  triathlon: 'bg-teal-50 text-teal-700 border-teal-200',
-  duathlon: 'bg-teal-50 text-teal-700 border-teal-200',
-  cycling: 'bg-lime-50 text-lime-700 border-lime-200',
-  obstacle: 'bg-orange-50 text-orange-700 border-orange-200',
-  tough_mudder: 'bg-orange-50 text-orange-700 border-orange-200',
-  rogaining: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-  adventure: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
-  devils_circuit: 'bg-red-50 text-red-700 border-red-200',
-  strong_viking: 'bg-red-50 text-red-700 border-red-200',
-  other: 'bg-stone-50 text-stone-600 border-stone-200',
+/** Top border color per race type */
+const raceTypeBorders: Record<string, string> = {
+  spartan: 'border-t-red-500',
+  marathon: 'border-t-blue-500',
+  trail: 'border-t-green-500',
+  hyrox: 'border-t-amber-500',
+  triathlon: 'border-t-cyan-500',
+  obstacle: 'border-t-rose-500',
+  tough_mudder: 'border-t-rose-500',
+  cycling: 'border-t-teal-500',
+  duathlon: 'border-t-purple-500',
+  rogaining: 'border-t-lime-500',
+  adventure: 'border-t-orange-500',
+  devils_circuit: 'border-t-red-500',
+  strong_viking: 'border-t-red-500',
+  ultra: 'border-t-violet-500',
+  other: 'border-t-gray-400',
 }
 
-/** Gradient backgrounds for the image area when no image is available */
-const raceTypeGradients: Record<string, string> = {
-  spartan: 'from-red-500 to-orange-500',
-  marathon: 'from-blue-500 to-cyan-500',
-  trail: 'from-green-500 to-emerald-500',
-  hyrox: 'from-amber-500 to-yellow-500',
-  triathlon: 'from-indigo-500 to-blue-500',
-  obstacle: 'from-rose-500 to-pink-500',
-  tough_mudder: 'from-rose-500 to-pink-500',
-  cycling: 'from-teal-500 to-cyan-500',
-  duathlon: 'from-purple-500 to-violet-500',
-  rogaining: 'from-lime-500 to-green-500',
-  adventure: 'from-orange-500 to-amber-500',
-  devils_circuit: 'from-red-500 to-orange-500',
-  strong_viking: 'from-red-500 to-orange-500',
-  ultra: 'from-violet-500 to-purple-500',
-  other: 'from-gray-500 to-slate-500',
+/** Badge background color per race type */
+const raceTypeBadgeBg: Record<string, string> = {
+  spartan: 'bg-red-500 text-white border-red-500',
+  marathon: 'bg-blue-500 text-white border-blue-500',
+  trail: 'bg-green-500 text-white border-green-500',
+  hyrox: 'bg-amber-500 text-white border-amber-500',
+  triathlon: 'bg-cyan-500 text-white border-cyan-500',
+  obstacle: 'bg-rose-500 text-white border-rose-500',
+  tough_mudder: 'bg-rose-500 text-white border-rose-500',
+  cycling: 'bg-teal-500 text-white border-teal-500',
+  duathlon: 'bg-purple-500 text-white border-purple-500',
+  rogaining: 'bg-lime-500 text-white border-lime-500',
+  adventure: 'bg-orange-500 text-white border-orange-500',
+  devils_circuit: 'bg-red-500 text-white border-red-500',
+  strong_viking: 'bg-red-500 text-white border-red-500',
+  ultra: 'bg-violet-500 text-white border-violet-500',
+  other: 'bg-gray-400 text-white border-gray-400',
 }
 
 /** Format date with day of week */
@@ -85,19 +86,15 @@ export function EventCard({
     ? `¥${parseInt(event.total_cost_estimate, 10).toLocaleString()}`
     : null
 
-  const gradient = raceTypeGradients[event.race_type ?? 'other'] ?? raceTypeGradients.other
+  const borderColor = raceTypeBorders[event.race_type ?? 'other'] ?? raceTypeBorders.other
+  const badgeBg = raceTypeBadgeBg[event.race_type ?? 'other'] ?? raceTypeBadgeBg.other
 
   if (!isEnriched) {
     return (
       <Card className={cn(
-        'overflow-hidden border-border/60 opacity-60 py-0',
+        'overflow-hidden border-t-4 bg-white shadow-sm opacity-60 py-0',
+        borderColor,
       )}>
-        {/* Gradient image area */}
-        <div className={cn('relative aspect-[16/9] bg-gradient-to-br opacity-40', gradient)}>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-white/60 text-sm font-medium">{t('event.pending')}</span>
-          </div>
-        </div>
         <CardContent className="p-4">
           <h3 className="truncate text-sm font-semibold text-foreground">
             {event.name}
@@ -118,32 +115,24 @@ export function EventCard({
 
   return (
     <Card className={cn(
-      'group overflow-hidden border-border/60 py-0',
-      'transition-all duration-200 hover:shadow-lg hover:scale-[1.02]',
+      'group overflow-hidden border-t-4 bg-white shadow-sm py-0',
+      borderColor,
+      'transition-all duration-200 hover:shadow-md',
     )}>
       <CardContent className="p-0">
         <Link to={cardLink} className="block no-underline">
-          {/* Gradient image area */}
-          <div className={cn('relative aspect-[16/9] bg-gradient-to-br', gradient)}>
-            <div className="absolute inset-0 flex items-end p-3">
-              <span className="text-white/80 text-lg font-bold drop-shadow-sm line-clamp-2 leading-tight">
-                {event.name}
-              </span>
-            </div>
-            {/* Badge: absolute top-left */}
-            <Badge
-              variant="outline"
-              className={cn(
-                'absolute top-2 left-2 border bg-white/90 text-xs backdrop-blur-sm',
-                raceTypeColors[event.race_type ?? 'other'],
-              )}
-            >
-              {raceTypeLabel(event.race_type)}
-            </Badge>
-          </div>
-
           {/* Card body */}
-          <div className="p-3">
+          <div className="p-4">
+            <div className="flex items-start gap-2 mb-2">
+              <Badge
+                className={cn('shrink-0 text-[10px] px-1.5 py-0.5', badgeBg)}
+              >
+                {raceTypeLabel(event.race_type)}
+              </Badge>
+            </div>
+            <h3 className="text-sm font-semibold text-foreground line-clamp-2 leading-snug mb-2">
+              {event.name}
+            </h3>
             <div className="space-y-1">
               {dateText && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
