@@ -8,9 +8,10 @@ interface EventMapProps {
   events: EventWithCategories[]
   langPrefix: string
   raceTypeLabel: (t: string | null) => string
+  lang?: string
 }
 
-function EventMap({ events, langPrefix, raceTypeLabel }: EventMapProps) {
+function EventMap({ events, langPrefix, raceTypeLabel, lang }: EventMapProps) {
   const [selectedEvent, setSelectedEvent] = useState<EventWithCategories | null>(null)
 
   const mappable = events.filter((e) => e.latitude != null && e.longitude != null)
@@ -21,8 +22,11 @@ function EventMap({ events, langPrefix, raceTypeLabel }: EventMapProps) {
 
   if (!API_KEY || mappable.length === 0) return null
 
+  // #7: Set map language based on route lang
+  const mapLanguage = lang === 'en' ? 'en' : 'ja'
+
   return (
-    <APIProvider apiKey={API_KEY}>
+    <APIProvider apiKey={API_KEY} language={mapLanguage}>
       <div style={{ width: '100%', height: '400px', borderRadius: '0.75rem', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
         <Map
           defaultCenter={{ lat: 36.0, lng: 139.6 }}

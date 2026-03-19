@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabaseClient'
@@ -9,12 +9,12 @@ import { EventCardSkeleton } from '../components/EventCardSkeleton'
 import { getActiveFilterChips } from '../components/FiltersSidebar'
 import type { FiltersSidebarProps } from '../components/FiltersSidebar'
 import SidebarFilters from '../components/SidebarFilters'
-import { Header } from '../components/Header'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { MapIcon, MapPinOff, SlidersHorizontal, X } from 'lucide-react'
+import { MapIcon, MapPinOff, SlidersHorizontal, X, RotateCcw } from 'lucide-react'
 import { useSidebarFilter } from '@/contexts/SidebarFilterContext'
+import { useSidebarStats } from '@/contexts/SidebarStatsContext'
 
 /** interval 文字列から時間数を取得（フィルタ用） */
 function parseIntervalHours(v: string | null): number | null {
@@ -46,24 +46,66 @@ const DISTANCE_RANGES = [
   { label: '100km〜', min: 100, max: Infinity },
 ] as const
 
+/** Helper: parse Set<string> from URL param */
+function parseSetParam(searchParams: URLSearchParams, key: string): Set<string> {
+  const val = searchParams.get(key)
+  if (!val) return new Set()
+  return new Set(val.split(',').filter(Boolean))
+}
+
+/** Helper: parse Set<number> from URL param */
+function parseNumSetParam(searchParams: URLSearchParams, key: string): Set<number> {
+  const val = searchParams.get(key)
+  if (!val) return new Set()
+  return new Set(val.split(',').filter(Boolean).map(Number))
+}
+
 function EventList() {
   const [events, setEvents] = useState<EventWithCategories[]>([])
-  const [searchParams] = useSearchParams()
-  const initialType = searchParams.get('type')
+  const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [raceTypes, setRaceTypes] = useState<Set<string>>(initialType ? new Set([initialType]) : new Set())
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
-  const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set())
-  const [distanceRanges, setDistanceRanges] = useState<Set<number>>(new Set())
-  const [timeLimitMin, setTimeLimitMin] = useState<string>('')
-  const [costMin, setCostMin] = useState<number>(0)
-  const [costMax, setCostMax] = useState<number>(Infinity)
-  const [entryStatus, setEntryStatus] = useState<string>('active')
-  const [showPastEvents, setShowPastEvents] = useState(false)
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
-  const [weeklyNewCount, setWeeklyNewCount] = useState<number>(0)
-  const [showMap, setShowMap] = useState(false)
+
+  // #1: Restore filter state from URL search params
+  const [raceTypes, setRaceTypes] = useState<Set<string>>(() => {
+    const fromParams = parseSetParam(searchParams, 'raceTypes')
+    if (fromParams.size > 0) return fromParams
+    const initialType = searchParams.get('type')
+    return initialType ? new Set([initialType]) : new Set()
+  })
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => parseSetParam(searchParams, 'categories'))
+  const [selectedMonths, setSelectedMonths] = useState<Set<string>>(() => parseSetParam(searchParams, 'months'))
+  const [distanceRanges, setDistanceRanges] = useState<Set<number>>(() => parseNumSetParam(searchParams, 'distances'))
+  const [timeLimitMin, setTimeLimitMin] = useState<string>(() => searchParams.get('timeLimitMin') ?? '')
+  const [costMin, setCostMin] = useState<number>(() => {
+    const v = searchParams.get('costMin')
+    return v ? Number(v) : 0
+  })
+  const [costMax, setCostMax] = useState<number>(() => {
+    const v = searchParams.get('costMax')
+    return v ? Number(v) : Infinity
+  })
+  const [entryStatus, setEntryStatus] = useState<string>(() => searchParams.get('entryStatus') ?? 'active')
+  const [showPastEvents, setShowPastEvents] = useState(() => searchParams.get('showPast') === '1')
+  const [showMap, setShowMap] = useState(true) // #4: default open
+
+  // #5, #6: Push stats to context for sidebar
+  const { setLastUpdated: setSidebarLastUpdated, setWeeklyNewCount: setSidebarWeeklyNewCount } = useSidebarStats()
+
+  // #1: Sync filter state to URL search params
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (raceTypes.size > 0) params.set('raceTypes', [...raceTypes].join(','))
+    if (selectedMonths.size > 0) params.set('months', [...selectedMonths].join(','))
+    if (selectedCategories.size > 0) params.set('categories', [...selectedCategories].join(','))
+    if (distanceRanges.size > 0) params.set('distances', [...distanceRanges].join(','))
+    if (timeLimitMin) params.set('timeLimitMin', timeLimitMin)
+    if (costMin > 0) params.set('costMin', String(costMin))
+    if (costMax < Infinity) params.set('costMax', String(costMax))
+    if (entryStatus !== 'active') params.set('entryStatus', entryStatus)
+    if (showPastEvents) params.set('showPast', '1')
+    setSearchParams(params, { replace: true })
+  }, [raceTypes, selectedMonths, selectedCategories, distanceRanges, timeLimitMin, costMin, costMax, entryStatus, showPastEvents, setSearchParams])
 
   useEffect(() => {
     async function fetchEvents() {
@@ -96,19 +138,19 @@ function EventList() {
         .not('collected_at', 'is', null)
         .order('collected_at', { ascending: false })
         .limit(1)
-      if (lastRow?.[0]?.collected_at) setLastUpdated(lastRow[0].collected_at)
+      if (lastRow?.[0]?.collected_at) setSidebarLastUpdated(lastRow[0].collected_at)
 
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
       const { count } = await supabase
         .from('events')
         .select('id', { count: 'exact', head: true })
         .gte('updated_at', weekAgo)
-      setWeeklyNewCount(count ?? 0)
+      setSidebarWeeklyNewCount(count ?? 0)
     }
 
     fetchEvents()
     fetchStats()
-  }, [])
+  }, [setSidebarLastUpdated, setSidebarWeeklyNewCount])
 
   /** コスト分布データ（95パーセンタイル超の外れ値を除外してヒストグラムに渡す） */
   const costPrices = useMemo(() => {
@@ -238,6 +280,19 @@ function EventList() {
 
   const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || selectedMonths.size > 0 || distanceRanges.size > 0 || !!timeLimitMin || costMin > 0 || costMax < Infinity || entryStatus !== 'active' || showPastEvents
 
+  // #2: Reset all filters
+  const resetAllFilters = useCallback(() => {
+    setRaceTypes(new Set())
+    setSelectedCategories(new Set())
+    setSelectedMonths(new Set())
+    setDistanceRanges(new Set())
+    setTimeLimitMin('')
+    setCostMin(0)
+    setCostMax(Infinity)
+    setEntryStatus('active')
+    setShowPastEvents(false)
+  }, [])
+
   const filtered = events.filter((event) => {
     const today = new Date().toISOString().slice(0, 10)
     // デフォルト: 当日以降のイベントのみ表示（#135）
@@ -361,14 +416,6 @@ function EventList() {
       <link rel="alternate" hrefLang="x-default" href={`https://yabai-travel.vercel.app${location.pathname}`} />
 
       <div className="mx-auto max-w-7xl px-4 py-6 md:px-6">
-        <Header
-          title={t('site.title')}
-          subtitle={t('site.subtitle')}
-          lastUpdated={lastUpdated}
-          weeklyNewCount={weeklyNewCount}
-          statsLastUpdatedLabel={t('stats.lastUpdated')}
-          statsWeeklyNewLabel={t('stats.weeklyNew')}
-        />
 
         {/* Active filter chips + toolbar */}
         <div className="mb-4 space-y-2">
@@ -423,16 +470,31 @@ function EventList() {
             </div>
           </div>
 
-          {/* Result count + map toggle */}
+          {/* Result count + reset button + map toggle */}
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">
-              {loading ? '...' : `${filtered.length} ${lang === 'en' ? 'events' : '件'}`}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {loading ? '...' : `${filtered.length} ${lang === 'en' ? 'events' : '件'}`}
+              </span>
+              {/* #2: Reset button - only show when any filter is active */}
+              {hasAnyFilter && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={resetAllFilters}
+                  className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <RotateCcw className="mr-1 h-3 w-3" />
+                  {lang === 'en' ? 'Reset' : 'リセット'}
+                </Button>
+              )}
+            </div>
+            {/* #4: Map toggle - changed from ghost to outline for visibility */}
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => setShowMap((prev) => !prev)}
-              className="text-xs text-muted-foreground"
+              className="text-xs"
             >
               {showMap ? (
                 <>
@@ -452,7 +514,7 @@ function EventList() {
         {/* Map (toggle, max height 300px) */}
         {!loading && showMap && (
           <div className="mb-6 max-h-[300px] overflow-hidden rounded-xl">
-            <EventMap events={filtered} langPrefix={langPrefix} raceTypeLabel={raceTypeLabel} />
+            <EventMap events={filtered} langPrefix={langPrefix} raceTypeLabel={raceTypeLabel} lang={lang} />
           </div>
         )}
 

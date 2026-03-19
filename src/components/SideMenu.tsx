@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Search, Heart, MessageSquare, Info, FileText, ChevronDown, Menu, X } from 'lucide-react'
 import AuthButton from './AuthButton'
 import { useSidebarFilter } from '@/contexts/SidebarFilterContext'
+import { useSidebarStats } from '@/contexts/SidebarStatsContext'
 
 const SPORT_GUIDES = [
   { key: 'marathon', ja: 'マラソン', en: 'Marathon' },
@@ -19,6 +20,11 @@ const SPORT_GUIDES = [
 
 const TOP_GUIDES_COUNT = 3
 
+/** Format timestamptz to JST display */
+function formatJST(ts: string): string {
+  return new Date(ts).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })
+}
+
 function SideMenuContent({
   lang,
   langPrefix,
@@ -26,6 +32,8 @@ function SideMenuContent({
   location,
   onNavigate,
   filterNode,
+  lastUpdated,
+  weeklyNewCount,
 }: {
   lang: string | undefined
   langPrefix: string
@@ -33,8 +41,11 @@ function SideMenuContent({
   location: ReturnType<typeof useLocation>
   onNavigate: () => void
   filterNode?: React.ReactNode
+  lastUpdated: string | null
+  weeklyNewCount: number
 }) {
   const [guidesExpanded, setGuidesExpanded] = useState(false)
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false) // #3: collapse/expand filters
 
   const isActive = (path: string) => location.pathname === path || location.pathname === `${path}/`
   const isActiveIncludes = (segment: string) => location.pathname.includes(segment)
@@ -42,36 +53,44 @@ function SideMenuContent({
   return (
     <div className="flex h-full flex-col px-3 py-4">
       {/* Logo + Language Switcher */}
-      <div className="flex items-center justify-between border-b border-border px-2 pb-3 mb-4">
-        <Link
-          to={langPrefix}
-          className="text-base font-bold text-foreground no-underline hover:text-primary transition-colors"
-          onClick={onNavigate}
-        >
-          yabai.travel
-        </Link>
-        <div className="flex gap-1">
+      <div className="border-b border-border px-2 pb-3 mb-4">
+        <div className="flex items-center justify-between">
           <Link
-            to={`/ja${location.pathname.replace(/^\/(ja|en)/, '')}`}
-            className={`px-2 py-0.5 rounded text-xs no-underline border transition-colors ${
-              lang === 'ja'
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'text-muted-foreground border-border hover:border-primary/50'
-            }`}
+            to={langPrefix}
+            className="text-base font-bold text-foreground no-underline hover:text-primary transition-colors"
+            onClick={onNavigate}
           >
-            JA
+            yabai.travel
           </Link>
-          <Link
-            to={`/en${location.pathname.replace(/^\/(ja|en)/, '')}`}
-            className={`px-2 py-0.5 rounded text-xs no-underline border transition-colors ${
-              lang === 'en'
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'text-muted-foreground border-border hover:border-primary/50'
-            }`}
-          >
-            EN
-          </Link>
+          <div className="flex gap-1">
+            <Link
+              to={`/ja${location.pathname.replace(/^\/(ja|en)/, '')}`}
+              className={`px-2 py-0.5 rounded text-xs no-underline border transition-colors ${
+                lang === 'ja'
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'text-muted-foreground border-border hover:border-primary/50'
+              }`}
+            >
+              JA
+            </Link>
+            <Link
+              to={`/en${location.pathname.replace(/^\/(ja|en)/, '')}`}
+              className={`px-2 py-0.5 rounded text-xs no-underline border transition-colors ${
+                lang === 'en'
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'text-muted-foreground border-border hover:border-primary/50'
+              }`}
+            >
+              EN
+            </Link>
+          </div>
         </div>
+        {/* #5: Last Updated under logo */}
+        {lastUpdated && (
+          <p className="mt-1.5 text-[10px] text-muted-foreground/70">
+            {isEn ? 'Last updated' : '最終更新'}: {formatJST(lastUpdated)}
+          </p>
+        )}
       </div>
 
       {/* Main Action - Race Search */}
@@ -88,13 +107,30 @@ function SideMenuContent({
           <Search className="h-4 w-4" />
           {isEn ? 'Race Search' : 'レース検索'}
         </Link>
+        {/* #6: Weekly New count under Race Search */}
+        {weeklyNewCount > 0 && (
+          <p className="px-3 text-[10px] text-muted-foreground/70">
+            {isEn ? `New this week: ${weeklyNewCount}` : `今週の新着: ${weeklyNewCount}件`}
+          </p>
+        )}
       </div>
 
       {/* Filter Section (injected from EventList, shown only on list page) */}
       {filterNode && (
         <>
           <div className="border-t border-border my-4" />
-          {filterNode}
+          {/* #3: Collapse/expand toggle */}
+          <button
+            type="button"
+            onClick={() => setFiltersCollapsed(!filtersCollapsed)}
+            className="mb-1 px-3 text-xs text-muted-foreground hover:text-foreground transition-colors bg-transparent border-0 cursor-pointer text-left"
+          >
+            {filtersCollapsed
+              ? (isEn ? 'Show filters' : '絞り込み条件を表示')
+              : (isEn ? 'Collapse filters' : '絞り込み条件を畳む')
+            }
+          </button>
+          {!filtersCollapsed && filterNode}
         </>
       )}
 
@@ -207,6 +243,7 @@ function SideMenu() {
   const isEn = lang === 'en'
   const [mobileOpen, setMobileOpen] = useState(false)
   const { filterNode } = useSidebarFilter()
+  const { lastUpdated, weeklyNewCount } = useSidebarStats()
 
   const closeMobile = () => setMobileOpen(false)
 
@@ -230,6 +267,8 @@ function SideMenu() {
           location={location}
           onNavigate={closeMobile}
           filterNode={filterNode}
+          lastUpdated={lastUpdated}
+          weeklyNewCount={weeklyNewCount}
         />
       </nav>
 
@@ -246,6 +285,8 @@ function SideMenu() {
           location={location}
           onNavigate={closeMobile}
           filterNode={filterNode}
+          lastUpdated={lastUpdated}
+          weeklyNewCount={weeklyNewCount}
         />
       </nav>
 

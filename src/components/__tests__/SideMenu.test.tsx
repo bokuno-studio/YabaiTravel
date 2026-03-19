@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import SideMenu from '../SideMenu'
 import { SidebarFilterProvider } from '@/contexts/SidebarFilterContext'
+import { SidebarStatsProvider } from '@/contexts/SidebarStatsContext'
 
 vi.mock('@/lib/auth', () => ({
   useAuth: () => ({
@@ -21,10 +22,12 @@ function renderMenu(_lang = 'ja', path = '/ja') {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <SidebarFilterProvider>
-        <Routes>
-          <Route path="/:lang/*" element={<SideMenu />} />
-          <Route path="/:lang" element={<SideMenu />} />
-        </Routes>
+        <SidebarStatsProvider>
+          <Routes>
+            <Route path="/:lang/*" element={<SideMenu />} />
+            <Route path="/:lang" element={<SideMenu />} />
+          </Routes>
+        </SidebarStatsProvider>
       </SidebarFilterProvider>
     </MemoryRouter>
   )

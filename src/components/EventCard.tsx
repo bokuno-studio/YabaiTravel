@@ -72,6 +72,12 @@ export function EventCard({
   t,
   lang,
 }: EventCardProps) {
+  const isEn = lang === 'en'
+
+  // #8: Prefer _en fields for English pages, fallback to Japanese
+  const displayCountry = isEn ? (event.country_en ?? event.country) : event.country
+  const displayLocation = isEn ? (event.location_en ?? event.location) : event.location
+
   const dateText = event.event_date_end && event.event_date && event.event_date_end !== event.event_date
     ? `${formatDateWithDay(event.event_date)}〜${formatDateWithDay(event.event_date_end)}`
     : event.event_date ? formatDateWithDay(event.event_date) : null
@@ -106,7 +112,7 @@ export function EventCard({
                 {dateText}
               </span>
             )}
-            {event.country && <span>{event.country}</span>}
+            {displayCountry && <span>{displayCountry}</span>}
           </div>
         </CardContent>
       </Card>
@@ -146,13 +152,13 @@ export function EventCard({
                 </div>
               )}
               {/* 4. Location (country / city) */}
-              {(event.country || event.location) && (
+              {(displayCountry || displayLocation) && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <MapPin className="h-3 w-3 shrink-0 text-primary/70" />
                   <span className="truncate">
-                    {event.country && event.location
-                      ? `${event.country} / ${event.location}`
-                      : event.country || event.location}
+                    {displayCountry && displayLocation
+                      ? `${displayCountry} / ${displayLocation}`
+                      : displayCountry || displayLocation}
                   </span>
                 </div>
               )}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { categoryToJsonLd } from '../lib/jsonld'
 import { supabase } from '../lib/supabaseClient'
 import type { Event, AccessRoute, Accommodation, Category, CourseMapFile, StayStatus } from '../types/event'
@@ -45,7 +46,9 @@ const raceTypeColors: Record<string, string> = {
 function CategoryDetail() {
   const { eventId, categoryId, lang } = useParams<{ eventId: string; categoryId: string; lang: string }>()
   const location = useLocation()
+  const { t } = useTranslation()
   const langPrefix = `/${lang || 'ja'}`
+  const isEn = lang === 'en'
   const [event, setEvent] = useState<Event | null>(null)
   const [category, setCategory] = useState<Category | null>(null)
   const [accessRoutes, setAccessRoutes] = useState<AccessRoute[]>([])
@@ -121,6 +124,14 @@ function CategoryDetail() {
 
   const stayStatusLabel = (s: StayStatus | null) => {
     if (!s) return null
+    if (isEn) {
+      const map: Record<StayStatus, string> = {
+        day_trip: 'Day trip possible',
+        pre_stay_required: 'Pre-night stay required',
+        post_stay_recommended: 'Post-night stay recommended',
+      }
+      return map[s]
+    }
     const map: Record<StayStatus, string> = {
       day_trip: '日帰り可能',
       pre_stay_required: '前泊必須',
@@ -135,19 +146,9 @@ function CategoryDetail() {
     post_stay_recommended: 'bg-violet-50 text-violet-700 border-violet-200',
   }
 
-  const raceTypeLabel = (t: string | null) => {
-    if (!t) return 'その他'
-    const map: Record<string, string> = {
-      marathon: 'マラソン',
-      trail: 'トレラン',
-      spartan: 'スパルタン',
-      adventure: 'アドベンチャー',
-      hyrox: 'HYROX',
-      devils_circuit: 'Devils Circuit',
-      strong_viking: 'Strong Viking',
-      obstacle: 'オブスタクル',
-    }
-    return map[t] ?? t
+  const raceTypeLabel = (rt: string | null) => {
+    if (!rt) return isEn ? 'Other' : 'その他'
+    return t(`raceType.${rt}`, rt)
   }
 
   const formatInterval = (v: string | null) => {
@@ -158,9 +159,15 @@ function CategoryDetail() {
       const min = parseInt(hms[2], 10)
       const sec = parseInt(hms[3], 10)
       const parts = []
-      if (h > 0) parts.push(`${h}時間`)
-      if (min > 0) parts.push(`${min}分`)
-      if (sec > 0 && h === 0 && min === 0) parts.push(`${sec}秒`)
+      if (isEn) {
+        if (h > 0) parts.push(`${h}h`)
+        if (min > 0) parts.push(`${min}m`)
+        if (sec > 0 && h === 0 && min === 0) parts.push(`${sec}s`)
+      } else {
+        if (h > 0) parts.push(`${h}時間`)
+        if (min > 0) parts.push(`${min}分`)
+        if (sec > 0 && h === 0 && min === 0) parts.push(`${sec}秒`)
+      }
       return parts.length ? parts.join('') : v
     }
     const dayMatch = v.match(/(\d+)\s*day/)
@@ -168,9 +175,15 @@ function CategoryDetail() {
     const minMatch = v.match(/(\d+)\s*minute/)
     if (dayMatch || hourMatch || minMatch) {
       const parts = []
-      if (dayMatch) parts.push(`${parseInt(dayMatch[1], 10)}日`)
-      if (hourMatch) parts.push(`${parseInt(hourMatch[1], 10)}時間`)
-      if (minMatch) parts.push(`${parseInt(minMatch[1], 10)}分`)
+      if (isEn) {
+        if (dayMatch) parts.push(`${parseInt(dayMatch[1], 10)}d`)
+        if (hourMatch) parts.push(`${parseInt(hourMatch[1], 10)}h`)
+        if (minMatch) parts.push(`${parseInt(minMatch[1], 10)}m`)
+      } else {
+        if (dayMatch) parts.push(`${parseInt(dayMatch[1], 10)}日`)
+        if (hourMatch) parts.push(`${parseInt(hourMatch[1], 10)}時間`)
+        if (minMatch) parts.push(`${parseInt(minMatch[1], 10)}分`)
+      }
       return parts.join('')
     }
     return v
@@ -206,7 +219,7 @@ function CategoryDetail() {
           <Skeleton className="h-48 rounded-xl" />
           <Skeleton className="h-48 rounded-xl" />
         </div>
-        <p className="sr-only">読み込み中...</p>
+        <p className="sr-only">{isEn ? 'Loading...' : '読み込み中...'}</p>
       </div>
     )
   }
@@ -214,7 +227,7 @@ function CategoryDetail() {
   if (error) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12 text-center">
-        <p className="text-destructive">エラー: {error}</p>
+        <p className="text-destructive">{isEn ? 'Error' : 'エラー'}: {error}</p>
       </div>
     )
   }
@@ -222,7 +235,7 @@ function CategoryDetail() {
   if (!event || !category) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12 text-center">
-        <p className="text-muted-foreground">見つかりません</p>
+        <p className="text-muted-foreground">{isEn ? 'Not found' : '見つかりません'}</p>
       </div>
     )
   }
@@ -235,6 +248,29 @@ function CategoryDetail() {
   const dateDisplay = event.event_date_end && event.event_date_end !== event.event_date
     ? `${event.event_date}〜${event.event_date_end}`
     : event.event_date
+
+  // #8: Prefer _en fields for English pages
+  const displayLocation = isEn ? (event.location_en ?? event.location) : event.location
+  const displayReceptionPlace = isEn
+    ? (category.reception_place_en ?? category.reception_place ?? event.reception_place_en ?? event.reception_place)
+    : (category.reception_place ?? event.reception_place)
+  const displayStartPlace = isEn
+    ? (category.start_place_en ?? category.start_place ?? event.start_place_en ?? event.start_place)
+    : (category.start_place ?? event.start_place)
+  const displayMandatoryGear = isEn ? (category.mandatory_gear_en ?? category.mandatory_gear) : category.mandatory_gear
+  const displayRecommendedGear = isEn ? (category.recommended_gear_en ?? category.recommended_gear) : category.recommended_gear
+  const displayProhibitedItems = isEn ? (category.prohibited_items_en ?? category.prohibited_items) : category.prohibited_items
+  const displayRequiredPace = isEn ? (category.required_pace_en ?? category.required_pace) : category.required_pace
+  const displayRequiredClimbPace = isEn ? (category.required_climb_pace_en ?? category.required_climb_pace) : category.required_climb_pace
+  const displayRequiredQualification = isEn ? (event.required_qualification_en ?? event.required_qualification) : event.required_qualification
+  const displayOutboundRoute = isEn ? (outbound?.route_detail_en ?? outbound?.route_detail) : outbound?.route_detail
+  const displayReturnRoute = isEn ? (returnRoute?.route_detail_en ?? returnRoute?.route_detail) : returnRoute?.route_detail
+  const displayOutboundShuttle = isEn ? (outbound?.shuttle_available_en ?? outbound?.shuttle_available) : outbound?.shuttle_available
+  const displayWeatherForecast = isEn ? (event.weather_forecast_en ?? event.weather_forecast) : event.weather_forecast
+  const displayRecoveryFacilities = isEn ? (event.recovery_facilities_en ?? event.recovery_facilities) : event.recovery_facilities
+  const displayPhotoSpots = isEn ? (event.photo_spots_en ?? event.photo_spots) : event.photo_spots
+  const displayVisaInfo = isEn ? (event.visa_info_en ?? event.visa_info) : event.visa_info
+  const displayEventProhibitedItems = isEn ? (event.prohibited_items_en ?? event.prohibited_items) : event.prohibited_items
 
   /** Helper to render a definition list row */
   const DLRow = ({ label, value, multiline }: { label: string; value: string | null | undefined; multiline?: boolean }) => (
@@ -252,9 +288,9 @@ function CategoryDetail() {
   return (
     <>
       <title>{event.name} {category.name} | yabai.travel</title>
-      <meta name="description" content={`${event.name} ${category.name}コースの参加費・アクセス・宿泊・必携品をまとめてチェック。`} />
+      <meta name="description" content={`${event.name} ${category.name}${isEn ? ' - entry fee, access, accommodation, mandatory gear' : 'コースの参加費・アクセス・宿泊・必携品をまとめてチェック。'}`} />
       <meta property="og:title" content={`${event.name} ${category.name} | yabai.travel`} />
-      <meta property="og:description" content={`${event.name} ${category.name}コースの参加費・アクセス・宿泊・必携品をまとめてチェック。`} />
+      <meta property="og:description" content={`${event.name} ${category.name}${isEn ? ' - entry fee, access, accommodation, mandatory gear' : 'コースの参加費・アクセス・宿泊・必携品をまとめてチェック。'}`} />
       <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}/categories/${category.id}`} />
       <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
       <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
@@ -268,7 +304,7 @@ function CategoryDetail() {
             to={langPrefix}
             className="transition-colors hover:text-primary"
           >
-            一覧
+            {isEn ? 'List' : '一覧'}
           </Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <Link
@@ -291,16 +327,16 @@ function CategoryDetail() {
               <Calendar className="h-3.5 w-3.5 shrink-0 text-primary/70" />
               {dateDisplay}
             </span>
-            {event.location && (
+            {displayLocation && (
               <span className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-                {event.location}
+                {displayLocation}
               </span>
             )}
             {event.participant_count != null && (
               <span className="flex items-center gap-1.5">
                 <Users className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-                約{event.participant_count.toLocaleString()}人
+                {isEn ? `Approx. ${event.participant_count.toLocaleString()}` : `約${event.participant_count.toLocaleString()}人`}
               </span>
             )}
           </div>
@@ -332,7 +368,7 @@ function CategoryDetail() {
                 <Button asChild variant="outline" size="sm">
                   <a href={event.official_url} target="_blank" rel="noreferrer">
                     <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                    公式
+                    {isEn ? 'Official' : '公式'}
                   </a>
                 </Button>
               )}
@@ -340,7 +376,7 @@ function CategoryDetail() {
                 <Button asChild variant="outline" size="sm">
                   <a href={event.entry_url} target="_blank" rel="noreferrer">
                     <FileEdit className="mr-1.5 h-3.5 w-3.5" />
-                    申込
+                    {isEn ? 'Entry' : '申込'}
                   </a>
                 </Button>
               )}
@@ -369,38 +405,38 @@ function CategoryDetail() {
         )}
 
         {/* レーススペック */}
-        <SectionCard title="このレースのスペックは？" icon={<Mountain className="h-4 w-4 text-primary" />}>
+        <SectionCard title={isEn ? 'Race specs' : 'このレースのスペックは？'} icon={<Mountain className="h-4 w-4 text-primary" />}>
           {/* Quick stats grid */}
           <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {category.distance_km != null && (
-              <StatBox icon={<TrendingUp className="h-4 w-4" />} label="距離" value={`${category.distance_km}km`} />
+              <StatBox icon={<TrendingUp className="h-4 w-4" />} label={isEn ? 'Distance' : '距離'} value={`${category.distance_km}km`} />
             )}
             {category.elevation_gain != null && (
-              <StatBox icon={<Mountain className="h-4 w-4" />} label="獲得標高" value={`${category.elevation_gain}m`} />
+              <StatBox icon={<Mountain className="h-4 w-4" />} label={isEn ? 'Elevation' : '獲得標高'} value={`${category.elevation_gain}m`} />
             )}
             {category.time_limit && (
-              <StatBox icon={<Clock className="h-4 w-4" />} label="制限時間" value={formatInterval(category.time_limit) ?? '—'} />
+              <StatBox icon={<Clock className="h-4 w-4" />} label={isEn ? 'Time limit' : '制限時間'} value={formatInterval(category.time_limit) ?? '—'} />
             )}
             {category.entry_fee != null && (
-              <StatBox icon={<Banknote className="h-4 w-4" />} label="参加費" value={`${category.entry_fee.toLocaleString()} ${category.entry_fee_currency ?? '円'}`} />
+              <StatBox icon={<Banknote className="h-4 w-4" />} label={isEn ? 'Entry fee' : '参加費'} value={`${category.entry_fee.toLocaleString()} ${category.entry_fee_currency ?? (isEn ? 'JPY' : '円')}`} />
             )}
           </div>
 
           <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
-            <DLRow label="スタートは何時？" value={category.start_time ? `${category.start_time} スタート` : null} />
-            <DLRow label="受付は何時まで？" value={category.reception_end} />
-            <DLRow label="受付場所は？" value={category.reception_place ?? event.reception_place} />
-            <DLRow label="スタート場所は？" value={category.start_place ?? event.start_place} />
-            <DLRow label="完走率は？" value={category.finish_rate != null ? `${(category.finish_rate * 100).toFixed(1)}%` : null} />
-            <dt className="text-muted-foreground">カットオフは？</dt>
+            <DLRow label={isEn ? 'Start time?' : 'スタートは何時？'} value={category.start_time ? (isEn ? `${category.start_time} start` : `${category.start_time} スタート`) : null} />
+            <DLRow label={isEn ? 'Check-in deadline?' : '受付は何時まで？'} value={category.reception_end} />
+            <DLRow label={isEn ? 'Check-in location?' : '受付場所は？'} value={displayReceptionPlace} />
+            <DLRow label={isEn ? 'Start location?' : 'スタート場所は？'} value={displayStartPlace} />
+            <DLRow label={isEn ? 'Finish rate?' : '完走率は？'} value={category.finish_rate != null ? `${(category.finish_rate * 100).toFixed(1)}%` : null} />
+            <dt className="text-muted-foreground">{isEn ? 'Cutoff times?' : 'カットオフは？'}</dt>
             <dd className={cn(
               formatCutoffTimes(category.cutoff_times) ? 'whitespace-pre-wrap' : 'italic text-muted-foreground/60',
             )}>
               {formatCutoffTimes(category.cutoff_times) ?? '—'}
             </dd>
             <DLRow
-              label="必要なペースは？"
-              value={category.required_pace ?? (() => {
+              label={isEn ? 'Required pace?' : '必要なペースは？'}
+              value={displayRequiredPace ?? (() => {
                 if (category.distance_km && category.time_limit) {
                   const parts = category.time_limit.match(/(\d+):(\d+):(\d+)/)
                   if (parts) {
@@ -408,41 +444,43 @@ function CategoryDetail() {
                     const paceMin = totalMin / category.distance_km
                     const m = Math.floor(paceMin)
                     const s = Math.round((paceMin - m) * 60)
-                    return `${m}:${String(s).padStart(2, '0')} /km（制限時間から算出）`
+                    return `${m}:${String(s).padStart(2, '0')} /km${isEn ? ' (calculated from time limit)' : '（制限時間から算出）'}`
                   }
                 }
                 return null
               })()}
             />
-            <DLRow label="登りに必要なペースは？" value={category.required_climb_pace} />
-            <DLRow label="必携品は？" value={category.mandatory_gear} multiline />
-            <DLRow label="持っておくと良いものは？" value={category.recommended_gear} multiline />
-            <DLRow label="使用禁止品は？" value={category.prohibited_items} />
-            <DLRow label="ポールは使える？" value={category.poles_allowed != null ? (category.poles_allowed ? '可' : '不可') : null} />
+            <DLRow label={isEn ? 'Required climb pace?' : '登りに必要なペースは？'} value={displayRequiredClimbPace} />
+            <DLRow label={isEn ? 'Mandatory gear?' : '必携品は？'} value={displayMandatoryGear} multiline />
+            <DLRow label={isEn ? 'Recommended gear?' : '持っておくと良いものは？'} value={displayRecommendedGear} multiline />
+            <DLRow label={isEn ? 'Prohibited items?' : '使用禁止品は？'} value={displayProhibitedItems} />
+            <DLRow label={isEn ? 'Poles allowed?' : 'ポールは使える？'} value={category.poles_allowed != null ? (category.poles_allowed ? (isEn ? 'Allowed' : '可') : (isEn ? 'Not allowed' : '不可')) : null} />
             <DLRow
-              label="参加費はいくら？"
-              value={category.entry_fee != null ? `${category.entry_fee.toLocaleString()} ${category.entry_fee_currency ?? '円'}` : null}
+              label={isEn ? 'Entry fee?' : '参加費はいくら？'}
+              value={category.entry_fee != null ? `${category.entry_fee.toLocaleString()} ${category.entry_fee_currency ?? (isEn ? 'JPY' : '円')}` : null}
             />
           </dl>
         </SectionCard>
 
         {/* 申込み */}
-        <SectionCard title="申込み" icon={<FileEdit className="h-4 w-4 text-primary" />}>
+        <SectionCard title={isEn ? 'Entry' : '申込み'} icon={<FileEdit className="h-4 w-4 text-primary" />}>
           <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
             <DLRow
-              label="エントリ方法は？"
-              value={event.entry_type === 'lottery' ? '抽選' : event.entry_type === 'first_come' ? '先着' : event.entry_type}
+              label={isEn ? 'Entry method?' : 'エントリ方法は？'}
+              value={event.entry_type === 'lottery' ? (isEn ? 'Lottery' : '抽選') : event.entry_type === 'first_come' ? (isEn ? 'First come, first served' : '先着') : event.entry_type}
             />
-            <DLRow label="参加資格はある？" value={event.required_qualification} />
-            <DLRow label="ITRAポイントは？" value={category.itra_points} />
-            <DLRow label="いつから申し込める？" value={event.entry_start} />
-            <DLRow label="申込み締切はいつ？" value={event.entry_end} />
-            <dt className="text-muted-foreground">例年の申込時期は？</dt>
+            <DLRow label={isEn ? 'Qualification required?' : '参加資格はある？'} value={displayRequiredQualification} />
+            <DLRow label={isEn ? 'ITRA points?' : 'ITRAポイントは？'} value={category.itra_points} />
+            <DLRow label={isEn ? 'Entry opens?' : 'いつから申し込める？'} value={event.entry_start} />
+            <DLRow label={isEn ? 'Entry deadline?' : '申込み締切はいつ？'} value={event.entry_end} />
+            <dt className="text-muted-foreground">{isEn ? 'Typical entry period?' : '例年の申込時期は？'}</dt>
             <dd className={event.entry_start_typical ? '' : 'italic text-muted-foreground/60'}>
               {event.entry_start_typical && event.entry_end_typical ? (
                 <>
                   {formatDate(event.entry_start_typical)}〜{formatDate(event.entry_end_typical)}
-                  <span className="mt-0.5 block text-xs text-muted-foreground">（今年の申込開始の目安）</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {isEn ? '(reference for this year\'s entry period)' : '（今年の申込開始の目安）'}
+                  </span>
                 </>
               ) : (
                 '—'
@@ -452,7 +490,7 @@ function CategoryDetail() {
         </SectionCard>
 
         {/* 公共交通機関で行けるか */}
-        <SectionCard title="公共交通機関で行けるか" icon={<Train className="h-4 w-4 text-primary" />}>
+        <SectionCard title={isEn ? 'Public transit access' : '公共交通機関で行けるか'} icon={<Train className="h-4 w-4 text-primary" />}>
           {outbound?.transit_accessible != null && (
             <p className={cn(
               'mb-3 rounded-lg px-3 py-2 text-sm font-medium',
@@ -460,17 +498,19 @@ function CategoryDetail() {
                 ? 'bg-emerald-50 text-emerald-700'
                 : 'bg-red-50 text-red-700',
             )}>
-              {outbound.transit_accessible ? '✅ 公共交通機関で行ける' : '❌ 公共交通機関では行きにくい（要車・要シャトル）'}
+              {outbound.transit_accessible
+                ? (isEn ? 'Accessible by public transit' : '公共交通機関で行ける')
+                : (isEn ? 'Not easily accessible by public transit (car/shuttle needed)' : '公共交通機関では行きにくい（要車・要シャトル）')}
             </p>
           )}
           <div className="flex flex-wrap gap-4">
             <div className="flex items-baseline gap-2 text-sm">
-              <span className="min-w-[2.5em] font-semibold text-muted-foreground">往路</span>
+              <span className="min-w-[2.5em] font-semibold text-muted-foreground">{isEn ? 'To' : '往路'}</span>
               <span className={outbound?.total_time_estimate ? '' : 'italic text-muted-foreground/60'}>{outbound?.total_time_estimate ?? '—'}</span>
               {outbound?.cost_estimate && <span className="font-medium text-primary">{outbound.cost_estimate}</span>}
             </div>
             <div className="flex items-baseline gap-2 text-sm">
-              <span className="min-w-[2.5em] font-semibold text-muted-foreground">復路</span>
+              <span className="min-w-[2.5em] font-semibold text-muted-foreground">{isEn ? 'From' : '復路'}</span>
               <span className={returnRoute?.total_time_estimate ? '' : 'italic text-muted-foreground/60'}>{returnRoute?.total_time_estimate ?? '—'}</span>
               {returnRoute?.cost_estimate && <span className="font-medium text-primary">{returnRoute.cost_estimate}</span>}
             </div>
@@ -478,85 +518,89 @@ function CategoryDetail() {
         </SectionCard>
 
         {/* 何日必要か */}
-        <SectionCard title="何日必要か" icon={<Home className="h-4 w-4 text-primary" />}>
+        <SectionCard title={isEn ? 'How many days needed?' : '何日必要か'} icon={<Home className="h-4 w-4 text-primary" />}>
           <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
-            <DLRow label="前泊は必要？" value={stayStatus ? stayStatusLabel(stayStatus) : null} />
+            <DLRow label={isEn ? 'Pre-night stay needed?' : '前泊は必要？'} value={stayStatus ? stayStatusLabel(stayStatus) : null} />
             <DLRow
-              label="どこに泊まればいい？"
+              label={isEn ? 'Where to stay?' : 'どこに泊まればいい？'}
               value={accommodations.some((a) => a.recommended_area)
-                ? accommodations.map((a) => a.recommended_area).filter(Boolean).join('、')
+                ? accommodations.map((a) => isEn ? (a.recommended_area_en ?? a.recommended_area) : a.recommended_area).filter(Boolean).join('、')
                 : null}
             />
             <DLRow
-              label="宿泊費の目安は？"
+              label={isEn ? 'Accommodation cost?' : '宿泊費の目安は？'}
               value={accommodations.some((a) => a.avg_cost_3star != null)
-                ? `約${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円`
+                ? (isEn
+                  ? `Approx. ${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()} JPY`
+                  : `約${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円`)
                 : null}
             />
           </dl>
         </SectionCard>
 
         {/* トータルコスト */}
-        <SectionCard title="トータルコストはいくら？" icon={<Banknote className="h-4 w-4 text-primary" />}>
+        <SectionCard title={isEn ? 'Total estimated cost' : 'トータルコストはいくら？'} icon={<Banknote className="h-4 w-4 text-primary" />}>
           {event.total_cost_estimate && (
             <div className="mb-3 rounded-lg bg-primary/10 px-4 py-2.5 text-sm font-semibold text-primary">
-              {event.total_cost_estimate}
+              {isEn ? (event.total_cost_estimate_en ?? event.total_cost_estimate) : event.total_cost_estimate}
             </div>
           )}
           <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
             <DLRow
-              label="参加費はいくら？"
-              value={category.entry_fee != null ? `${category.entry_fee.toLocaleString()} ${category.entry_fee_currency ?? '円'}` : null}
+              label={isEn ? 'Entry fee?' : '参加費はいくら？'}
+              value={category.entry_fee != null ? `${category.entry_fee.toLocaleString()} ${category.entry_fee_currency ?? (isEn ? 'JPY' : '円')}` : null}
             />
-            <DLRow label="行きの交通費は？" value={outbound?.cost_estimate} />
-            <DLRow label="帰りの交通費は？" value={returnRoute?.cost_estimate} />
+            <DLRow label={isEn ? 'Outbound transport?' : '行きの交通費は？'} value={outbound?.cost_estimate} />
+            <DLRow label={isEn ? 'Return transport?' : '帰りの交通費は？'} value={returnRoute?.cost_estimate} />
             <DLRow
-              label="宿泊費は？"
+              label={isEn ? 'Accommodation?' : '宿泊費は？'}
               value={accommodations.some((a) => a.avg_cost_3star != null)
-                ? `約${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円`
+                ? (isEn
+                  ? `Approx. ${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()} JPY`
+                  : `約${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円`)
                 : null}
             />
           </dl>
         </SectionCard>
 
         {/* どうやって行く？ */}
-        <SectionCard title="どうやって行く？" icon={<Train className="h-4 w-4 text-primary" />}>
-          <h3 className="mb-2 text-sm font-semibold text-foreground">往路</h3>
+        <SectionCard title={isEn ? 'How to get there?' : 'どうやって行く？'} icon={<Train className="h-4 w-4 text-primary" />}>
+          <h3 className="mb-2 text-sm font-semibold text-foreground">{isEn ? 'Outbound' : '往路'}</h3>
           <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
-            <DLRow label="どのルートで行く？" value={outbound?.route_detail} multiline />
-            <DLRow label="所要時間は？" value={outbound?.total_time_estimate} />
-            <DLRow label="費用の目安は？" value={outbound?.cost_estimate} />
-            <DLRow label="現金は必要？" value={outbound?.cash_required != null ? (outbound.cash_required ? 'あり' : 'なし') : null} />
-            <dt className="text-muted-foreground">予約サイトは？</dt>
+            <DLRow label={isEn ? 'Route?' : 'どのルートで行く？'} value={displayOutboundRoute} multiline />
+            <DLRow label={isEn ? 'Travel time?' : '所要時間は？'} value={outbound?.total_time_estimate} />
+            <DLRow label={isEn ? 'Cost estimate?' : '費用の目安は？'} value={outbound?.cost_estimate} />
+            <DLRow label={isEn ? 'Cash needed?' : '現金は必要？'} value={outbound?.cash_required != null ? (outbound.cash_required ? (isEn ? 'Yes' : 'あり') : (isEn ? 'No' : 'なし')) : null} />
+            <dt className="text-muted-foreground">{isEn ? 'Booking site?' : '予約サイトは？'}</dt>
             <dd className={outbound?.booking_url ? '' : 'italic text-muted-foreground/60'}>
               {outbound?.booking_url
                 ? <a href={outbound.booking_url} target="_blank" rel="noreferrer" className="break-all text-primary hover:underline">{outbound.booking_url}</a>
                 : '—'}
             </dd>
-            <DLRow label="シャトルバスはある？" value={outbound?.shuttle_available} />
-            <DLRow label="タクシーは？" value={outbound?.taxi_estimate} />
+            <DLRow label={isEn ? 'Shuttle bus?' : 'シャトルバスはある？'} value={displayOutboundShuttle} />
+            <DLRow label={isEn ? 'Taxi?' : 'タクシーは？'} value={outbound?.taxi_estimate} />
           </dl>
           {sameStartGoal ? (
             <p className="mt-3 text-sm text-muted-foreground">
-              {lang === 'en' ? 'Start and finish are at the same location. Return route is the same as outbound.' : 'スタート・ゴール同一のため、復路は往路と同様です。'}
+              {isEn ? 'Start and finish are at the same location. Return route is the same as outbound.' : 'スタート・ゴール同一のため、復路は往路と同様です。'}
             </p>
           ) : (
             <>
-              <h3 className="mb-2 mt-4 text-sm font-semibold text-foreground">復路</h3>
+              <h3 className="mb-2 mt-4 text-sm font-semibold text-foreground">{isEn ? 'Return' : '復路'}</h3>
               <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
-                <DLRow label="どのルートで行く？" value={returnRoute?.route_detail} multiline />
-                <DLRow label="所要時間は？" value={returnRoute?.total_time_estimate} />
-                <DLRow label="費用の目安は？" value={returnRoute?.cost_estimate} />
+                <DLRow label={isEn ? 'Route?' : 'どのルートで行く？'} value={displayReturnRoute} multiline />
+                <DLRow label={isEn ? 'Travel time?' : '所要時間は？'} value={returnRoute?.total_time_estimate} />
+                <DLRow label={isEn ? 'Cost estimate?' : '費用の目安は？'} value={returnRoute?.cost_estimate} />
               </dl>
             </>
           )}
         </SectionCard>
 
         {/* コースマップ */}
-        <SectionCard title="コースマップはある？" icon={<Map className="h-4 w-4 text-primary" />}>
+        <SectionCard title={isEn ? 'Course map' : 'コースマップはある？'} icon={<Map className="h-4 w-4 text-primary" />}>
           {courseMapFiles.length > 0 ? (
             <>
-              <p className="mb-2 text-sm text-muted-foreground">サイト内保管</p>
+              <p className="mb-2 text-sm text-muted-foreground">{isEn ? 'Stored on site' : 'サイト内保管'}</p>
               <ul className="space-y-1.5">
                 {courseMapFiles.map((cm) => (
                   <li key={cm.id}>
@@ -566,16 +610,16 @@ function CategoryDetail() {
                       rel="noreferrer"
                       className="text-sm text-primary hover:underline"
                     >
-                      {cm.display_name ?? (cm.year ? `${cm.year}年コース` : 'コースマップ')}
+                      {cm.display_name ?? (cm.year ? (isEn ? `${cm.year} course` : `${cm.year}年コース`) : (isEn ? 'Course map' : 'コースマップ'))}
                     </a>
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-xs text-muted-foreground">レース終了後も参照できます</p>
+              <p className="mt-2 text-xs text-muted-foreground">{isEn ? 'Available even after the race' : 'レース終了後も参照できます'}</p>
             </>
           ) : event.course_map_url ? (
             <>
-              <p className="mb-1 text-sm text-muted-foreground">外部リンク</p>
+              <p className="mb-1 text-sm text-muted-foreground">{isEn ? 'External link' : '外部リンク'}</p>
               <a href={event.course_map_url} target="_blank" rel="noreferrer" className="break-all text-sm text-primary hover:underline">
                 {event.course_map_url}
               </a>
@@ -587,22 +631,22 @@ function CategoryDetail() {
 
         {/* 去年のレース */}
         {event.previous_edition_url && (
-          <SectionCard title="去年のレース">
+          <SectionCard title={isEn ? 'Previous edition' : '去年のレース'}>
             <a
               href={event.previous_edition_url}
               target="_blank"
               rel="noreferrer"
               className="text-sm text-primary hover:underline"
             >
-              去年のレースはこちら
+              {isEn ? 'View previous edition' : '去年のレースはこちら'}
             </a>
           </SectionCard>
         )}
 
         {/* 過去の開催 */}
         {pastEditions.length > 0 && (
-          <SectionCard title="過去の開催">
-            <p className="mb-3 text-sm text-muted-foreground">去年のコースマップ・申込期間・料金の参考</p>
+          <SectionCard title={isEn ? 'Past editions' : '過去の開催'}>
+            <p className="mb-3 text-sm text-muted-foreground">{isEn ? 'Reference for past course maps, entry periods, and fees' : '去年のコースマップ・申込期間・料金の参考'}</p>
             <div className="grid gap-3 sm:grid-cols-2">
               {pastEditions.map(({ event: pe, courseMaps, categories: pastCats }) => {
                 const year = pe.event_date?.slice(0, 4)
@@ -610,27 +654,27 @@ function CategoryDetail() {
                 return (
                   <Card key={pe.id} className="bg-secondary/30 py-4">
                     <CardContent className="px-4">
-                      <h3 className="mb-2 text-sm font-bold text-primary">{year}年</h3>
+                      <h3 className="mb-2 text-sm font-bold text-primary">{year}{isEn ? '' : '年'}</h3>
                       <dl className="grid grid-cols-[minmax(80px,1fr)_1fr] gap-x-4 gap-y-2 text-xs">
                         {pe.entry_start_typical && (
                           <>
-                            <dt className="text-muted-foreground">申込期間</dt>
+                            <dt className="text-muted-foreground">{isEn ? 'Entry period' : '申込期間'}</dt>
                             <dd>{formatDate(pe.entry_start_typical)}〜{formatDate(pe.entry_end_typical)}</dd>
                           </>
                         )}
                         {sameCat?.entry_fee != null && (
                           <>
-                            <dt className="text-muted-foreground">{sameCat.name} 申込費</dt>
-                            <dd>{sameCat.entry_fee.toLocaleString()} {sameCat.entry_fee_currency ?? '円'}</dd>
+                            <dt className="text-muted-foreground">{sameCat.name} {isEn ? 'fee' : '申込費'}</dt>
+                            <dd>{sameCat.entry_fee.toLocaleString()} {sameCat.entry_fee_currency ?? (isEn ? 'JPY' : '円')}</dd>
                           </>
                         )}
                         {courseMaps.length > 0 && (
                           <>
-                            <dt className="text-muted-foreground">コースマップ</dt>
+                            <dt className="text-muted-foreground">{isEn ? 'Course map' : 'コースマップ'}</dt>
                             <dd className="flex flex-wrap gap-2">
                               {courseMaps.map((cm) => (
                                 <a key={cm.id} href={cm.file_path} target="_blank" rel="noreferrer" className="text-primary hover:underline">
-                                  {cm.display_name ?? `${cm.year}年`}
+                                  {cm.display_name ?? `${cm.year}${isEn ? '' : '年'}`}
                                 </a>
                               ))}
                             </dd>
@@ -646,37 +690,37 @@ function CategoryDetail() {
         )}
 
         {/* 天候 */}
-        {event.weather_forecast && (
-          <SectionCard title="当日の天候は？">
-            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{event.weather_forecast}</p>
+        {displayWeatherForecast && (
+          <SectionCard title={isEn ? 'Weather forecast' : '当日の天候は？'}>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{displayWeatherForecast}</p>
           </SectionCard>
         )}
 
         {/* 周辺の情報 */}
-        {(event.recovery_facilities || event.photo_spots) && (
-          <SectionCard title="周辺の情報は？">
+        {(displayRecoveryFacilities || displayPhotoSpots) && (
+          <SectionCard title={isEn ? 'Nearby info' : '周辺の情報は？'}>
             <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
-              {event.recovery_facilities && <DLRow label="リカバリー施設・温泉は？" value={event.recovery_facilities} />}
-              {event.photo_spots && <DLRow label="フォトスポットは？" value={event.photo_spots} />}
+              {displayRecoveryFacilities && <DLRow label={isEn ? 'Recovery facilities / hot springs?' : 'リカバリー施設・温泉は？'} value={displayRecoveryFacilities} />}
+              {displayPhotoSpots && <DLRow label={isEn ? 'Photo spots?' : 'フォトスポットは？'} value={displayPhotoSpots} />}
             </dl>
           </SectionCard>
         )}
 
         {/* ビザ */}
-        {event.visa_info && (
-          <SectionCard title="ビザは必要？">
-            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{event.visa_info}</p>
+        {displayVisaInfo && (
+          <SectionCard title={isEn ? 'Visa info' : 'ビザは必要？'}>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{displayVisaInfo}</p>
           </SectionCard>
         )}
 
         {/* その他 */}
-        {(event.prohibited_items || event.furusato_nozei_url) && (
-          <SectionCard title="その他">
+        {(displayEventProhibitedItems || event.furusato_nozei_url) && (
+          <SectionCard title={isEn ? 'Other info' : 'その他'}>
             <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
-              {event.prohibited_items && <DLRow label="使用禁止品は？" value={event.prohibited_items} />}
+              {displayEventProhibitedItems && <DLRow label={isEn ? 'Prohibited items?' : '使用禁止品は？'} value={displayEventProhibitedItems} />}
               {event.furusato_nozei_url && (
                 <>
-                  <dt className="text-muted-foreground">ふるさと納税は？</dt>
+                  <dt className="text-muted-foreground">{isEn ? 'Furusato Nozei?' : 'ふるさと納税は？'}</dt>
                   <dd>
                     <a href={event.furusato_nozei_url} target="_blank" rel="noreferrer" className="break-all text-sm text-primary hover:underline">
                       {event.furusato_nozei_url}
@@ -691,7 +735,7 @@ function CategoryDetail() {
         {/* 最終更新 */}
         {(category.updated_at || event.updated_at) && (
           <p className="mt-6 border-t border-border pt-4 text-right text-xs text-muted-foreground/70">
-            最終更新: <time dateTime={(category.updated_at ?? event.updated_at)!}>{(category.updated_at ?? event.updated_at)!.slice(0, 10)}</time>
+            {isEn ? 'Last updated' : '最終更新'}: <time dateTime={(category.updated_at ?? event.updated_at)!}>{(category.updated_at ?? event.updated_at)!.slice(0, 10)}</time>
           </p>
         )}
       </div>

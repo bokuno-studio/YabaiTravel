@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { eventToJsonLd } from '../lib/jsonld'
 import { supabase } from '../lib/supabaseClient'
 import type { Event, Category, AccessRoute, Accommodation } from '../types/event'
@@ -37,26 +38,6 @@ const raceTypeColors: Record<string, string> = {
   other: 'bg-stone-50 text-stone-600 border-stone-200',
 }
 
-const raceTypeLabel = (t: string | null) => {
-  if (!t) return 'その他'
-  const map: Record<string, string> = {
-    marathon: 'マラソン',
-    trail: 'トレラン',
-    spartan: 'スパルタン',
-    adventure: 'アドベンチャー',
-    hyrox: 'HYROX',
-    devils_circuit: 'Devils Circuit',
-    strong_viking: 'Strong Viking',
-    obstacle: 'オブスタクル',
-    triathlon: 'トライアスロン',
-    duathlon: 'デュアスロン',
-    cycling: 'サイクリング',
-    rogaining: 'ロゲイニング',
-    tough_mudder: 'Tough Mudder',
-  }
-  return map[t] ?? t
-}
-
 /**
  * 大会概要ページ: カテゴリ一覧を表示し、各カテゴリの詳細ページへリンク
  * カテゴリ0件の場合はイベントレベルの情報（アクセス・申込み等）を直接表示 (#32)
@@ -64,13 +45,20 @@ const raceTypeLabel = (t: string | null) => {
 function EventDetail() {
   const { eventId, lang } = useParams<{ eventId: string; lang: string }>()
   const location = useLocation()
+  const { t } = useTranslation()
   const langPrefix = `/${lang || 'ja'}`
+  const isEn = lang === 'en'
   const [event, setEvent] = useState<Event | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [accessRoutes, setAccessRoutes] = useState<AccessRoute[]>([])
   const [accommodations, setAccommodations] = useState<Accommodation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const raceTypeLabel = (rt: string | null) => {
+    if (!rt) return isEn ? 'Other' : 'その他'
+    return t(`raceType.${rt}`, rt)
+  }
 
   useEffect(() => {
     if (!eventId) return
@@ -114,7 +102,7 @@ function EventDetail() {
           <Skeleton className="h-20 w-full rounded-xl" />
           <Skeleton className="h-20 w-full rounded-xl" />
         </div>
-        <p className="sr-only">読み込み中...</p>
+        <p className="sr-only">{isEn ? 'Loading...' : '読み込み中...'}</p>
       </div>
     )
   }
@@ -122,7 +110,7 @@ function EventDetail() {
   if (error) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12 text-center">
-        <p className="text-destructive">エラー: {error}</p>
+        <p className="text-destructive">{isEn ? 'Error' : 'エラー'}: {error}</p>
       </div>
     )
   }
@@ -130,7 +118,7 @@ function EventDetail() {
   if (!event) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12 text-center">
-        <p className="text-muted-foreground">大会が見つかりません</p>
+        <p className="text-muted-foreground">{isEn ? 'Event not found' : '大会が見つかりません'}</p>
       </div>
     )
   }
@@ -151,14 +139,18 @@ function EventDetail() {
     ? `${event.event_date}〜${event.event_date_end}`
     : event.event_date ?? '—'
 
+  // #8: Prefer _en fields for English pages
+  const displayLocation = isEn ? (event.location_en ?? event.location) : event.location
+  const displayDescription = isEn ? (event.description_en ?? event.description) : event.description
+
   // カテゴリ0件: イベントレベルの情報を直接表示 (#32)
   if (categories.length === 0) {
     return (
       <>
         <title>{event.name} | yabai.travel</title>
-        <meta name="description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+        <meta name="description" content={displayDescription ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
         <meta property="og:title" content={`${event.name} | yabai.travel`} />
-        <meta property="og:description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+        <meta property="og:description" content={displayDescription ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
         <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}`} />
         <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
         <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
@@ -173,7 +165,7 @@ function EventDetail() {
               className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
             >
               <ArrowLeft className="h-4 w-4" />
-              一覧に戻る
+              {t('detail.backToList')}
             </Link>
           </div>
 
@@ -182,9 +174,9 @@ function EventDetail() {
             <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
               {event.name}
             </h1>
-            {event.description && (
+            {displayDescription && (
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                {event.description}
+                {displayDescription}
               </p>
             )}
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
@@ -192,10 +184,10 @@ function EventDetail() {
                 <Calendar className="h-3.5 w-3.5 shrink-0 text-primary/70" />
                 {dateDisplay}
               </span>
-              {event.location && (
+              {displayLocation && (
                 <span className="flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-                  {event.location}
+                  {displayLocation}
                 </span>
               )}
             </div>
@@ -215,7 +207,7 @@ function EventDetail() {
                   <Button asChild variant="outline" size="sm">
                     <a href={event.official_url} target="_blank" rel="noreferrer">
                       <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                      公式
+                      {isEn ? 'Official' : '公式'}
                     </a>
                   </Button>
                 )}
@@ -223,7 +215,7 @@ function EventDetail() {
                   <Button asChild variant="outline" size="sm">
                     <a href={event.entry_url} target="_blank" rel="noreferrer">
                       <FileEdit className="mr-1.5 h-3.5 w-3.5" />
-                      申込
+                      {isEn ? 'Entry' : '申込'}
                     </a>
                   </Button>
                 )}
@@ -234,19 +226,21 @@ function EventDetail() {
           {/* 申込み */}
           <Card className="mb-4">
             <CardHeader>
-              <CardTitle className="text-base">申込み</CardTitle>
+              <CardTitle className="text-base">{isEn ? 'Entry' : '申込み'}</CardTitle>
             </CardHeader>
             <CardContent>
               <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
-                <dt className="text-muted-foreground">エントリ方法は？</dt>
+                <dt className="text-muted-foreground">{isEn ? 'Entry method?' : 'エントリ方法は？'}</dt>
                 <dd className={event.entry_type ? '' : 'italic text-muted-foreground/60'}>
-                  {event.entry_type === 'lottery' ? '抽選' : event.entry_type === 'first_come' ? '先着' : event.entry_type ?? '—'}
+                  {event.entry_type === 'lottery' ? (isEn ? 'Lottery' : '抽選') : event.entry_type === 'first_come' ? (isEn ? 'First come, first served' : '先着') : event.entry_type ?? '—'}
                 </dd>
-                <dt className="text-muted-foreground">参加資格はある？</dt>
-                <dd className={event.required_qualification ? '' : 'italic text-muted-foreground/60'}>{event.required_qualification ?? '—'}</dd>
-                <dt className="text-muted-foreground">いつから申し込める？</dt>
+                <dt className="text-muted-foreground">{isEn ? 'Qualification required?' : '参加資格はある？'}</dt>
+                <dd className={event.required_qualification ? '' : 'italic text-muted-foreground/60'}>
+                  {(isEn ? (event.required_qualification_en ?? event.required_qualification) : event.required_qualification) ?? '—'}
+                </dd>
+                <dt className="text-muted-foreground">{isEn ? 'Entry opens?' : 'いつから申し込める？'}</dt>
                 <dd className={event.entry_start ? '' : 'italic text-muted-foreground/60'}>{event.entry_start ?? '—'}</dd>
-                <dt className="text-muted-foreground">申込み締切はいつ？</dt>
+                <dt className="text-muted-foreground">{isEn ? 'Entry deadline?' : '申込み締切はいつ？'}</dt>
                 <dd className={event.entry_end ? '' : 'italic text-muted-foreground/60'}>{event.entry_end ?? '—'}</dd>
               </dl>
             </CardContent>
@@ -258,7 +252,7 @@ function EventDetail() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Train className="h-4 w-4 text-primary" />
-                  公共交通機関で行けるか
+                  {isEn ? 'Public transit access' : '公共交通機関で行けるか'}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -269,17 +263,19 @@ function EventDetail() {
                       ? 'bg-emerald-50 text-emerald-700'
                       : 'bg-red-50 text-red-700',
                   )}>
-                    {outbound.transit_accessible ? '✅ 公共交通機関で行ける' : '❌ 公共交通機関では行きにくい（要車・要シャトル）'}
+                    {outbound.transit_accessible
+                      ? (isEn ? 'Accessible by public transit' : '公共交通機関で行ける')
+                      : (isEn ? 'Not easily accessible by public transit (car/shuttle needed)' : '公共交通機関では行きにくい（要車・要シャトル）')}
                   </p>
                 )}
                 <div className="flex flex-wrap gap-4">
                   <div className="flex items-baseline gap-2 text-sm">
-                    <span className="min-w-[2.5em] font-semibold text-muted-foreground">往路</span>
+                    <span className="min-w-[2.5em] font-semibold text-muted-foreground">{isEn ? 'To' : '往路'}</span>
                     <span className={outbound?.total_time_estimate ? '' : 'italic text-muted-foreground/60'}>{outbound?.total_time_estimate ?? '—'}</span>
                     {outbound?.cost_estimate && <span className="font-medium text-primary">{outbound.cost_estimate}</span>}
                   </div>
                   <div className="flex items-baseline gap-2 text-sm">
-                    <span className="min-w-[2.5em] font-semibold text-muted-foreground">復路</span>
+                    <span className="min-w-[2.5em] font-semibold text-muted-foreground">{isEn ? 'From' : '復路'}</span>
                     <span className={returnRoute?.total_time_estimate ? '' : 'italic text-muted-foreground/60'}>{returnRoute?.total_time_estimate ?? '—'}</span>
                     {returnRoute?.cost_estimate && <span className="font-medium text-primary">{returnRoute.cost_estimate}</span>}
                   </div>
@@ -294,19 +290,21 @@ function EventDetail() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Home className="h-4 w-4 text-primary" />
-                  何日必要か
+                  {isEn ? 'How many days needed?' : '何日必要か'}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
-                  <dt className="text-muted-foreground">どこに泊まればいい？</dt>
+                  <dt className="text-muted-foreground">{isEn ? 'Where to stay?' : 'どこに泊まればいい？'}</dt>
                   <dd className={accommodations.some((a) => a.recommended_area) ? '' : 'italic text-muted-foreground/60'}>
-                    {accommodations.map((a) => a.recommended_area).filter(Boolean).join('、') || '—'}
+                    {accommodations.map((a) => isEn ? (a.recommended_area_en ?? a.recommended_area) : a.recommended_area).filter(Boolean).join('、') || '—'}
                   </dd>
-                  <dt className="text-muted-foreground">宿泊費の目安は？</dt>
+                  <dt className="text-muted-foreground">{isEn ? 'Accommodation cost estimate?' : '宿泊費の目安は？'}</dt>
                   <dd className={accommodations.some((a) => a.avg_cost_3star != null) ? '' : 'italic text-muted-foreground/60'}>
                     {accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star != null
-                      ? `約${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円`
+                      ? (isEn
+                        ? `Approx. ${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()} JPY`
+                        : `約${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}円`)
                       : '—'}
                   </dd>
                 </dl>
@@ -317,7 +315,7 @@ function EventDetail() {
           {/* 最終更新 */}
           {event.updated_at && (
             <p className="mt-6 border-t border-border pt-4 text-right text-xs text-muted-foreground/70">
-              最終更新: <time dateTime={event.updated_at}>{event.updated_at.slice(0, 10)}</time>
+              {isEn ? 'Last updated' : '最終更新'}: <time dateTime={event.updated_at}>{event.updated_at.slice(0, 10)}</time>
             </p>
           )}
         </div>
@@ -329,9 +327,9 @@ function EventDetail() {
   return (
     <>
       <title>{event.name} | yabai.travel</title>
-      <meta name="description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+      <meta name="description" content={displayDescription ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
       <meta property="og:title" content={`${event.name} | yabai.travel`} />
-      <meta property="og:description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+      <meta property="og:description" content={displayDescription ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
       <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}`} />
       <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
       <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
@@ -346,7 +344,7 @@ function EventDetail() {
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
           >
             <ArrowLeft className="h-4 w-4" />
-            一覧に戻る
+            {t('detail.backToList')}
           </Link>
         </div>
 
@@ -355,9 +353,9 @@ function EventDetail() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
             {event.name}
           </h1>
-          {event.description && (
+          {displayDescription && (
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              {event.description}
+              {displayDescription}
             </p>
           )}
           <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
@@ -365,10 +363,10 @@ function EventDetail() {
               <Calendar className="h-3.5 w-3.5 shrink-0 text-primary/70" />
               {event.event_date}
             </span>
-            {event.location && (
+            {displayLocation && (
               <span className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-                {event.location}
+                {displayLocation}
               </span>
             )}
           </div>
@@ -377,8 +375,12 @@ function EventDetail() {
         {/* カテゴリ選択 */}
         <div className="space-y-3">
           <div className="mb-2">
-            <h2 className="text-lg font-semibold text-foreground">カテゴリを選ぶ</h2>
-            <p className="mt-1 text-sm text-muted-foreground">調べたいカテゴリをクリックしてください</p>
+            <h2 className="text-lg font-semibold text-foreground">
+              {isEn ? 'Select a category' : 'カテゴリを選ぶ'}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isEn ? 'Click on a category to see details' : '調べたいカテゴリをクリックしてください'}
+            </p>
           </div>
           {categories.map((cat) => (
             <Card
@@ -412,7 +414,7 @@ function EventDetail() {
         {/* 最終更新 */}
         {event.updated_at && (
           <p className="mt-6 border-t border-border pt-4 text-right text-xs text-muted-foreground/70">
-            最終更新: <time dateTime={event.updated_at}>{event.updated_at.slice(0, 10)}</time>
+            {isEn ? 'Last updated' : '最終更新'}: <time dateTime={event.updated_at}>{event.updated_at.slice(0, 10)}</time>
           </p>
         )}
       </div>

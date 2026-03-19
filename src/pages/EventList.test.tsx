@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import EventList from './EventList'
+import { SidebarFilterProvider } from '@/contexts/SidebarFilterContext'
+import { SidebarStatsProvider } from '@/contexts/SidebarStatsContext'
 
 // Mock supabase client
 vi.mock('../lib/supabaseClient', () => ({
@@ -72,9 +74,13 @@ vi.mock('@/components/PriceHistogramSlider', () => ({
 function renderEventList(lang = 'ja') {
   return render(
     <MemoryRouter initialEntries={[`/${lang}`]}>
-      <Routes>
-        <Route path="/:lang" element={<EventList />} />
-      </Routes>
+      <SidebarFilterProvider>
+        <SidebarStatsProvider>
+          <Routes>
+            <Route path="/:lang" element={<EventList />} />
+          </Routes>
+        </SidebarStatsProvider>
+      </SidebarFilterProvider>
     </MemoryRouter>
   )
 }
@@ -105,10 +111,10 @@ describe('EventList', () => {
     })
   })
 
-  it('shows map toggle button', async () => {
+  it('shows map toggle button (default: map visible, shows hide option)', async () => {
     renderEventList()
     await waitFor(() => {
-      expect(screen.getByText('地図を表示')).toBeInTheDocument()
+      expect(screen.getByText('地図を非表示')).toBeInTheDocument()
     })
   })
 

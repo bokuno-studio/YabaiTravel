@@ -14,6 +14,7 @@ import PaymentCancel from './pages/PaymentCancel'
 import SideMenu from './components/SideMenu'
 import FeedbackWidget from './components/FeedbackWidget'
 import { SidebarFilterProvider } from './contexts/SidebarFilterContext'
+import { SidebarStatsProvider } from './contexts/SidebarStatsContext'
 
 /** パスの :lang から i18n 言語を設定し、子ルートを描画 */
 function LangLayout() {
@@ -32,11 +33,13 @@ function LangLayout() {
 
   return (
     <SidebarFilterProvider>
-      <SideMenu />
-      <div className="min-[960px]:ml-60 min-[960px]:pl-6">
-        <Outlet />
-      </div>
-      <FeedbackWidget />
+      <SidebarStatsProvider>
+        <SideMenu />
+        <div className="min-[960px]:ml-60 min-[960px]:pl-6">
+          <Outlet />
+        </div>
+        <FeedbackWidget />
+      </SidebarStatsProvider>
     </SidebarFilterProvider>
   )
 }
