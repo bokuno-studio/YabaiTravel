@@ -6,7 +6,7 @@ export default function handler(_req: VercelRequest, res: VercelResponse) {
     env: {
       hasSupabaseUrl: !!process.env.VITE_SUPABASE_URL,
       hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
+      hasSquareToken: !!process.env.SQUARE_ACCESS_TOKEN,
     },
   })
 }

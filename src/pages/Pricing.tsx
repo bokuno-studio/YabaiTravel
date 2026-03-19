@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { createCheckoutSession } from '@/lib/stripe'
+import { createSquareCheckout } from '@/lib/square'
 import { useAuth } from '@/lib/auth'
 
 function Pricing() {
@@ -28,7 +28,7 @@ function Pricing() {
       const currency = isEn ? 'usd' : 'jpy'
       // For JPY, amount is already in the smallest unit; for USD, convert to cents
       const unitAmount = currency === 'usd' ? amount * 100 : amount
-      const url = await createCheckoutSession({
+      const url = await createSquareCheckout({
         mode: 'donation',
         amount: unitAmount,
         currency,
@@ -45,7 +45,7 @@ function Pricing() {
     setSubscriptionLoading(true)
     setError(null)
     try {
-      const url = await createCheckoutSession({
+      const url = await createSquareCheckout({
         mode: 'subscription',
         lang,
       })
