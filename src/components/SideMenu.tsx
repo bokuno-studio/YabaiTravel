@@ -90,6 +90,14 @@ function SideMenuContent({
         </Link>
       </div>
 
+      {/* Filter Section (injected from EventList, shown only on list page) */}
+      {filterNode && (
+        <>
+          <div className="border-t border-border my-4" />
+          {filterNode}
+        </>
+      )}
+
       {/* Separator */}
       <div className="border-t border-border my-4" />
 
@@ -125,14 +133,6 @@ function SideMenuContent({
           </button>
         </div>
       </div>
-
-      {/* Filter Section (injected from EventList) */}
-      {filterNode && (
-        <>
-          <div className="border-t border-border my-4" />
-          {filterNode}
-        </>
-      )}
 
       {/* Separator */}
       <div className="border-t border-border my-4" />
