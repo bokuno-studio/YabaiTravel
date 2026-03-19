@@ -7,6 +7,7 @@ import CategoryDetail from './pages/CategoryDetail'
 import Sources from './pages/Sources'
 import SportGuide from './pages/SportGuide'
 import Pricing from './pages/Pricing'
+import Legal from './pages/Legal'
 import Feedback from './pages/Feedback'
 import PaymentSuccess from './pages/PaymentSuccess'
 import PaymentCancel from './pages/PaymentCancel'
@@ -68,6 +69,7 @@ function AppRoutes() {
         <Route path="guide/:sport" element={<SportGuide />} />
         <Route path="feedback" element={<Feedback />} />
         <Route path="pricing" element={<Pricing />} />
+        <Route path="legal" element={<Legal />} />
         <Route path="payment/success" element={<PaymentSuccess />} />
         <Route path="payment/cancel" element={<PaymentCancel />} />
       </Route>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -292,6 +292,15 @@ function Pricing() {
             )}
           </CardFooter>
         </Card>
+      </div>
+
+      <div className="mt-8 text-center">
+        <Link
+          to={`/${lang || 'ja'}/legal`}
+          className="text-xs text-muted-foreground hover:text-foreground underline transition-colors"
+        >
+          {isEn ? 'Legal Notice (Specified Commercial Transactions Act)' : '特定商取引法に基づく表記'}
+        </Link>
       </div>
     </div>
   )
