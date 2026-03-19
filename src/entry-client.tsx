@@ -1,7 +1,6 @@
 import { StrictMode } from 'react'
 import { hydrateRoot, createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import { HelmetProvider } from 'react-helmet-async'
 import { AuthProvider } from './lib/auth'
 import './index.css'
 import './i18n'
@@ -14,25 +13,21 @@ if (container.innerHTML.trim().length > 0) {
   hydrateRoot(
     container,
     <StrictMode>
-      <HelmetProvider>
-        <AuthProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </AuthProvider>
-      </HelmetProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </AuthProvider>
     </StrictMode>,
   )
 } else {
   createRoot(container).render(
     <StrictMode>
-      <HelmetProvider>
-        <AuthProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </AuthProvider>
-      </HelmetProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </AuthProvider>
     </StrictMode>,
   )
 }

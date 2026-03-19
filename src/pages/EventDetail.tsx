@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate, useLocation } from 'react-router-dom'
-import { Helmet } from 'react-helmet-async'
 import { eventToJsonLd } from '../lib/jsonld'
 import { supabase } from '../lib/supabaseClient'
 import type { Event, Category, AccessRoute, Accommodation } from '../types/event'
@@ -156,18 +155,16 @@ function EventDetail() {
   if (categories.length === 0) {
     return (
       <>
-        <Helmet>
-          <title>{event.name} | yabai.travel</title>
-          <meta name="description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
-          <meta property="og:title" content={`${event.name} | yabai.travel`} />
-          <meta property="og:description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
-          <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}`} />
-          <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
-          <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
-          <link rel="alternate" hrefLang="en" href={`https://yabai-travel.vercel.app${location.pathname}?lang=en`} />
-          <link rel="alternate" hrefLang="x-default" href={`https://yabai-travel.vercel.app${location.pathname}`} />
-          <script type="application/ld+json">{JSON.stringify(eventToJsonLd(event, categories))}</script>
-        </Helmet>
+        <title>{event.name} | yabai.travel</title>
+        <meta name="description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+        <meta property="og:title" content={`${event.name} | yabai.travel`} />
+        <meta property="og:description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+        <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}`} />
+        <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+        <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+        <link rel="alternate" hrefLang="en" href={`https://yabai-travel.vercel.app${location.pathname}?lang=en`} />
+        <link rel="alternate" hrefLang="x-default" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+        <script type="application/ld+json">{JSON.stringify(eventToJsonLd(event, categories))}</script>
         <div className="mx-auto max-w-4xl px-4 py-6 md:px-6">
           {/* Breadcrumb */}
           <div className="mb-6">
@@ -331,18 +328,16 @@ function EventDetail() {
   // カテゴリ2件以上: カテゴリ選択画面
   return (
     <>
-      <Helmet>
-        <title>{event.name} | yabai.travel</title>
-        <meta name="description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
-        <meta property="og:title" content={`${event.name} | yabai.travel`} />
-        <meta property="og:description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
-        <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}`} />
-        <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
-        <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
-        <link rel="alternate" hrefLang="en" href={`https://yabai-travel.vercel.app${location.pathname}?lang=en`} />
-        <link rel="alternate" hrefLang="x-default" href={`https://yabai-travel.vercel.app${location.pathname}`} />
-        <script type="application/ld+json">{JSON.stringify(eventToJsonLd(event, categories))}</script>
-      </Helmet>
+      <title>{event.name} | yabai.travel</title>
+      <meta name="description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+      <meta property="og:title" content={`${event.name} | yabai.travel`} />
+      <meta property="og:description" content={event.description ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+      <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}`} />
+      <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+      <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+      <link rel="alternate" hrefLang="en" href={`https://yabai-travel.vercel.app${location.pathname}?lang=en`} />
+      <link rel="alternate" hrefLang="x-default" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+      <script type="application/ld+json">{JSON.stringify(eventToJsonLd(event, categories))}</script>
       <div className="mx-auto max-w-4xl px-4 py-6 md:px-6">
         {/* Breadcrumb */}
         <div className="mb-6">

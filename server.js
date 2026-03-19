@@ -23,22 +23,7 @@ export async function renderPage(url) {
   // SSR バンドルを読み込み
   const { render } = await import('./dist/server/entry-server.js')
 
-  const { html: appHtml, helmet } = render(url)
-
-  // helmet が生成した head タグを注入
-  const helmetTags = [
-    helmet.title?.toString() ?? '',
-    helmet.meta?.toString() ?? '',
-    helmet.link?.toString() ?? '',
-    helmet.script?.toString() ?? '',
-  ]
-    .filter(Boolean)
-    .join('\n    ')
-
-  // <!--ssr-helmet--> をヘルメットタグで置換
-  if (helmetTags) {
-    template = template.replace('<!--ssr-helmet-->', helmetTags)
-  }
+  const { html: appHtml } = render(url)
 
   // <!--ssr-outlet--> をアプリ HTML で置換
   const finalHtml = template.replace('<!--ssr-outlet-->', appHtml)

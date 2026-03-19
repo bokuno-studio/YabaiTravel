@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Helmet } from 'react-helmet-async'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -45,21 +44,19 @@ function Legal() {
 
   return (
     <>
-      <Helmet>
-        <title>
-          {isEn
-            ? 'Legal Notice | yabai.travel'
-            : '特定商取引法に基づく表記 | yabai.travel'}
-        </title>
-        <meta
-          name="description"
-          content={
-            isEn
-              ? 'Legal notice based on the Specified Commercial Transactions Act and contact form for yabai.travel.'
-              : 'yabai.travel の特定商取引法に基づく表記とお問い合わせフォーム。'
-          }
-        />
-      </Helmet>
+      <title>
+        {isEn
+          ? 'Legal Notice | yabai.travel'
+          : '特定商取引法に基づく表記 | yabai.travel'}
+      </title>
+      <meta
+        name="description"
+        content={
+          isEn
+            ? 'Legal notice based on the Specified Commercial Transactions Act and contact form for yabai.travel.'
+            : 'yabai.travel の特定商取引法に基づく表記とお問い合わせフォーム。'
+        }
+      />
 
       <div className="mx-auto max-w-3xl px-4 py-12">
         {/* Legal Notice Section */}

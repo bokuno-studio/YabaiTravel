@@ -38,21 +38,9 @@ const TEMPLATE = ${templateLiteral}
 export default function handler(req, res) {
   try {
     const url = req.url || '/'
-    const { html: appHtml, helmet } = render(url)
-
-    const helmetTags = [
-      helmet.title?.toString() ?? '',
-      helmet.meta?.toString() ?? '',
-      helmet.link?.toString() ?? '',
-      helmet.script?.toString() ?? '',
-    ]
-      .filter(Boolean)
-      .join('\\n    ')
+    const { html: appHtml } = render(url)
 
     let finalHtml = TEMPLATE
-    if (helmetTags) {
-      finalHtml = finalHtml.replace('<!--ssr-helmet-->', helmetTags)
-    }
     finalHtml = finalHtml.replace('<!--ssr-outlet-->', appHtml)
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8')

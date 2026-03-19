@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { HelmetProvider } from 'react-helmet-async'
 import { supabase } from '../lib/supabaseClient'
 import CategoryDetail from './CategoryDetail'
 
@@ -65,13 +64,11 @@ function createChain(
 
 function renderCategoryDetail(eventId: string, categoryId: string) {
   return render(
-    <HelmetProvider>
-      <MemoryRouter initialEntries={[`/events/${eventId}/categories/${categoryId}`]}>
-        <Routes>
-          <Route path="/events/:eventId/categories/:categoryId" element={<CategoryDetail />} />
-        </Routes>
-      </MemoryRouter>
-    </HelmetProvider>
+    <MemoryRouter initialEntries={[`/events/${eventId}/categories/${categoryId}`]}>
+      <Routes>
+        <Route path="/events/:eventId/categories/:categoryId" element={<CategoryDetail />} />
+      </Routes>
+    </MemoryRouter>
   )
 }
 
