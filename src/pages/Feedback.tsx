@@ -462,14 +462,14 @@ function Feedback() {
     <>
       <Helmet>
         <title>
-          {isEn ? 'Community Board | yabai.travel' : 'コミュニティ掲示板 | yabai.travel'}
+          {isEn ? 'Feature Requests | yabai.travel' : '要望掲示板 | yabai.travel'}
         </title>
         <meta
           name="description"
           content={
             isEn
-              ? 'Community board for feature requests and discussions.'
-              : 'コミュニティメンバーによる要望・議論の場です。'
+              ? 'Feature requests from supporters.'
+              : '応援メンバーからの要望掲示板です。'
           }
         />
       </Helmet>
@@ -478,7 +478,7 @@ function Feedback() {
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-2xl font-bold">
-            {isEn ? 'Community Board' : 'コミュニティ掲示板'}
+            {isEn ? 'Feature Requests' : '要望掲示板'}
           </h1>
           {isSupporter ? (
             <Button onClick={() => setShowForm(true)}>
@@ -490,8 +490,8 @@ function Feedback() {
         {!isSupporter && (
           <p className="text-sm text-muted-foreground mb-4">
             {isEn
-              ? 'Only community members who help grow this platform can participate here.'
-              : 'コミュニティを育ててくれるメンバーだけがここに参加できます。'}
+              ? 'Only supporters can post feature requests.'
+              : '応援メンバーだけが要望を投稿できます。'}
             {' '}
             <Link to={`/${lang}/pricing`} className="text-primary underline hover:no-underline">
               {isEn ? 'Become a member' : 'メンバーになる'}
