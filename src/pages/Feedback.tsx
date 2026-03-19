@@ -261,7 +261,7 @@ function CommentSection({
                 to={`/${lang}/pricing`}
                 className="text-primary underline hover:no-underline"
               >
-                応援メンバーになるとコメントできます
+                Crewになるとコメントできます
               </Link>
             </p>
           )}
@@ -462,14 +462,14 @@ function Feedback() {
     <>
       <Helmet>
         <title>
-          {isEn ? 'Feature Requests | yabai.travel' : '機能リクエスト | yabai.travel'}
+          {isEn ? 'Ideas | yabai.travel' : 'みんなのアイデア | yabai.travel'}
         </title>
         <meta
           name="description"
           content={
             isEn
-              ? 'Feature requests from supporters.'
-              : '応援メンバーからの機能リクエストです。'
+              ? 'Ideas from Crew members.'
+              : 'Crewからのみんなのアイデアです。'
           }
         />
       </Helmet>
@@ -478,7 +478,7 @@ function Feedback() {
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-2xl font-bold">
-            {isEn ? 'Feature Requests' : '機能リクエスト'}
+            {isEn ? 'Ideas' : 'みんなのアイデア'}
           </h1>
           {isSupporter ? (
             <Button onClick={() => setShowForm(true)}>
@@ -490,11 +490,11 @@ function Feedback() {
         {!isSupporter && (
           <p className="text-sm text-muted-foreground mb-4">
             {isEn
-              ? 'Only supporters can post requests.'
-              : '応援メンバーだけがリクエストを投稿できます。'}
+              ? 'Only Crew members can post ideas.'
+              : 'Crewだけがリクエストを投稿できます。'}
             {' '}
             <Link to={`/${lang}/pricing`} className="text-primary underline hover:no-underline">
-              {isEn ? 'Become a member' : 'メンバーになる'}
+              {isEn ? 'Crewになる' : 'Crewになる'}
             </Link>
           </p>
         )}

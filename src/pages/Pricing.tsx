@@ -59,7 +59,7 @@ function Pricing() {
         'Comment on the feedback board',
         'Submit feature requests from any page',
         'View bug reports',
-        'Supporter badge on your profile',
+        'Crew badge on your profile',
       ]
     : [
         '要望掲示板コメント権',
@@ -141,12 +141,12 @@ function Pricing() {
           </CardFooter>
         </Card>
 
-        {/* Supporter Membership Card */}
+        {/* Crew Membership Card */}
         <Card className="flex flex-col border-primary/50">
           <CardHeader>
             <div className="flex items-center gap-2">
               <CardTitle className="text-xl">
-                {isEn ? 'Supporter Membership' : '応援メンバー'}
+                {isEn ? 'Crew Membership' : 'Crew'}
               </CardTitle>
               <Badge variant="default">
                 {isEn ? 'Recommended' : 'おすすめ'}
@@ -186,7 +186,7 @@ function Pricing() {
             >
               {subscriptionLoading
                 ? (isEn ? 'Redirecting...' : 'リダイレクト中...')
-                : (isEn ? 'Become a Supporter' : 'メンバーになる')}
+                : (isEn ? 'Crewになる' : 'Crewになる')}
             </Button>
             <p className="text-xs text-muted-foreground text-center">
               {isEn

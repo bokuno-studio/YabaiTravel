@@ -138,7 +138,7 @@ function SideMenuContent({
           onClick={onNavigate}
         >
           <Heart className="h-4 w-4" />
-          {isEn ? 'Support Us' : '応援してください'}
+          {isEn ? 'Become Crew' : 'Crewになる'}
         </Link>
         <Link
           to={`${langPrefix}/feedback`}
@@ -150,7 +150,7 @@ function SideMenuContent({
           onClick={onNavigate}
         >
           <MessageSquare className="h-4 w-4" />
-          {isEn ? 'Feature Requests' : '機能リクエスト'}
+          {isEn ? 'Ideas' : 'みんなのアイデア'}
         </Link>
         <Link
           to={`${langPrefix}/sources`}
