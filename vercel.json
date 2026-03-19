@@ -1,14 +1,8 @@
 {
   "ignoreCommand": "exit 1",
-  "functions": {
-    "api/ssr.js": {
-      "includeFiles": "dist/**"
-    }
-  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/assets/(.*)", "destination": "/assets/$1" },
-    { "source": "/(.*)", "destination": "/api/ssr" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
     {
