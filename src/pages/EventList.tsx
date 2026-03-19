@@ -2,22 +2,14 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link, useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Helmet } from 'react-helmet-async'
-import { SlidersHorizontal } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import type { EventWithCategories, Category } from '../types/event'
 import EventMap from '../components/EventMap'
 import { EventCard } from '../components/EventCard'
 import { EventCardSkeleton } from '../components/EventCardSkeleton'
-import { FiltersSidebar } from '../components/FiltersSidebar'
+import { FilterChipBar, DetailedFilterSheet } from '../components/FiltersSidebar'
+import type { FiltersSidebarProps } from '../components/FiltersSidebar'
 import { Header } from '../components/Header'
-import { Button } from '../components/ui/button'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '../components/ui/sheet'
 
 /** interval 文字列から時間数を取得（フィルタ用） */
 function parseIntervalHours(v: string | null): number | null {
@@ -297,40 +289,38 @@ function EventList() {
     setCostMax(newMax)
   }
 
-  const filterContent = (
-    <FiltersSidebar
-      availableRaceTypes={availableRaceTypes}
-      raceTypes={raceTypes}
-      onRaceTypeToggle={toggleRaceType}
-      raceTypeLabel={raceTypeLabel}
-      availableCategories={availableCategories}
-      selectedCategories={selectedCategories}
-      onCategoryToggle={toggleCategory}
-      availableMonths={availableMonths}
-      selectedMonths={selectedMonths}
-      onMonthToggle={toggleMonth}
-      distanceRanges={distanceRanges}
-      onDistanceRangeToggle={toggleDistanceRange}
-      distanceRangeOptions={DISTANCE_RANGES}
-      timeLimitMin={timeLimitMin}
-      onTimeLimitChange={setTimeLimitMin}
-      costPrices={costPrices}
-      costMin={costMin}
-      costMax={costMax}
-      costGlobalMax={costGlobalMax}
-      onCostRangeChange={handleCostRangeChange}
-      entryStatus={entryStatus}
-      onEntryStatusChange={setEntryStatus}
-      showPastEvents={showPastEvents}
-      onShowPastEventsChange={setShowPastEvents}
-      t={t}
-      lang={lang}
-    />
-  )
+  const filterProps: FiltersSidebarProps = {
+    availableRaceTypes,
+    raceTypes,
+    onRaceTypeToggle: toggleRaceType,
+    raceTypeLabel,
+    availableCategories,
+    selectedCategories,
+    onCategoryToggle: toggleCategory,
+    availableMonths,
+    selectedMonths,
+    onMonthToggle: toggleMonth,
+    distanceRanges,
+    onDistanceRangeToggle: toggleDistanceRange,
+    distanceRangeOptions: DISTANCE_RANGES,
+    timeLimitMin,
+    onTimeLimitChange: setTimeLimitMin,
+    costPrices,
+    costMin,
+    costMax,
+    costGlobalMax,
+    onCostRangeChange: handleCostRangeChange,
+    entryStatus,
+    onEntryStatusChange: setEntryStatus,
+    showPastEvents,
+    onShowPastEventsChange: setShowPastEvents,
+    t,
+    lang,
+  }
 
   if (error) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-12 text-center">
+      <div className="mx-auto max-w-7xl px-4 py-12 text-center">
         <p className="text-destructive">エラー: {error}</p>
       </div>
     )
@@ -350,7 +340,7 @@ function EventList() {
         <link rel="alternate" hrefLang="x-default" href={`https://yabai-travel.vercel.app${location.pathname}`} />
       </Helmet>
 
-      <div className="mx-auto max-w-6xl px-4 py-6 md:px-6">
+      <div className="mx-auto max-w-7xl px-4 py-6 md:px-6">
         <Header
           title={t('site.title')}
           subtitle={t('site.subtitle')}
@@ -360,110 +350,94 @@ function EventList() {
           statsWeeklyNewLabel={t('stats.weeklyNew')}
         />
 
-        <div className="flex gap-6 lg:gap-8">
-          {/* Desktop Sidebar */}
-          <aside className="hidden w-72 shrink-0 lg:block">
-            <div className="sticky top-6 rounded-xl border border-border bg-card p-5 shadow-sm">
-              {filterContent}
-            </div>
-          </aside>
-
-          {/* Main Content */}
+        {/* Filter chip bar + detailed filter button */}
+        <div className="mb-4 flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            {/* Toolbar */}
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {/* Mobile Filter Button */}
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" size="sm" className="lg:hidden">
-                      <SlidersHorizontal className="mr-1.5 h-4 w-4" />
-                      {lang === 'en' ? 'Filters' : 'フィルター'}
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-80 overflow-y-auto">
-                    <SheetHeader>
-                      <SheetTitle>{lang === 'en' ? 'Filters' : 'フィルター'}</SheetTitle>
-                    </SheetHeader>
-                    <div className="mt-4 px-4">
-                      {filterContent}
-                    </div>
-                  </SheetContent>
-                </Sheet>
-
-                <span className="text-sm text-muted-foreground">
-                  {loading ? '...' : `${filtered.length} ${lang === 'en' ? 'events' : '件'}`}
-                </span>
-              </div>
-            </div>
-
-            {/* Map */}
-            {!loading && (
-              <div className="mb-6">
-                <EventMap events={filtered} langPrefix={langPrefix} raceTypeLabel={raceTypeLabel} />
-              </div>
-            )}
-
-            {/* Event List */}
-            {loading ? (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <EventCardSkeleton key={i} />
-                ))}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16">
-                <p className="text-base font-medium text-foreground">
-                  {t('event.empty')}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {lang === 'en' ? 'Try adjusting your filters' : 'フィルターを調整してみてください'}
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                {filtered.map((event) => {
-                  const matchingCats = getMatchingCategories(event)
-                  // フィルタで1件に絞られた場合は直接カテゴリへ、それ以外はイベント詳細へ (#33)
-                  const cardLink = hasAnyFilter && matchingCats.length === 1
-                    ? `${langPrefix}/events/${event.id}/categories/${matchingCats[0].id}`
-                    : `${langPrefix}/events/${event.id}`
-                  // フィルタ適用中は合致するカテゴリチップのみ表示 (#33)
-                  const chipsToShow = hasAnyFilter && matchingCats.length > 0
-                    ? matchingCats
-                    : (event.categories ?? [])
-                  // enrich完了判定: location + カテゴリ充足度 (#63, #71)
-                  const cats = event.categories ?? []
-                  const isEnriched = event.location != null && (
-                    cats.length === 0 || cats.some(c => c.distance_km != null || c.elevation_gain != null)
-                  )
-                  return (
-                    <EventCard
-                      key={event.id}
-                      event={event}
-                      langPrefix={langPrefix}
-                      raceTypeLabel={raceTypeLabel}
-                      cardLink={cardLink}
-                      chipsToShow={chipsToShow}
-                      isEnriched={isEnriched}
-                      t={t}
-                      lang={lang}
-                    />
-                  )
-                })}
-              </div>
-            )}
-
-            {/* Footer */}
-            <div className="mt-8 border-t border-border pt-4 text-center">
-              <Link
-                to={`${langPrefix}/sources`}
-                className="text-sm text-muted-foreground transition-colors hover:text-primary"
-              >
-                {lang === 'en' ? 'Data Sources' : '情報取得元'}
-              </Link>
-            </div>
+            <FilterChipBar
+              availableRaceTypes={availableRaceTypes}
+              raceTypes={raceTypes}
+              onRaceTypeToggle={toggleRaceType}
+              raceTypeLabel={raceTypeLabel}
+              availableMonths={availableMonths}
+              selectedMonths={selectedMonths}
+              onMonthToggle={toggleMonth}
+            />
           </div>
+          <DetailedFilterSheet {...filterProps} />
+        </div>
+
+        {/* Toolbar: result count */}
+        <div className="mb-4 flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">
+            {loading ? '...' : `${filtered.length} ${lang === 'en' ? 'events' : '件'}`}
+          </span>
+        </div>
+
+        {/* Map */}
+        {!loading && (
+          <div className="mb-6">
+            <EventMap events={filtered} langPrefix={langPrefix} raceTypeLabel={raceTypeLabel} />
+          </div>
+        )}
+
+        {/* Event Grid */}
+        {loading ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <EventCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16">
+            <p className="text-base font-medium text-foreground">
+              {t('event.empty')}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {lang === 'en' ? 'Try adjusting your filters' : 'フィルターを調整してみてください'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filtered.map((event) => {
+              const matchingCats = getMatchingCategories(event)
+              // フィルタで1件に絞られた場合は直接カテゴリへ、それ以外はイベント詳細へ (#33)
+              const cardLink = hasAnyFilter && matchingCats.length === 1
+                ? `${langPrefix}/events/${event.id}/categories/${matchingCats[0].id}`
+                : `${langPrefix}/events/${event.id}`
+              // フィルタ適用中は合致するカテゴリチップのみ表示 (#33)
+              const chipsToShow = hasAnyFilter && matchingCats.length > 0
+                ? matchingCats
+                : (event.categories ?? [])
+              // enrich完了判定: location + カテゴリ充足度 (#63, #71)
+              const cats = event.categories ?? []
+              const isEnriched = event.location != null && (
+                cats.length === 0 || cats.some(c => c.distance_km != null || c.elevation_gain != null)
+              )
+              return (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  langPrefix={langPrefix}
+                  raceTypeLabel={raceTypeLabel}
+                  cardLink={cardLink}
+                  chipsToShow={chipsToShow}
+                  isEnriched={isEnriched}
+                  t={t}
+                  lang={lang}
+                />
+              )
+            })}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="mt-8 border-t border-border pt-4 text-center">
+          <Link
+            to={`${langPrefix}/sources`}
+            className="text-sm text-muted-foreground transition-colors hover:text-primary"
+          >
+            {lang === 'en' ? 'Data Sources' : '情報取得元'}
+          </Link>
         </div>
       </div>
     </>

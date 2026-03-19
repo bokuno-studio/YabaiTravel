@@ -34,6 +34,25 @@ const raceTypeColors: Record<string, string> = {
   other: 'bg-stone-50 text-stone-600 border-stone-200',
 }
 
+/** Gradient backgrounds for the image area when no image is available */
+const raceTypeGradients: Record<string, string> = {
+  spartan: 'from-red-500 to-orange-500',
+  marathon: 'from-blue-500 to-cyan-500',
+  trail: 'from-green-500 to-emerald-500',
+  hyrox: 'from-amber-500 to-yellow-500',
+  triathlon: 'from-indigo-500 to-blue-500',
+  obstacle: 'from-rose-500 to-pink-500',
+  tough_mudder: 'from-rose-500 to-pink-500',
+  cycling: 'from-teal-500 to-cyan-500',
+  duathlon: 'from-purple-500 to-violet-500',
+  rogaining: 'from-lime-500 to-green-500',
+  adventure: 'from-orange-500 to-amber-500',
+  devils_circuit: 'from-red-500 to-orange-500',
+  strong_viking: 'from-red-500 to-orange-500',
+  ultra: 'from-violet-500 to-purple-500',
+  other: 'from-gray-500 to-slate-500',
+}
+
 /** Format date with day of week */
 function formatDateWithDay(dateStr: string): string {
   const days = ['日', '月', '火', '水', '木', '金', '土']
@@ -66,38 +85,31 @@ export function EventCard({
     ? `¥${parseInt(event.total_cost_estimate, 10).toLocaleString()}`
     : null
 
+  const gradient = raceTypeGradients[event.race_type ?? 'other'] ?? raceTypeGradients.other
+
   if (!isEnriched) {
     return (
       <Card className={cn(
         'overflow-hidden border-border/60 opacity-60 py-0',
       )}>
+        {/* Gradient image area */}
+        <div className={cn('relative aspect-[16/9] bg-gradient-to-br opacity-40', gradient)}>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-white/60 text-sm font-medium">{t('event.pending')}</span>
+          </div>
+        </div>
         <CardContent className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <h3 className="truncate text-base font-semibold text-foreground">
-                {event.name}
-              </h3>
-              <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
-                {dateText && (
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3.5 w-3.5 shrink-0" />
-                    {dateText}
-                  </span>
-                )}
-                {event.country && <span>{event.country}</span>}
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <Badge
-                variant="outline"
-                className={cn('border text-xs', raceTypeColors[event.race_type ?? 'other'])}
-              >
-                {raceTypeLabel(event.race_type)}
-              </Badge>
-              <Badge variant="secondary" className="bg-amber-100 text-amber-700 text-xs">
-                {t('event.pending')}
-              </Badge>
-            </div>
+          <h3 className="truncate text-sm font-semibold text-foreground">
+            {event.name}
+          </h3>
+          <div className="mt-1 flex items-center gap-4 text-xs text-muted-foreground">
+            {dateText && (
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3 w-3 shrink-0" />
+                {dateText}
+              </span>
+            )}
+            {event.country && <span>{event.country}</span>}
           </div>
         </CardContent>
       </Card>
@@ -106,65 +118,75 @@ export function EventCard({
 
   return (
     <Card className={cn(
-      'group overflow-hidden border-border/60 transition-all duration-200 hover:border-primary/40 hover:shadow-md py-0',
+      'group overflow-hidden border-border/60 py-0',
+      'transition-all duration-200 hover:shadow-lg hover:scale-[1.02]',
     )}>
       <CardContent className="p-0">
-        <Link to={cardLink} className="block p-4 no-underline">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <h3 className="text-base font-semibold text-foreground transition-colors group-hover:text-primary">
+        <Link to={cardLink} className="block no-underline">
+          {/* Gradient image area */}
+          <div className={cn('relative aspect-[16/9] bg-gradient-to-br', gradient)}>
+            <div className="absolute inset-0 flex items-end p-3">
+              <span className="text-white/80 text-lg font-bold drop-shadow-sm line-clamp-2 leading-tight">
                 {event.name}
-              </h3>
-              <div className="mt-2 space-y-1">
-                {dateText && (
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <Calendar className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-                    <span>{dateText}</span>
-                  </div>
-                )}
-                {(event.country || event.location) && (
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <MapPin className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-                    <span>
-                      {event.country && event.location
-                        ? `${event.country} / ${event.location}`
-                        : event.country || event.location}
-                    </span>
-                  </div>
-                )}
+              </span>
+            </div>
+            {/* Badge: absolute top-left */}
+            <Badge
+              variant="outline"
+              className={cn(
+                'absolute top-2 left-2 border bg-white/90 text-xs backdrop-blur-sm',
+                raceTypeColors[event.race_type ?? 'other'],
+              )}
+            >
+              {raceTypeLabel(event.race_type)}
+            </Badge>
+          </div>
+
+          {/* Card body */}
+          <div className="p-3">
+            <div className="space-y-1">
+              {dateText && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Calendar className="h-3 w-3 shrink-0 text-primary/70" />
+                  <span>{dateText}</span>
+                </div>
+              )}
+              {(event.country || event.location) && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <MapPin className="h-3 w-3 shrink-0 text-primary/70" />
+                  <span className="truncate">
+                    {event.country && event.location
+                      ? `${event.country} / ${event.location}`
+                      : event.country || event.location}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
                 {entryPeriod && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[11px] text-muted-foreground">
                     {t('event.entry')}: {entryPeriod}
                   </p>
                 )}
+                {costEstimate && (
+                  <div className="flex items-center gap-1 text-xs font-semibold text-primary">
+                    <Banknote className="h-3 w-3" />
+                    <span>{lang === 'en' ? 'Est.' : '目安'} {costEstimate}</span>
+                  </div>
+                )}
               </div>
-            </div>
-            <div className="flex shrink-0 flex-col items-end gap-2">
-              <Badge
-                variant="outline"
-                className={cn('border text-xs', raceTypeColors[event.race_type ?? 'other'])}
-              >
-                {raceTypeLabel(event.race_type)}
-              </Badge>
-              {costEstimate && (
-                <div className="flex items-center gap-1 text-sm font-semibold text-primary">
-                  <Banknote className="h-3.5 w-3.5" />
-                  <span>{lang === 'en' ? 'Est.' : '目安'} {costEstimate}</span>
-                </div>
-              )}
             </div>
           </div>
         </Link>
 
         {chipsToShow.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 border-t border-border/40 px-4 py-2.5">
+          <div className="flex flex-wrap gap-1 border-t border-border/40 px-3 py-2">
             {chipsToShow.map((cat) => (
               <Link
                 key={cat.id}
                 to={`${langPrefix}/events/${event.id}/categories/${cat.id}`}
                 className={cn(
                   'inline-flex items-center rounded-md border border-border/60 bg-secondary/50 px-2 py-0.5',
-                  'text-xs text-secondary-foreground no-underline transition-colors',
+                  'text-[11px] text-secondary-foreground no-underline transition-colors',
                   'hover:border-primary/30 hover:bg-primary/5 hover:text-primary',
                 )}
                 title={
