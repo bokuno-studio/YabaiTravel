@@ -158,17 +158,15 @@ export function EventCard({
               )}
             </div>
 
-            {/* 5-6. Entry period (left) + Cost estimate (right) - always at bottom */}
-            <div className="mt-2 flex items-end justify-between gap-2">
-              {entryPeriod ? (
+            {/* 5-6. Entry period + Cost estimate - stacked vertically */}
+            <div className="mt-2 space-y-1">
+              {entryPeriod && (
                 <p className="text-[11px] text-muted-foreground leading-tight">
                   {t('event.entry')}: {entryPeriod}
                 </p>
-              ) : (
-                <span />
               )}
               {costEstimate && (
-                <div className="flex shrink-0 items-center gap-1 text-xs font-semibold text-primary">
+                <div className="flex items-center gap-1 text-xs font-semibold text-primary">
                   <Banknote className="h-3 w-3" />
                   <span>{lang === 'en' ? 'Est.' : '目安'} {costEstimate}</span>
                 </div>
