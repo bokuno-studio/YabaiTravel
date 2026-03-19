@@ -184,6 +184,33 @@ function barGraph(history, valueKey, maxWidth = 20) {
   }).join('\n')
 }
 
+/** Calculate display width considering fullwidth chars */
+function displayWidth(str) {
+  let w = 0
+  for (const ch of str) {
+    const cp = ch.codePointAt(0)
+    // CJK, fullwidth, etc.
+    w += (cp >= 0x1100 && (
+      (cp <= 0x115f) || cp === 0x2329 || cp === 0x232a ||
+      (cp >= 0x2e80 && cp <= 0xa4cf && cp !== 0x303f) ||
+      (cp >= 0xac00 && cp <= 0xd7a3) ||
+      (cp >= 0xf900 && cp <= 0xfaff) ||
+      (cp >= 0xfe10 && cp <= 0xfe6f) ||
+      (cp >= 0xff01 && cp <= 0xff60) ||
+      (cp >= 0xffe0 && cp <= 0xffe6) ||
+      (cp >= 0x20000 && cp <= 0x2fffd) ||
+      (cp >= 0x30000 && cp <= 0x3fffd)
+    )) ? 2 : 1
+  }
+  return w
+}
+
+/** Pad string to target display width */
+function padEndW(str, width) {
+  const w = displayWidth(str)
+  return str + ' '.repeat(Math.max(0, width - w))
+}
+
 function buildReport(stats, yesterday, history, errors, workflowRuns) {
   const today = new Date().toISOString().slice(0, 10)
 
@@ -204,7 +231,7 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
 
   // --- Enrich progress ---
   lines.push('\u25a0 Enrich \u9032\u6357')
-  lines.push(`  ${''.padEnd(20)} ${'完了'.padStart(6)}  ${'未完了'.padStart(6)}  ${'完了率'.padStart(6)}  ${'前日比'.padStart(6)}`)
+  lines.push(`  ${padEndW('', 14)} ${'完了'.padStart(5)}  ${'未完了'.padStart(5)}  ${'完了率'.padStart(6)}  ${'前日比'.padStart(5)}`)
 
   const enrichRows = [
     { label: '\u30a4\u30d9\u30f3\u30c8\u57fa\u672c\u60c5\u5831', done: stats.enrichedEvents, total: stats.totalEvents, prevDone: yesterday?.enriched_events },
@@ -215,7 +242,7 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   for (const r of enrichRows) {
     const remaining = r.total - r.done
     const dayDiff = r.prevDone != null ? diff(r.done, r.prevDone) : ''
-    lines.push(`  ${r.label.padEnd(18)} ${fmt(r.done).padStart(6)}  ${fmt(remaining).padStart(6)}  ${pct(r.done, r.total).padStart(6)}  ${dayDiff.padStart(6)}`)
+    lines.push(`  ${padEndW(r.label, 14)} ${fmt(r.done).padStart(5)}  ${fmt(remaining).padStart(5)}  ${pct(r.done, r.total).padStart(6)}  ${dayDiff.padStart(5)}`)
   }
   lines.push('')
 
@@ -234,7 +261,7 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   } else {
     for (const e of errors) {
       const label = e.last_error_type ?? '\u5206\u985e\u4e0d\u660e(null)'
-      lines.push(`  ${label.padEnd(16)} ${e.cnt}\u4ef6`)
+      lines.push(`  ${padEndW(label, 14)} ${e.cnt}件`)
     }
   }
   lines.push('')
@@ -260,7 +287,8 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
     lines.push('')
   }
 
-  return lines.join('\n')
+  // Wrap in <pre> for Telegram fixed-width font
+  return '<pre>' + lines.join('\n').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>'
 }
 
 // ---------------------------------------------------------------------------
