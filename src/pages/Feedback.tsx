@@ -1,9 +1,26 @@
 import { useParams } from 'react-router-dom'
+import { useRef, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 
 function Feedback() {
   const { lang } = useParams<{ lang: string }>()
   const isEn = lang === 'en'
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const script = document.createElement('script')
+    script.src = 'https://omnivoc-nu.vercel.app/board.js'
+    script.setAttribute('data-project-key', 'yabai-travel')
+    script.setAttribute('data-lang', lang || 'ja')
+    container.appendChild(script)
+
+    return () => {
+      script.remove()
+    }
+  }, [lang])
 
   return (
     <>
@@ -19,12 +36,12 @@ function Feedback() {
         />
       </Helmet>
 
-      <iframe
-        src="https://omnivoc-nu.vercel.app/board/yabai-travel"
-        title={isEn ? 'Feedback Board' : '要望・フィードバック'}
-        className="w-full h-[calc(100vh-4rem)] border-0"
-        allow="clipboard-write"
-      />
+      <div className="mx-auto max-w-4xl px-4 py-6">
+        <h1 className="text-2xl font-bold mb-4">
+          {isEn ? 'Feedback' : '要望・フィードバック'}
+        </h1>
+        <div ref={containerRef} id="board-container" />
+      </div>
     </>
   )
 }
