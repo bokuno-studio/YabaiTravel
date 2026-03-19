@@ -1,6 +1,6 @@
 import { Link, useParams, useLocation } from 'react-router-dom'
 import { useState } from 'react'
-import { Search, Heart, MessageSquare, Info, ChevronDown, Menu, X } from 'lucide-react'
+import { Search, Heart, MessageSquare, Info, FileText, ChevronDown, Menu, X } from 'lucide-react'
 import AuthButton from './AuthButton'
 
 const SPORT_GUIDES = [
@@ -163,6 +163,18 @@ function SideMenuContent({
         >
           <Info className="h-4 w-4" />
           {isEn ? 'Data Sources' : '情報取得元'}
+        </Link>
+        <Link
+          to={`${langPrefix}/legal`}
+          className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm no-underline transition-colors ${
+            isActiveIncludes('/legal')
+              ? 'bg-primary/10 text-primary'
+              : 'text-foreground/70 hover:text-foreground hover:bg-muted'
+          }`}
+          onClick={onNavigate}
+        >
+          <FileText className="h-4 w-4" />
+          {isEn ? 'Legal' : '特定商取引法'}
         </Link>
       </div>
 
