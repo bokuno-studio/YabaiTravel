@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link, useParams, useSearchParams, useLocation } from 'react-router-dom'
+import { useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Helmet } from 'react-helmet-async'
 import { supabase } from '../lib/supabaseClient'
@@ -430,15 +430,6 @@ function EventList() {
           </div>
         )}
 
-        {/* Footer */}
-        <div className="mt-8 border-t border-border pt-4 text-center">
-          <Link
-            to={`${langPrefix}/sources`}
-            className="text-sm text-muted-foreground transition-colors hover:text-primary"
-          >
-            {lang === 'en' ? 'Data Sources' : '情報取得元'}
-          </Link>
-        </div>
       </div>
     </>
   )

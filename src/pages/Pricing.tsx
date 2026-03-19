@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { createCheckoutSession } from '@/lib/stripe'
+import { useAuth } from '@/lib/auth'
 
 function Pricing() {
   const { lang } = useParams<{ lang: string }>()
   const isEn = lang === 'en'
+  const { user, isSupporter, signInWithGoogle } = useAuth()
 
   const [donationAmount, setDonationAmount] = useState(isEn ? '5' : '500')
   const [donationLoading, setDonationLoading] = useState(false)
@@ -178,21 +180,46 @@ function Pricing() {
           </CardContent>
 
           <CardFooter className="flex-col gap-3">
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={handleSubscribe}
-              disabled={subscriptionLoading}
-            >
-              {subscriptionLoading
-                ? (isEn ? 'Redirecting...' : 'リダイレクト中...')
-                : (isEn ? 'Crewになる' : 'Crewになる')}
-            </Button>
-            <p className="text-xs text-muted-foreground text-center">
-              {isEn
-                ? 'You will be redirected to Stripe for secure payment.'
-                : 'Stripe の安全な決済ページにリダイレクトされます。'}
-            </p>
+            {isSupporter ? (
+              <div className="w-full text-center py-2">
+                <Badge className="bg-green-100 text-green-800 border-green-200 text-sm px-3 py-1">
+                  ✓ {isEn ? "You're Crew!" : 'Crewメンバーです'}
+                </Badge>
+              </div>
+            ) : !user ? (
+              <>
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={signInWithGoogle}
+                >
+                  {isEn ? 'Sign in with Google to join Crew' : 'Googleでログインして Crew になる'}
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  {isEn
+                    ? 'Sign in first, then subscribe to become Crew.'
+                    : 'まずGoogleでログインし、その後サブスクリプション登録に進みます。'}
+                </p>
+              </>
+            ) : (
+              <>
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={handleSubscribe}
+                  disabled={subscriptionLoading}
+                >
+                  {subscriptionLoading
+                    ? (isEn ? 'Redirecting...' : 'リダイレクト中...')
+                    : (isEn ? 'Become Crew' : 'Crewになる')}
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  {isEn
+                    ? 'You will be redirected to Stripe for secure payment.'
+                    : 'Stripe の安全な決済ページにリダイレクトされます。'}
+                </p>
+              </>
+            )}
           </CardFooter>
         </Card>
       </div>
