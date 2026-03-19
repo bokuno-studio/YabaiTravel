@@ -37,3 +37,4 @@ scripts/crawl/evaluation-result.json
 !public/course-maps/.gitkeep
 !public/course-maps/README.md
 .vercel
+coverage/
