@@ -14,9 +14,9 @@ const supabase = createClient(
 const postSchema = z.object({
   content: z.string().min(1).max(5000),
   feedback_type: z.enum(['bug', 'feature']),
-  source_url: z.string().url().optional(),
-  channel: z.string().optional(),
-  user_id: z.string().optional(),
+  source_url: z.string().optional().nullable(),
+  channel: z.string().optional().nullable(),
+  user_id: z.string().optional().nullable(),
 })
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
