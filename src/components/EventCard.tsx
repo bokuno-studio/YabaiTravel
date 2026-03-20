@@ -31,6 +31,7 @@ const raceTypeBorders: Record<string, string> = {
   adventure: 'border-t-orange-500',
   devils_circuit: 'border-t-red-500',
   strong_viking: 'border-t-red-500',
+  total_warrior: 'border-t-orange-600',
   ultra: 'border-t-violet-500',
   other: 'border-t-gray-400',
 }
@@ -50,6 +51,7 @@ const raceTypeBadgeBg: Record<string, string> = {
   adventure: 'bg-orange-500 text-white border-orange-500',
   devils_circuit: 'bg-red-500 text-white border-red-500',
   strong_viking: 'bg-red-500 text-white border-red-500',
+  total_warrior: 'bg-orange-600 text-white border-orange-600',
   ultra: 'bg-violet-500 text-white border-violet-500',
   other: 'bg-gray-400 text-white border-gray-400',
 }

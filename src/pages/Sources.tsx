@@ -19,6 +19,7 @@ const SOURCES = [
   { name: 'Niseko Expedition', url: 'https://nisekoexpedition.jp/', types: 'adventure' },
   { name: 'AR World Series', url: 'https://arworldseries.com/races', types: 'adventure' },
   { name: 'Adventure1 Series', url: 'https://adventure1series.com/a1/', types: 'adventure' },
+  { name: 'Total Warrior', url: 'https://www.totalwarrior.com/', types: 'total_warrior' },
 ]
 
 function Sources() {

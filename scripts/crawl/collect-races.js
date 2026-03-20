@@ -252,7 +252,7 @@ async function collectOtherSourceRaces(url) {
         if (!/event|race|location|venue/i.test(href) && !/warrior/i.test(text)) return
         const officialUrl = href.startsWith('http') ? href : new URL(href, 'https://www.totalwarrior.com/').href
         if (races.find((r) => r.official_url === officialUrl)) return
-        races.push({ name: text, official_url: officialUrl, entry_url: officialUrl, race_type: 'obstacle', country: 'UK', source: 'total-warrior' })
+        races.push({ name: text, official_url: officialUrl, entry_url: officialUrl, race_type: 'total_warrior', country: 'UK', source: 'total-warrior' })
       })
       return limitForEnv(races, 2)
     }
