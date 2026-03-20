@@ -12,7 +12,7 @@ function Pricing() {
   const isEn = lang === 'en'
   const { user, session, isSupporter, signInWithGoogle } = useAuth()
 
-  const [donationAmount, setDonationAmount] = useState(isEn ? '5' : '500')
+  const [donationAmount, setDonationAmount] = useState('5')
   const [donationLoading, setDonationLoading] = useState(false)
   const [subscriptionLoading, setSubscriptionLoading] = useState(false)
   const [cancelLoading, setCancelLoading] = useState(false)
@@ -27,9 +27,9 @@ function Pricing() {
       if (isNaN(amount) || amount < 1) {
         throw new Error(isEn ? 'Please enter a valid amount' : '有効な金額を入力してください')
       }
-      const currency = isEn ? 'usd' : 'jpy'
-      // For JPY, amount is already in the smallest unit; for USD, convert to cents
-      const unitAmount = currency === 'usd' ? amount * 100 : amount
+      const currency = 'usd'
+      // USD: convert to cents
+      const unitAmount = amount * 100
       const url = await createSquareCheckout({
         mode: 'donation',
         amount: unitAmount,
@@ -136,7 +136,7 @@ function Pricing() {
                 : 'サーバー費用やAPI費用の負担を助けていただけます。少額でも大歓迎です！'}
             </p>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-medium">{isEn ? '$' : '\u00a5'}</span>
+              <span className="text-lg font-medium">$</span>
               <Input
                 type="number"
                 min="1"
@@ -145,9 +145,7 @@ function Pricing() {
                 className="w-32"
                 placeholder={isEn ? 'Amount' : '金額'}
               />
-              <span className="text-sm text-muted-foreground">
-                {isEn ? 'USD' : 'JPY'}
-              </span>
+              <span className="text-sm text-muted-foreground">USD</span>
             </div>
           </CardContent>
 
@@ -189,9 +187,7 @@ function Pricing() {
 
           <CardContent className="flex-1">
             <div className="mb-6">
-              <span className="text-4xl font-bold">
-                {isEn ? '$10' : '\u00a51,500'}
-              </span>
+              <span className="text-4xl font-bold">$10</span>
               <span className="text-muted-foreground">
                 {isEn ? ' /month' : ' /月'}
               </span>

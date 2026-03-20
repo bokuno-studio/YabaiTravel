@@ -112,12 +112,14 @@ function Legal() {
               isEn ? (
                 <ul className="list-disc pl-5 space-y-1">
                   <li>Crew Membership: $10/month</li>
-                  <li>One-time Donation: Any amount</li>
+                  <li>Comment: $1 per comment</li>
+                  <li>One-time Donation: Any amount (USD)</li>
                 </ul>
               ) : (
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Crew メンバーシップ: $10/月（¥1,500/月相当）</li>
-                  <li>単発寄付: 任意の金額</li>
+                  <li>Crew メンバーシップ: $10/月</li>
+                  <li>コメント: $1/件</li>
+                  <li>単発寄付: 任意の金額（USD）</li>
                 </ul>
               )
             }

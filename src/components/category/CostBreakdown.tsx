@@ -2,7 +2,6 @@ import { Banknote } from 'lucide-react'
 import type { Event, Category, AccessRoute, Accommodation } from '@/types/event'
 import SectionCard from './SectionCard'
 import DLRow from './DLRow'
-import ChangeRequestButton from '@/components/ChangeRequestButton'
 
 const FX_TO_JPY: Record<string, number> = {
   JPY: 1, USD: 150, EUR: 165, GBP: 190, CAD: 110, AUD: 100, NZD: 90,
@@ -30,35 +29,33 @@ function CostBreakdown({ event, category, outbound, returnRoute, accommodations,
     <SectionCard
       title={isEn ? 'Cost' : 'コストはいくら？'}
       icon={<Banknote className="h-4 w-4 text-primary" />}
-      action={
-        <ChangeRequestButton
-          eventId={event.id}
-          categoryId={category.id}
-          fieldName={isEn ? 'Cost breakdown' : 'コスト'}
-          currentValue={event.total_cost_estimate ? `${parseInt(event.total_cost_estimate, 10).toLocaleString()}円` : undefined}
-        />
-      }
     >
       {event.total_cost_estimate && (
         <DLRow
           label={isEn ? 'Total cost' : 'トータルコスト'}
-          value={`¥${parseInt(event.total_cost_estimate, 10).toLocaleString()}`}
+          value={`\u00a5${parseInt(event.total_cost_estimate, 10).toLocaleString()}`}
+          eventId={event.id}
+          categoryId={category.id}
         />
       )}
       <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
         <DLRow
           label={isEn ? 'Entry fee' : '参加費'}
           value={entryFeeJpy != null
-            ? `¥${entryFeeJpy.toLocaleString()}${isConverted ? ` (${category.entry_fee!.toLocaleString()} ${originalCurrency})` : ''}`
+            ? `\u00a5${entryFeeJpy.toLocaleString()}${isConverted ? ` (${category.entry_fee!.toLocaleString()} ${originalCurrency})` : ''}`
             : null}
+          eventId={event.id}
+          categoryId={category.id}
         />
-        <DLRow label={isEn ? 'Outbound transport' : '行きの交通費'} value={outbound?.cost_estimate} />
-        <DLRow label={isEn ? 'Return transport' : '帰りの交通費'} value={returnRoute?.cost_estimate} />
+        <DLRow label={isEn ? 'Outbound transport' : '行きの交通費'} value={outbound?.cost_estimate} eventId={event.id} categoryId={category.id} />
+        <DLRow label={isEn ? 'Return transport' : '帰りの交通費'} value={returnRoute?.cost_estimate} eventId={event.id} categoryId={category.id} />
         <DLRow
           label={isEn ? 'Accommodation' : '宿泊費'}
           value={accommodations.some((a) => a.avg_cost_3star != null)
-            ? `¥${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}`
+            ? `\u00a5${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}`
             : null}
+          eventId={event.id}
+          categoryId={category.id}
         />
       </dl>
     </SectionCard>

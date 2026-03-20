@@ -3,7 +3,6 @@ import { cn } from '@/lib/utils'
 import type { AccessRoute } from '@/types/event'
 import SectionCard from './SectionCard'
 import DLRow from './DLRow'
-import ChangeRequestButton from '@/components/ChangeRequestButton'
 
 interface AccessInfoProps {
   eventId: string
@@ -32,13 +31,6 @@ function AccessInfo({
       <SectionCard
         title={isEn ? 'Public transit access' : '公共交通機関で行けるか'}
         icon={<Train className="h-4 w-4 text-primary" />}
-        action={
-          <ChangeRequestButton
-            eventId={eventId}
-            fieldName={isEn ? 'Access info' : 'アクセス情報'}
-            currentValue={[outbound?.route_detail, outbound?.cost_estimate].filter(Boolean).join(' / ') || undefined}
-          />
-        }
       >
         {outbound?.transit_accessible != null && (
           <p className={cn(
@@ -70,18 +62,18 @@ function AccessInfo({
       <SectionCard title={isEn ? 'How to get there?' : 'どうやって行く？'} icon={<Train className="h-4 w-4 text-primary" />}>
         <h3 className="mb-2 text-sm font-semibold text-foreground">{isEn ? 'Outbound' : '往路'}</h3>
         <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
-          <DLRow label={isEn ? 'Route?' : 'どのルートで行く？'} value={displayOutboundRoute} multiline />
-          <DLRow label={isEn ? 'Travel time?' : '所要時間は？'} value={outbound?.total_time_estimate} />
-          <DLRow label={isEn ? 'Cost estimate?' : '費用の目安は？'} value={outbound?.cost_estimate} />
-          <DLRow label={isEn ? 'Cash needed?' : '現金は必要？'} value={outbound?.cash_required != null ? (outbound.cash_required ? (isEn ? 'Yes' : 'あり') : (isEn ? 'No' : 'なし')) : null} />
+          <DLRow label={isEn ? 'Route?' : 'どのルートで行く？'} value={displayOutboundRoute} multiline eventId={eventId} />
+          <DLRow label={isEn ? 'Travel time?' : '所要時間は？'} value={outbound?.total_time_estimate} eventId={eventId} />
+          <DLRow label={isEn ? 'Cost estimate?' : '費用の目安は？'} value={outbound?.cost_estimate} eventId={eventId} />
+          <DLRow label={isEn ? 'Cash needed?' : '現金は必要？'} value={outbound?.cash_required != null ? (outbound.cash_required ? (isEn ? 'Yes' : 'あり') : (isEn ? 'No' : 'なし')) : null} eventId={eventId} />
           <dt className="text-muted-foreground">{isEn ? 'Booking site?' : '予約サイトは？'}</dt>
           <dd className={outbound?.booking_url ? '' : 'italic text-muted-foreground/60'}>
             {outbound?.booking_url
               ? <a href={outbound.booking_url} target="_blank" rel="noreferrer" className="break-all text-primary hover:underline">{outbound.booking_url}</a>
               : '\u2014'}
           </dd>
-          <DLRow label={isEn ? 'Shuttle bus?' : 'シャトルバスはある？'} value={displayOutboundShuttle} />
-          <DLRow label={isEn ? 'Taxi?' : 'タクシーは？'} value={outbound?.taxi_estimate} />
+          <DLRow label={isEn ? 'Shuttle bus?' : 'シャトルバスはある？'} value={displayOutboundShuttle} eventId={eventId} />
+          <DLRow label={isEn ? 'Taxi?' : 'タクシーは？'} value={outbound?.taxi_estimate} eventId={eventId} />
         </dl>
         {sameStartGoal ? (
           <p className="mt-3 text-sm text-muted-foreground">
@@ -91,9 +83,9 @@ function AccessInfo({
           <>
             <h3 className="mb-2 mt-4 text-sm font-semibold text-foreground">{isEn ? 'Return' : '復路'}</h3>
             <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
-              <DLRow label={isEn ? 'Route?' : 'どのルートで行く？'} value={displayReturnRoute} multiline />
-              <DLRow label={isEn ? 'Travel time?' : '所要時間は？'} value={returnRoute?.total_time_estimate} />
-              <DLRow label={isEn ? 'Cost estimate?' : '費用の目安は？'} value={returnRoute?.cost_estimate} />
+              <DLRow label={isEn ? 'Route?' : 'どのルートで行く？'} value={displayReturnRoute} multiline eventId={eventId} />
+              <DLRow label={isEn ? 'Travel time?' : '所要時間は？'} value={returnRoute?.total_time_estimate} eventId={eventId} />
+              <DLRow label={isEn ? 'Cost estimate?' : '費用の目安は？'} value={returnRoute?.cost_estimate} eventId={eventId} />
             </dl>
           </>
         )}

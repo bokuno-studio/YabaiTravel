@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useAuth } from '@/lib/auth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import type { EventComment } from '@/types/event'
@@ -14,7 +13,6 @@ interface EventCommentsProps {
 }
 
 function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventCommentsProps) {
-  const { user, loading: authLoading, signInWithGoogle } = useAuth()
   const [comments, setComments] = useState<EventComment[]>([])
   const [loading, setLoading] = useState(true)
   const [content, setContent] = useState('')
@@ -62,8 +60,8 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
           event_id: eventId,
           category_id: categoryId || null,
           content: content.trim(),
-          user_id: user?.id || null,
-          display_name: displayName.trim() || user?.user_metadata?.full_name || null,
+          user_id: null,
+          display_name: displayName.trim() || null,
           race_type: raceType || null,
           payment_id: 'mvp-free', // MVP: no actual payment yet
         }),
@@ -101,7 +99,7 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
           {isEn ? 'Race Reports' : 'レースレポート・口コミ'}
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          {isEn ? '1 comment = $1 (payment integration coming soon)' : '1コメント ¥150（決済機能は近日実装予定）'}
+          {isEn ? '$1/comment (coming soon)' : '$1/コメント（近日対応予定）'}
         </p>
       </CardHeader>
       <CardContent>
@@ -132,55 +130,44 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
           </div>
         )}
 
-        {/* Post form */}
+        {/* Post form - no login required */}
         {canPost && (
           <div className="mt-6 border-t border-border pt-4">
-            {authLoading ? null : !user ? (
-              <div className="text-center">
-                <p className="mb-2 text-sm text-muted-foreground">
-                  {isEn ? 'Sign in to post a comment' : 'コメントするにはログインが必要です'}
-                </p>
-                <Button variant="outline" size="sm" onClick={signInWithGoogle}>
-                  {isEn ? 'Sign in with Google' : 'Googleでログイン'}
+            <div className="space-y-3">
+              <input
+                type="text"
+                placeholder={isEn ? 'Display name (optional, default: Anonymous)' : '表示名（任意、デフォルト: 匿名）'}
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                maxLength={50}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <textarea
+                placeholder={isEn ? 'Share your race experience...' : 'レースの感想やアドバイスを共有しましょう...'}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                maxLength={5000}
+                rows={4}
+                className="w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              {error && (
+                <p className="text-xs text-destructive">{error}</p>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  {content.length}/5000
+                </span>
+                <Button
+                  size="sm"
+                  disabled={submitting || !content.trim()}
+                  onClick={handleSubmit}
+                >
+                  {submitting
+                    ? (isEn ? 'Posting...' : '投稿中...')
+                    : (isEn ? 'Post' : '投稿する')}
                 </Button>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  placeholder={isEn ? 'Display name (optional)' : '表示名（任意）'}
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  maxLength={50}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-                <textarea
-                  placeholder={isEn ? 'Share your race experience...' : 'レースの感想やアドバイスを共有しましょう...'}
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  maxLength={5000}
-                  rows={4}
-                  className="w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-                {error && (
-                  <p className="text-xs text-destructive">{error}</p>
-                )}
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
-                    {content.length}/5000
-                  </span>
-                  <Button
-                    size="sm"
-                    disabled={submitting || !content.trim()}
-                    onClick={handleSubmit}
-                  >
-                    {submitting
-                      ? (isEn ? 'Posting...' : '投稿中...')
-                      : (isEn ? 'Post for $1' : '¥150で投稿')}
-                  </Button>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         )}
       </CardContent>
