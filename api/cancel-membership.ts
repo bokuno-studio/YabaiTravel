@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { SquareClient, SquareEnvironment } from 'square'
+import { ok, unauthorized, badRequest, notFound, serverError } from './lib/response'
+import { logger } from './lib/logger'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL!,
@@ -23,14 +25,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Verify auth: expect Authorization header with Supabase JWT
     const authHeader = req.headers.authorization
     if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized' })
+      return unauthorized(res)
     }
 
     const token = authHeader.slice(7)
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
 
     if (authError || !user) {
-      return res.status(401).json({ error: 'Invalid token' })
+      return unauthorized(res)
     }
 
     // Get user profile
@@ -41,11 +43,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single()
 
     if (!profile) {
-      return res.status(404).json({ error: 'Profile not found' })
+      return notFound(res, 'Profile not found')
     }
 
     if (profile.membership !== 'supporter') {
-      return res.status(400).json({ error: 'No active membership to cancel' })
+      return badRequest(res, 'No active membership to cancel')
     }
 
     // Cancel any pending Square invoices for this customer
@@ -53,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         await cancelPendingInvoices(profile.square_customer_id)
       } catch (invoiceErr) {
-        console.error('Failed to cancel Square invoices:', invoiceErr)
+        logger.error({ err: invoiceErr }, 'Failed to cancel Square invoices')
         // Continue with local cancellation even if Square API fails
       }
     }
@@ -81,11 +83,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .eq('status', 'active')
     }
 
-    console.log(`Membership cancelled for user ${user.id}`)
-    return res.status(200).json({ success: true })
+    logger.info({ userId: user.id }, 'Membership cancelled')
+    return ok(res, { success: true })
   } catch (e) {
-    console.error('Cancel membership error:', e)
-    return res.status(500).json({ error: 'Failed to cancel membership' })
+    logger.error({ err: e }, 'Cancel membership error')
+    return serverError(res)
   }
 }
 
@@ -119,9 +121,9 @@ async function cancelPendingInvoices(squareCustomerId: string) {
           invoiceId: invoice.id!,
           version: invoice.version!,
         })
-        console.log(`Cancelled Square invoice ${invoice.id}`)
+        logger.info({ invoiceId: invoice.id }, 'Cancelled Square invoice')
       } catch (cancelErr) {
-        console.error(`Failed to cancel invoice ${invoice.id}:`, cancelErr)
+        logger.error({ err: cancelErr, invoiceId: invoice.id }, 'Failed to cancel invoice')
       }
     }
   }

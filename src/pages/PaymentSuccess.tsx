@@ -9,6 +9,8 @@ function PaymentSuccess() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
+      <title>{isEn ? 'Payment Successful | yabai.travel' : 'お支払い完了 | yabai.travel'}</title>
+      <meta name="description" content={isEn ? 'Payment successful. Welcome to the yabai.travel community.' : 'お支払い完了。yabai.travel コミュニティへようこそ。'} />
       <Card className="mx-auto max-w-md text-center">
         <CardHeader>
           <CardTitle className="text-xl">

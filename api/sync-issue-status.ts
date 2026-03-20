@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import { fetchWithTimeout } from './lib/fetch-with-timeout'
+import { logger } from './lib/logger'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL!,
@@ -40,10 +42,10 @@ async function fetchIssueStatus(url: string): Promise<'in_progress' | 'resolved'
   }
 
   const apiUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/issues/${parsed.number}`
-  const res = await fetch(apiUrl, { headers })
+  const res = await fetchWithTimeout(apiUrl, { headers, timeout: 10000 })
 
   if (!res.ok) {
-    console.error(`GitHub API error for ${url}: ${res.status}`)
+    logger.error({ url, status: res.status }, 'GitHub API error')
     return null
   }
 
@@ -78,8 +80,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .not('github_issue_url', 'is', null)
 
     if (error) {
-      console.error('Failed to fetch feedbacks:', error)
-      return res.status(500).json({ error: error.message })
+      logger.error({ err: error }, 'Failed to fetch feedbacks')
+      return res.status(500).json({ error: 'Internal server error' })
     }
 
     if (!feedbacks || feedbacks.length === 0) {
@@ -117,7 +119,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       errors: errors.length > 0 ? errors : undefined,
     })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return res.status(500).json({ error: message })
+    logger.error({ err }, 'Unexpected error in sync-issue-status')
+    return res.status(500).json({ error: 'Internal server error' })
   }
 }

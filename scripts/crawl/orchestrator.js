@@ -120,14 +120,32 @@ async function run() {
       batch.map(async (event) => {
         // ②-A: イベント情報 + コース特定（未処理の場合のみ）
         let eventOk = !!event.event_done  // 既に ②-A 完了済みならスキップ
+        let eventResultLocation = null
         if (!event.event_done) {
-          const eventResult = await enrichEvent(event, { dryRun: DRY_RUN }).catch((e) => {
+          const eventResult = await enrichEvent(event, { dryRun: DRY_RUN }).catch(async (e) => {
             if (e instanceof InsufficientBalanceError) throw e
+            // enrichEvent が throw した場合でも last_error_type を設定
+            try {
+              const errClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
+              await errClient.connect()
+              const msg = e.message || ''
+              let errorType = 'temporary'
+              if (msg.includes('JSON') || msg.includes('parse') || e instanceof SyntaxError) errorType = 'parse_error'
+              else if (msg.includes('timeout') || msg.includes('ETIMEDOUT')) errorType = 'timeout'
+              else if (msg.includes('empty') || msg.includes('no JSON found')) errorType = 'empty_response'
+              else if (msg.includes('ECONNREFUSED') || msg.includes('relation') || msg.includes('duplicate key')) errorType = 'db_error'
+              await errClient.query(
+                `UPDATE ${SCHEMA}.events SET last_error_type = $2 WHERE id = $1 AND last_error_type IS NULL`,
+                [event.id, errorType]
+              )
+              await errClient.end()
+            } catch { /* ignore */ }
             return { success: false, error: e.message }
           })
           if (eventResult.success) {
             totalEventOk++
             eventOk = true
+            eventResultLocation = eventResult.location || null
             console.log(`  [event]  OK  ${event.name?.slice(0, 40)} | courses:${eventResult.categoriesCount ?? '?'}`)
           } else {
             totalEventErr++
@@ -166,12 +184,13 @@ async function run() {
               }
             }
           } catch (e) {
+            if (e instanceof InsufficientBalanceError) throw e
             console.log(`  [cat]    ERR ${event.name?.slice(0, 40)} | カテゴリ取得失敗: ${e.message?.slice(0, 40)}`)
           }
         }
 
         // ③: ロジ収集
-        const enrichedEvent = eventResult.location ? { ...event, location: eventResult.location } : event
+        const enrichedEvent = eventResultLocation ? { ...event, location: eventResultLocation } : event
         const logiResult = await enrichLogi(enrichedEvent, { dryRun: DRY_RUN }).catch((e) => {
           if (e instanceof InsufficientBalanceError) throw e
           return { success: false, error: e.message }

@@ -1,5 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import { z } from 'zod'
+import { ok, created, badRequest, unauthorized, serverError } from './lib/response'
+import { logger } from './lib/logger'
 
 const supabaseAdmin = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL!,
@@ -18,6 +21,11 @@ function createUserClient(accessToken: string) {
   )
 }
 
+const postSchema = z.object({
+  feedback_id: z.string().uuid(),
+  content: z.string().min(1).max(2000),
+})
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
     return handleGet(req, res)
@@ -35,7 +43,7 @@ async function handleGet(req: VercelRequest, res: VercelResponse) {
     const { feedback_id } = req.query
 
     if (!feedback_id || typeof feedback_id !== 'string') {
-      return res.status(400).json({ error: 'feedback_id query parameter is required' })
+      return badRequest(res, 'feedback_id query parameter is required')
     }
 
     const { data, error } = await supabaseAdmin
@@ -45,14 +53,14 @@ async function handleGet(req: VercelRequest, res: VercelResponse) {
       .order('created_at', { ascending: true })
 
     if (error) {
-      console.error('Failed to fetch comments:', error)
-      return res.status(500).json({ error: error.message })
+      logger.error({ err: error }, 'Failed to fetch comments')
+      return serverError(res)
     }
 
-    return res.status(200).json({ data })
+    return ok(res, data)
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return res.status(500).json({ error: message })
+    logger.error({ err }, 'Unexpected error in feedback-comment GET')
+    return serverError(res)
   }
 }
 
@@ -61,7 +69,7 @@ async function handlePost(req: VercelRequest, res: VercelResponse) {
     // Extract JWT from Authorization header
     const authHeader = req.headers.authorization
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Authentication required' })
+      return unauthorized(res)
     }
 
     const token = authHeader.replace('Bearer ', '')
@@ -71,18 +79,15 @@ async function handlePost(req: VercelRequest, res: VercelResponse) {
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
 
     if (authError || !user) {
-      return res.status(401).json({ error: 'Invalid or expired token' })
+      return unauthorized(res)
     }
 
-    const { feedback_id, content } = req.body || {}
-
-    if (!feedback_id) {
-      return res.status(400).json({ error: 'feedback_id is required' })
+    const parsed = postSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return badRequest(res, 'Validation failed', parsed.error.issues)
     }
 
-    if (!content || typeof content !== 'string' || content.trim().length === 0) {
-      return res.status(400).json({ error: 'content is required' })
-    }
+    const { feedback_id, content } = parsed.data
 
     // Insert comment using admin client (bypasses RLS for service role)
     const { data, error } = await supabaseAdmin
@@ -96,13 +101,13 @@ async function handlePost(req: VercelRequest, res: VercelResponse) {
       .single()
 
     if (error) {
-      console.error('Failed to insert comment:', error)
-      return res.status(500).json({ error: error.message })
+      logger.error({ err: error }, 'Failed to insert comment')
+      return serverError(res)
     }
 
-    return res.status(201).json({ data })
+    return created(res, data)
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return res.status(500).json({ error: message })
+    logger.error({ err }, 'Unexpected error in feedback-comment POST')
+    return serverError(res)
   }
 }

@@ -28,6 +28,8 @@ function Sources() {
 
   return (
     <div className="event-list-page">
+      <title>{lang === 'en' ? 'Data Sources | yabai.travel' : '情報取得元 | yabai.travel'}</title>
+      <meta name="description" content={lang === 'en' ? 'Data sources for race information on yabai.travel. Updated daily.' : 'yabai.travel のレース情報取得元一覧。毎日自動更新。'} />
       <header className="app-header">
         <h1><Link to={langPrefix}>{t('site.title')}</Link></h1>
         <p className="app-subtitle">{lang === 'en' ? 'Data Sources' : '情報取得元'}</p>

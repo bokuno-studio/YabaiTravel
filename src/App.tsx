@@ -1,20 +1,22 @@
 import { Routes, Route, Navigate, Outlet, useParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useEffect } from 'react'
-import EventList from './pages/EventList'
-import EventDetail from './pages/EventDetail'
-import CategoryDetail from './pages/CategoryDetail'
-import Sources from './pages/Sources'
-import SportGuide from './pages/SportGuide'
-import Pricing from './pages/Pricing'
-import Legal from './pages/Legal'
-import Feedback from './pages/Feedback'
-import PaymentSuccess from './pages/PaymentSuccess'
-import PaymentCancel from './pages/PaymentCancel'
+import { lazy, Suspense, useEffect } from 'react'
 import SideMenu from './components/SideMenu'
 import FeedbackWidget from './components/FeedbackWidget'
+import LoadingSpinner from './components/LoadingSpinner'
 import { SidebarFilterProvider } from './contexts/SidebarFilterContext'
 import { SidebarStatsProvider } from './contexts/SidebarStatsContext'
+
+const EventList = lazy(() => import('./pages/EventList'))
+const EventDetail = lazy(() => import('./pages/EventDetail'))
+const CategoryDetail = lazy(() => import('./pages/CategoryDetail'))
+const Sources = lazy(() => import('./pages/Sources'))
+const SportGuide = lazy(() => import('./pages/SportGuide'))
+const Pricing = lazy(() => import('./pages/Pricing'))
+const Legal = lazy(() => import('./pages/Legal'))
+const Feedback = lazy(() => import('./pages/Feedback'))
+const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'))
+const PaymentCancel = lazy(() => import('./pages/PaymentCancel'))
 
 /** パスの :lang から i18n 言語を設定し、子ルートを描画 */
 function LangLayout() {
@@ -36,7 +38,9 @@ function LangLayout() {
       <SidebarStatsProvider>
         <SideMenu />
         <div className="min-[960px]:ml-60 min-[960px]:pl-6">
-          <Outlet />
+          <Suspense fallback={<LoadingSpinner />}>
+            <Outlet />
+          </Suspense>
         </div>
         <FeedbackWidget />
       </SidebarStatsProvider>

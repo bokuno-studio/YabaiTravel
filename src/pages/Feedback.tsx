@@ -283,6 +283,7 @@ function NewFeedbackForm({
 }) {
   const { user } = useAuth()
   const [content, setContent] = useState('')
+  const [sourceUrl, setSourceUrl] = useState('')
   const [type, setType] = useState<'feature' | 'bug'>('feature')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -298,7 +299,7 @@ function NewFeedbackForm({
         body: JSON.stringify({
           content: content.trim(),
           feedback_type: type,
-          source_url: window.location.href,
+          source_url: sourceUrl.trim() || window.location.href,
           user_id: user?.id || null,
           channel: 'web',
         }),
@@ -364,6 +365,14 @@ function NewFeedbackForm({
           placeholder="どんな改善があると嬉しいですか？"
           value={content}
           onChange={(e) => setContent(e.target.value)}
+        />
+
+        <input
+          type="url"
+          className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          placeholder="関連ページのURL（任意）"
+          value={sourceUrl}
+          onChange={(e) => setSourceUrl(e.target.value)}
         />
 
         {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
@@ -592,6 +601,19 @@ function Feedback() {
                         >
                           <ExternalLink className="size-3" />
                           GitHub Issue
+                        </a>
+                      )}
+                      {fb.source_url && !fb.source_url.includes('/feedback') && (
+                        <a
+                          href={fb.source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {(() => {
+                            try { return '\u{1F4CD} ' + new URL(fb.source_url).pathname }
+                            catch { return '\u{1F4CD} ' + fb.source_url }
+                          })()}
                         </a>
                       )}
                       <span className="text-xs text-muted-foreground ml-auto">

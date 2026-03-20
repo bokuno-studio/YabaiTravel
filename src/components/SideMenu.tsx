@@ -123,6 +123,7 @@ function SideMenuContent({
           <button
             type="button"
             onClick={() => setFiltersCollapsed(!filtersCollapsed)}
+            aria-expanded={!filtersCollapsed}
             className="mb-1 px-3 text-xs text-muted-foreground hover:text-foreground transition-colors bg-transparent border-0 cursor-pointer text-left"
           >
             {filtersCollapsed
@@ -159,6 +160,7 @@ function SideMenuContent({
           ))}
           <button
             onClick={() => setGuidesExpanded(!guidesExpanded)}
+            aria-expanded={guidesExpanded}
             className="flex items-center gap-1 w-full rounded-md px-3 py-1.5 text-sm text-primary hover:bg-primary/5 transition-colors border-0 bg-transparent cursor-pointer text-left"
           >
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${guidesExpanded ? 'rotate-180' : ''}`} />
@@ -259,7 +261,7 @@ function SideMenu() {
       </button>
 
       {/* Desktop sidebar - always visible */}
-      <nav className="hidden min-[960px]:fixed min-[960px]:inset-y-0 min-[960px]:left-0 min-[960px]:z-[1000] min-[960px]:block min-[960px]:w-60 min-[960px]:overflow-y-auto min-[960px]:border-r min-[960px]:border-border min-[960px]:bg-background">
+      <nav role="navigation" aria-label="Main navigation" className="hidden min-[960px]:fixed min-[960px]:inset-y-0 min-[960px]:left-0 min-[960px]:z-[1000] min-[960px]:block min-[960px]:w-60 min-[960px]:overflow-y-auto min-[960px]:border-r min-[960px]:border-border min-[960px]:bg-background">
         <SideMenuContent
           lang={lang}
           langPrefix={langPrefix}
@@ -274,6 +276,8 @@ function SideMenu() {
 
       {/* Mobile sidebar - slide in */}
       <nav
+        role="navigation"
+        aria-label="Main navigation"
         className={`fixed inset-y-0 left-0 z-[1000] w-60 overflow-y-auto border-r border-border bg-background transition-transform duration-250 ease-in-out min-[960px]:hidden ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}

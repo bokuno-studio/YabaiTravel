@@ -66,6 +66,35 @@ Rules:
 - Return JSON only`
 
 /**
+ * time_limit の値を PostgreSQL interval 互換の HH:MM:SS 形式にサニタイズ
+ * パースできない場合は null を返す
+ */
+function sanitizeTimeLimit(val) {
+  if (!val) return null
+  // Already valid HH:MM:SS
+  if (/^\d{1,2}:\d{2}:\d{2}$/.test(val)) return val
+  // HH:MM format -> add :00
+  if (/^\d{1,2}:\d{2}$/.test(val)) return val + ':00'
+  // Just hours (e.g., "8", "09") -> HH:00:00
+  if (/^\d{1,3}$/.test(val.trim())) {
+    const h = parseInt(val.trim(), 10)
+    if (h >= 0 && h <= 999) return `${h}:00:00`
+    return null
+  }
+  // "60 minutes" or similar text -> try to parse
+  const minMatch = val.match(/(\d+)\s*(?:min|分)/)
+  if (minMatch) {
+    const m = parseInt(minMatch[1], 10)
+    return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}:00`
+  }
+  const hrMatch = val.match(/(\d+)\s*(?:hour|時間|h)/)
+  if (hrMatch) {
+    return `${parseInt(hrMatch[1], 10)}:00:00`
+  }
+  return null // unrecognizable format -> skip
+}
+
+/**
  * 単一カテゴリの詳細情報を抽出
  * @param {object} event - {id, name, official_url}
  * @param {object} category - {id, name, distance_km}
@@ -157,34 +186,67 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
     }
 
     // --- ステップ3: DB 書き込み ---
-    await client.query(
-      `UPDATE ${SCHEMA}.categories SET
-        entry_fee          = COALESCE(entry_fee, $2),
-        entry_fee_currency = COALESCE(entry_fee_currency, $3),
-        start_time         = COALESCE(start_time, $4),
-        reception_end      = COALESCE(reception_end, $5),
-        time_limit         = COALESCE(time_limit, $6),
-        cutoff_times       = CASE WHEN cutoff_times IS NULL OR cutoff_times = '[]'::jsonb THEN $7 ELSE cutoff_times END,
-        elevation_gain     = COALESCE(elevation_gain, $8),
-        mandatory_gear     = COALESCE(mandatory_gear, $9),
-        poles_allowed      = COALESCE(poles_allowed, $10),
-        itra_points        = COALESCE(itra_points, $11),
-        collected_at       = NOW()
-       WHERE id = $1`,
-      [
-        categoryId,
-        extracted.entry_fee != null ? parseInt(extracted.entry_fee, 10) : null,
-        extracted.entry_fee_currency || null,
-        extracted.start_time || null,
-        extracted.reception_end || null,
-        extracted.time_limit || null,
-        extracted.cutoff_times?.length > 0 ? JSON.stringify(extracted.cutoff_times) : null,
-        extracted.elevation_gain ?? null,
-        extracted.mandatory_gear || null,
-        extracted.poles_allowed ?? null,
-        extracted.itra_points ?? null,
-      ]
-    )
+    const sanitizedTimeLimit = sanitizeTimeLimit(extracted.time_limit)
+    const params = [
+      categoryId,
+      extracted.entry_fee != null ? parseInt(extracted.entry_fee, 10) : null,
+      extracted.entry_fee_currency || null,
+      extracted.start_time || null,
+      extracted.reception_end || null,
+      sanitizedTimeLimit,
+      extracted.cutoff_times?.length > 0 ? JSON.stringify(extracted.cutoff_times) : null,
+      extracted.elevation_gain ?? null,
+      extracted.mandatory_gear || null,
+      extracted.poles_allowed ?? null,
+      extracted.itra_points ?? null,
+    ]
+
+    try {
+      await client.query(
+        `UPDATE ${SCHEMA}.categories SET
+          entry_fee          = COALESCE(entry_fee, $2),
+          entry_fee_currency = COALESCE(entry_fee_currency, $3),
+          start_time         = COALESCE(start_time, $4),
+          reception_end      = COALESCE(reception_end, $5),
+          time_limit         = COALESCE(time_limit, $6),
+          cutoff_times       = CASE WHEN cutoff_times IS NULL OR cutoff_times = '[]'::jsonb THEN $7 ELSE cutoff_times END,
+          elevation_gain     = COALESCE(elevation_gain, $8),
+          mandatory_gear     = COALESCE(mandatory_gear, $9),
+          poles_allowed      = COALESCE(poles_allowed, $10),
+          itra_points        = COALESCE(itra_points, $11),
+          collected_at       = NOW()
+         WHERE id = $1`,
+        params
+      )
+    } catch (dbErr) {
+      // INSERT失敗時: 問題のあるフィールドを NULL にしてリトライ
+      console.warn(`  [cat-detail] DB write failed, retrying with nullified fields: ${dbErr.message?.slice(0, 80)}`)
+      await client.query(
+        `UPDATE ${SCHEMA}.categories SET
+          entry_fee          = COALESCE(entry_fee, $2),
+          entry_fee_currency = COALESCE(entry_fee_currency, $3),
+          start_time         = NULL,
+          reception_end      = NULL,
+          time_limit         = NULL,
+          cutoff_times       = CASE WHEN cutoff_times IS NULL OR cutoff_times = '[]'::jsonb THEN $4 ELSE cutoff_times END,
+          elevation_gain     = COALESCE(elevation_gain, $5),
+          mandatory_gear     = COALESCE(mandatory_gear, $6),
+          poles_allowed      = COALESCE(poles_allowed, $7),
+          itra_points        = COALESCE(itra_points, $8),
+          collected_at       = NOW()
+         WHERE id = $1`,
+        [
+          categoryId,
+          params[1],  // entry_fee
+          params[2],  // entry_fee_currency
+          params[6],  // cutoff_times
+          params[7],  // elevation_gain
+          params[8],  // mandatory_gear
+          params[9],  // poles_allowed
+          params[10], // itra_points
+        ]
+      )
+    }
 
     return { success: true, categoryId }
   } catch (e) {

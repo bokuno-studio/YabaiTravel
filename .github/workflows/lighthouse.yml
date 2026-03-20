@@ -1,0 +1,15 @@
+name: Lighthouse CI
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'  # Weekly Monday 12:00 JST
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install -g @lhci/cli
+      - run: lhci autorun --collect.url=https://yabai-travel.vercel.app/ja --upload.target=temporary-public-storage

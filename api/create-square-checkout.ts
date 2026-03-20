@@ -1,10 +1,24 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { SquareClient, SquareEnvironment } from 'square'
 import { randomUUID } from 'crypto'
+import { z } from 'zod'
+import { ok, badRequest, serverError } from './lib/response'
+import { rateLimit } from './lib/rate-limit'
+import { logger } from './lib/logger'
 
 const client = new SquareClient({
   token: process.env.SQUARE_ACCESS_TOKEN!,
   environment: SquareEnvironment.Production,
+})
+
+const postSchema = z.object({
+  mode: z.enum(['donation', 'subscription']),
+  amount: z.number().optional(),
+  currency: z.string().optional(),
+  lang: z.string().optional(),
+  email: z.string().email().optional(),
+  displayName: z.string().optional(),
+  userId: z.string().optional(),
 })
 
 /**
@@ -43,7 +57,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { mode, amount, currency, lang, email, displayName, userId } = req.body || {}
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown'
+    if (!rateLimit(`checkout:${ip}`, 5, 60000)) {
+      return res.status(429).json({ error: 'Too many requests' })
+    }
+
+    const parsed = postSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return badRequest(res, 'Validation failed', parsed.error.issues)
+    }
+
+    const { mode, amount, currency, lang, email, displayName, userId } = parsed.data
     const langPrefix = lang === 'en' ? '/en' : '/ja'
     const baseUrl = process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
@@ -53,9 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const locationId = process.env.SQUARE_LOCATION_ID!
 
     if (mode === 'donation') {
-      const unitAmount = currency === 'usd'
-        ? (amount || 500)
-        : (amount || 500)
+      const unitAmount = amount || 500
 
       const response = await client.checkout.paymentLinks.create({
         idempotencyKey: randomUUID(),
@@ -72,7 +94,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
       })
 
-      return res.status(200).json({ url: response.paymentLink?.url })
+      return ok(res, { url: response.paymentLink?.url })
     }
 
     if (mode === 'subscription') {
@@ -84,7 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         try {
           squareCustomerId = await findOrCreateCustomer(email, displayName)
         } catch (custErr) {
-          console.error('Failed to create/find Square customer:', custErr)
+          logger.error({ err: custErr }, 'Failed to create/find Square customer')
           // Continue without customer — payment link still works
         }
       }
@@ -113,15 +135,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         paymentNote: note,
       })
 
-      return res.status(200).json({
+      return ok(res, {
         url: response.paymentLink?.url,
         squareCustomerId,
       })
     }
 
-    return res.status(400).json({ error: 'Invalid mode' })
+    return badRequest(res, 'Invalid mode')
   } catch (e) {
-    console.error('Square checkout error:', e)
-    return res.status(500).json({ error: 'Failed to create checkout' })
+    logger.error({ err: e }, 'Square checkout error')
+    return serverError(res)
   }
 }

@@ -88,9 +88,19 @@ export function EventCard({
     return null
   })()
 
-  const costEstimate = event.total_cost_estimate
-    ? `¥${parseInt(event.total_cost_estimate, 10).toLocaleString()}`
+  const totalCost = event.total_cost_estimate
+    ? parseInt(event.total_cost_estimate, 10)
     : null
+  const costEstimate = totalCost
+    ? `¥${totalCost.toLocaleString()}`
+    : null
+
+  // Find minimum entry fee from categories for tooltip breakdown
+  const minEntryFee = event.categories
+    ?.filter((c) => c.entry_fee != null && c.entry_fee > 0)
+    .reduce<number | null>((min, c) => (min === null || c.entry_fee! < min ? c.entry_fee! : min), null)
+    ?? null
+  const restCost = totalCost && minEntryFee ? totalCost - minEntryFee : 0
 
   const borderColor = raceTypeBorders[event.race_type ?? 'other'] ?? raceTypeBorders.other
   const badgeBg = raceTypeBadgeBg[event.race_type ?? 'other'] ?? raceTypeBadgeBg.other
@@ -172,9 +182,17 @@ export function EventCard({
                 </p>
               )}
               {costEstimate && (
-                <div className="flex items-center gap-1 text-xs font-semibold text-primary">
-                  <Banknote className="h-3 w-3" />
-                  <span>{lang === 'en' ? 'Est.' : '目安'} {costEstimate}</span>
+                <div className="group/cost relative">
+                  <div className="flex items-center gap-1 text-xs font-semibold text-primary">
+                    <Banknote className="h-3 w-3" />
+                    <span>{lang === 'en' ? 'Est.' : '目安'} {costEstimate}</span>
+                  </div>
+                  {(minEntryFee || restCost > 0) && (
+                    <div className="absolute bottom-full right-0 mb-1 hidden group-hover/cost:block bg-popover border rounded-md px-2 py-1 text-[10px] text-muted-foreground shadow-md whitespace-nowrap z-10">
+                      {minEntryFee && <div>{lang === 'en' ? 'Entry fee' : '参加費'}: ¥{minEntryFee.toLocaleString()}</div>}
+                      {restCost > 0 && <div>{lang === 'en' ? 'Travel+Hotel' : '交通+宿泊'}: ¥{restCost.toLocaleString()}</div>}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

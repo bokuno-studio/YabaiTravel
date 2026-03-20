@@ -62,6 +62,7 @@ function FeedbackWidget() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
+          aria-label={isEn ? 'Open bug report or idea form' : 'バグ報告・アイデアフォームを開く'}
           className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
         >
           <Bug className="size-4" />
@@ -70,7 +71,7 @@ function FeedbackWidget() {
       )}
 
       {open && (
-        <div className="fixed bottom-4 right-4 z-50 w-80 rounded-xl border bg-background shadow-xl">
+        <div role="dialog" aria-label={isEn ? 'Bug report / Idea' : 'バグ報告・アイデア'} className="fixed bottom-4 right-4 z-50 w-80 rounded-xl border bg-background shadow-xl">
           <div className="flex items-center justify-between border-b px-4 py-3">
             <h3 className="text-sm font-semibold">
               {isEn ? 'Report / Idea' : 'バグ報告・アイデア'}

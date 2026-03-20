@@ -1,0 +1,5 @@
+{
+  "entry": ["src/entry-client.tsx", "src/App.tsx"],
+  "project": ["src/**/*.{ts,tsx}", "api/**/*.ts"],
+  "ignore": ["src/components/ui/**", "docs/**", "scripts/**"]
+}

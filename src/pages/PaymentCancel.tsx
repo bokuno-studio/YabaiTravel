@@ -9,6 +9,8 @@ function PaymentCancel() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
+      <title>{isEn ? 'Payment Cancelled | yabai.travel' : 'お支払いキャンセル | yabai.travel'}</title>
+      <meta name="description" content={isEn ? 'Payment was cancelled. You can try again anytime.' : 'お支払いがキャンセルされました。いつでも再度お試しいただけます。'} />
       <Card className="mx-auto max-w-md text-center">
         <CardHeader>
           <CardTitle className="text-xl">

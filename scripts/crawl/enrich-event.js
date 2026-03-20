@@ -161,7 +161,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
           console.log(`  [${label}] ${name?.slice(0, 40)} | ${e.message} → Tavily検索`)
         } else {
           await client.query(
-            `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = enrich_attempt_count + 1 WHERE id = $1`,
+            `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = enrich_attempt_count + 1, last_error_type = 'temporary' WHERE id = $1`,
             [eventId]
           )
           return { success: false, eventId, error: `fetch failed: ${e.message}` }
@@ -499,7 +499,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
     } else {
       // 品質不足 → 次回再試行
       await client.query(
-        `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = $2 WHERE id = $1`,
+        `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = $2, last_error_type = 'empty_response' WHERE id = $1`,
         [eventId, attemptCount]
       )
       console.log(`  [quality-gate] FAIL ${name?.slice(0, 40)} | cats:${cats.length} | attempt:${attemptCount}`)
@@ -507,10 +507,22 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
 
     return { success: true, eventId, location: e.location || null, categoriesCount: cats.length }
   } catch (e) {
+    // エラー分類
+    let errorType = 'temporary'
+    const msg = e.message || ''
+    if (msg.includes('JSON') || msg.includes('parse') || e instanceof SyntaxError) {
+      errorType = 'parse_error'
+    } else if (msg.includes('timeout') || msg.includes('ETIMEDOUT') || msg.includes('ECONNABORTED') || e.code === 'ETIMEDOUT') {
+      errorType = 'timeout'
+    } else if (msg.includes('empty') || msg.includes('no JSON found')) {
+      errorType = 'empty_response'
+    } else if (msg.includes('ECONNREFUSED') || msg.includes('relation') || msg.includes('column') || msg.includes('duplicate key') || msg.includes('violates')) {
+      errorType = 'db_error'
+    }
     try {
       await client.query(
-        `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = enrich_attempt_count + 1 WHERE id = $1`,
-        [event.id]
+        `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = enrich_attempt_count + 1, last_error_type = $2 WHERE id = $1`,
+        [event.id, errorType]
       )
     } catch { /* ignore */ }
     return { success: false, eventId: event.id, error: e.message }

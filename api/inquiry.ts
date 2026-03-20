@@ -1,5 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import { z } from 'zod'
+import { created, badRequest, serverError } from './lib/response'
+import { rateLimit } from './lib/rate-limit'
+import { logger } from './lib/logger'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL!,
@@ -7,7 +11,10 @@ const supabase = createClient(
   { db: { schema: 'yabai_travel' } }
 )
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const postSchema = z.object({
+  email: z.string().email(),
+  content: z.string().min(1).max(5000),
+})
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -16,19 +23,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { email, content } = req.body || {}
-
-    if (!email || typeof email !== 'string' || !EMAIL_REGEX.test(email.trim())) {
-      return res.status(400).json({ error: 'Valid email is required' })
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown'
+    if (!rateLimit(`inquiry:${ip}`, 5, 60000)) {
+      return res.status(429).json({ error: 'Too many requests' })
     }
 
-    if (!content || typeof content !== 'string' || content.trim().length === 0) {
-      return res.status(400).json({ error: 'Content is required' })
+    const parsed = postSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return badRequest(res, 'Validation failed', parsed.error.issues)
     }
 
-    if (content.trim().length > 5000) {
-      return res.status(400).json({ error: 'Content must be 5000 characters or less' })
-    }
+    const { email, content } = parsed.data
 
     const { data, error } = await supabase
       .from('inquiries')
@@ -40,13 +45,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single()
 
     if (error) {
-      console.error('Failed to insert inquiry:', error)
-      return res.status(500).json({ error: error.message })
+      logger.error({ err: error }, 'Failed to insert inquiry')
+      return serverError(res)
     }
 
-    return res.status(201).json({ data })
+    return created(res, data)
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return res.status(500).json({ error: message })
+    logger.error({ err }, 'Unexpected error in inquiry')
+    return serverError(res)
   }
 }

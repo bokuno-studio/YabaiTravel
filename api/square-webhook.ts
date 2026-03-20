@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { createHmac } from 'crypto'
+import { logger } from './lib/logger'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL!,
@@ -52,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Verify webhook signature
   if (!verifySquareSignature(req)) {
-    console.error('Square webhook: invalid signature')
+    logger.error('Square webhook: invalid signature')
     return res.status(401).json({ error: 'Invalid signature' })
   }
 
@@ -60,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const event = req.body
     const eventType = event?.type
 
-    console.log(`Square webhook received: ${eventType}`)
+    logger.info({ eventType }, 'Square webhook received')
 
     if (eventType === 'payment.completed' || eventType === 'payment.updated') {
       const payment = event?.data?.object?.payment
@@ -90,7 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ received: true })
   } catch (e) {
-    console.error('Square webhook error:', e)
+    logger.error({ err: e }, 'Square webhook error')
     // Always return 200 to prevent Square from retrying
     return res.status(200).json({ received: true })
   }
@@ -110,7 +111,7 @@ async function handleSubscriptionPayment(
   const currency = payment.total_money?.currency || 'JPY'
 
   if (!email && !userId) {
-    console.error('No email or userId in subscription payment')
+    logger.error('No email or userId in subscription payment')
     return
   }
 
@@ -154,7 +155,7 @@ async function handleSubscriptionPayment(
       onConflict: 'email',
     })
 
-  console.log(`Subscription activated for ${email}`)
+  logger.info({ email }, 'Subscription activated')
 }
 
 /**
@@ -200,7 +201,7 @@ async function handleInvoicePayment(invoice: {
       .eq('email', email)
   }
 
-  console.log(`Membership renewed via invoice for customer ${customerId || email}`)
+  logger.info({ customerId, email }, 'Membership renewed via invoice')
 }
 
 /**
@@ -215,7 +216,7 @@ async function upgradeMembershipByEmail(
     .rpc('get_user_id_by_email', { email_input: email })
 
   if (!userId) {
-    console.error(`No user found for email: ${email}`)
+    logger.error({ email }, 'No user found for email')
     return
   }
 

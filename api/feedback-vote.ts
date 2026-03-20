@@ -1,11 +1,21 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import { z } from 'zod'
+import { created, badRequest, serverError } from './lib/response'
+import { rateLimit } from './lib/rate-limit'
+import { logger } from './lib/logger'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { db: { schema: 'yabai_travel' } }
 )
+
+const postSchema = z.object({
+  feedback_id: z.string().uuid(),
+  voter_id: z.string().min(1),
+  user_id: z.string().optional(),
+})
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -14,20 +24,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { feedback_id, user_id, voter_id } = req.body || {}
-
-    if (!feedback_id) {
-      return res.status(400).json({ error: 'feedback_id is required' })
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown'
+    if (!rateLimit(`feedback-vote:${ip}`, 30, 60000)) {
+      return res.status(429).json({ error: 'Too many requests' })
     }
 
-    if (!user_id && !voter_id) {
-      return res.status(400).json({ error: 'Either user_id or voter_id is required' })
+    const parsed = postSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return badRequest(res, 'Validation failed', parsed.error.issues)
     }
+
+    const { feedback_id, voter_id, user_id } = parsed.data
 
     // Insert vote
-    const voteData: Record<string, unknown> = { feedback_id }
+    const voteData: Record<string, unknown> = { feedback_id, voter_id }
     if (user_id) voteData.user_id = user_id
-    if (voter_id) voteData.voter_id = voter_id
 
     const { error: voteError } = await supabase
       .from('feedback_votes')
@@ -38,8 +49,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (voteError.code === '23505') {
         return res.status(409).json({ error: 'Already voted' })
       }
-      console.error('Failed to insert vote:', voteError)
-      return res.status(500).json({ error: voteError.message })
+      logger.error({ err: voteError }, 'Failed to insert vote')
+      return serverError(res)
     }
 
     // Increment vote_count on the feedback
@@ -63,9 +74,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    return res.status(201).json({ success: true })
+    return created(res, { success: true })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return res.status(500).json({ error: message })
+    logger.error({ err }, 'Unexpected error in feedback-vote')
+    return serverError(res)
   }
 }

@@ -241,6 +241,21 @@ async function collectOtherSourceRaces(url) {
       })
       return limitForEnv(races, 1)
     }
+    if (url.includes('totalwarrior.com')) {
+      const $ = cheerio.load(html)
+      const races = []
+      $('a[href]').each((_, el) => {
+        const href = $(el).attr('href')
+        const text = $(el).text().trim()
+        if (!href || !text || text.length < 5 || text.length > 100) return
+        // Look for event/location-style links
+        if (!/event|race|location|venue/i.test(href) && !/warrior/i.test(text)) return
+        const officialUrl = href.startsWith('http') ? href : new URL(href, 'https://www.totalwarrior.com/').href
+        if (races.find((r) => r.official_url === officialUrl)) return
+        races.push({ name: text, official_url: officialUrl, entry_url: officialUrl, race_type: 'obstacle', country: 'UK', source: 'total-warrior' })
+      })
+      return limitForEnv(races, 2)
+    }
     if (url.includes('albatros-adventure-marathons.com')) {
       const $ = cheerio.load(html)
       const races = []

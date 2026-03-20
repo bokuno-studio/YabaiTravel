@@ -323,6 +323,8 @@ function SportGuide() {
 
   return (
     <div className="event-list-page">
+      <title>{content.title} {isEn ? '- Sports Guide | yabai.travel' : '- スポーツガイド | yabai.travel'}</title>
+      <meta name="description" content={isEn ? `${content.title} guide - gear, tips, and getting started.` : `${content.title}ガイド - 必要な装備・始め方・レース情報。`} />
       <header className="app-header">
         <h1><Link to={langPrefix} style={{ textDecoration: 'none', color: 'inherit' }}>yabai.travel</Link></h1>
         <p className="app-subtitle">{isEn ? 'Sports Guide' : 'スポーツガイド'}</p>

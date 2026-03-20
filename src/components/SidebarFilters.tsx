@@ -39,6 +39,7 @@ function FilterSection({
       <button
         type="button"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
         className="flex w-full items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors bg-transparent border-0 cursor-pointer"
       >
         <span>{title}</span>
@@ -67,6 +68,7 @@ function SubSection({
       <button
         type="button"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
         className="flex w-full items-center gap-1 py-1 text-sm text-foreground/80 hover:text-foreground transition-colors bg-transparent border-0 cursor-pointer"
       >
         <ChevronDown

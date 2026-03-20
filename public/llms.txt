@@ -1,0 +1,24 @@
+# yabai.travel
+
+> Endurance sports event information and logistics portal
+
+## Overview
+yabai.travel is a comprehensive information portal for endurance sports events including trail running, Spartan Race, HYROX, marathon, triathlon, obstacle course racing, cycling, and more.
+
+## Features
+- Race search with filters (sport type, date, distance, cost, location)
+- Event details (course info, entry fees, time limits, required gear)
+- Access & accommodation logistics (transport routes, estimated costs)
+- Community features (Crew membership, feature requests)
+
+## Data
+- 570+ events tracked
+- 1,700+ race categories
+- Automatic data collection from official race websites
+- Japanese and English bilingual
+
+## API
+No public API available at this time.
+
+## Contact
+Use the contact form at /legal

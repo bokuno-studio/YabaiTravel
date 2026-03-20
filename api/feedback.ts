@@ -1,11 +1,23 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import { z } from 'zod'
+import { ok, created, badRequest, serverError } from './lib/response'
+import { rateLimit } from './lib/rate-limit'
+import { logger } from './lib/logger'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { db: { schema: 'yabai_travel' } }
 )
+
+const postSchema = z.object({
+  content: z.string().min(1).max(5000),
+  feedback_type: z.enum(['bug', 'feature']),
+  source_url: z.string().url().optional(),
+  channel: z.string().optional(),
+  user_id: z.string().optional(),
+})
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
@@ -43,32 +55,36 @@ async function handleGet(req: VercelRequest, res: VercelResponse) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Failed to fetch feedbacks:', error)
-      return res.status(500).json({ error: error.message })
+      logger.error({ err: error }, 'Failed to fetch feedbacks')
+      return serverError(res)
     }
 
-    return res.status(200).json({ data })
+    return ok(res, data)
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return res.status(500).json({ error: message })
+    logger.error({ err }, 'Unexpected error in feedback GET')
+    return serverError(res)
   }
 }
 
 async function handlePost(req: VercelRequest, res: VercelResponse) {
   try {
-    const { content, feedback_type, source_url, user_id, channel } = req.body || {}
-
-    if (!content || typeof content !== 'string' || content.trim().length === 0) {
-      return res.status(400).json({ error: 'content is required' })
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown'
+    if (!rateLimit(`feedback:${ip}`, 10, 60000)) {
+      return res.status(429).json({ error: 'Too many requests' })
     }
 
-    const feedbackType = feedback_type === 'bug' ? 'bug' : 'feature'
+    const parsed = postSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return badRequest(res, 'Validation failed', parsed.error.issues)
+    }
+
+    const { content, feedback_type, source_url, channel, user_id } = parsed.data
 
     const { data, error } = await supabase
       .from('feedbacks')
       .insert({
         content: content.trim(),
-        feedback_type: feedbackType,
+        feedback_type,
         source_url: source_url || null,
         user_id: user_id || null,
         channel: channel || 'web',
@@ -77,13 +93,13 @@ async function handlePost(req: VercelRequest, res: VercelResponse) {
       .single()
 
     if (error) {
-      console.error('Failed to insert feedback:', error)
-      return res.status(500).json({ error: error.message })
+      logger.error({ err: error }, 'Failed to insert feedback')
+      return serverError(res)
     }
 
-    return res.status(201).json({ data })
+    return created(res, data)
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return res.status(500).json({ error: message })
+    logger.error({ err }, 'Unexpected error in feedback POST')
+    return serverError(res)
   }
 }

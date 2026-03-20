@@ -24,10 +24,14 @@
     "crawl:fix-and-rerun": "node scripts/crawl/fix-and-rerun.js && npm run crawl:run",
     "crawl:reset-retry": "node scripts/crawl/reset-retry.js",
     "deploy:watch": "sh scripts/watch-deploy.sh",
+    "knip": "knip",
+    "license-check": "license-checker --onlyAllow 'MIT;ISC;BSD-2-Clause;BSD-3-Clause;Apache-2.0;0BSD;CC0-1.0;CC-BY-4.0;Unlicense;MPL-2.0' --summary",
+    "test:e2e": "playwright test",
     "prepare": "husky"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "@sentry/react": "^10.45.0",
     "@supabase/supabase-js": "^2.98.0",
     "@tailwindcss/vite": "^4.2.2",
     "@vis.gl/react-google-maps": "^1.7.1",
@@ -36,6 +40,7 @@
     "i18next": "^25.8.18",
     "i18next-browser-languagedetector": "^8.2.1",
     "lucide-react": "^0.577.0",
+    "pino": "^10.3.1",
     "radix-ui": "^1.4.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -44,10 +49,12 @@
     "square": "^44.0.1",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.2",
-    "tw-animate-css": "^1.4.0"
+    "tw-animate-css": "^1.4.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.58.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -64,6 +71,8 @@
     "globals": "^16.5.0",
     "husky": "^9.1.7",
     "jsdom": "^28.1.0",
+    "knip": "^6.0.0",
+    "license-checker": "^25.0.1",
     "pg": "^8.20.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
