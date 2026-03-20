@@ -95,12 +95,30 @@ export function EventCard({
     ? `¥${totalCost.toLocaleString()}`
     : null
 
-  // Find minimum entry fee from categories for tooltip breakdown
-  const minEntryFee = event.categories
+  // Currency conversion rates (same as orchestrator.js)
+  const FX_TO_JPY: Record<string, number> = {
+    JPY: 1, USD: 150, EUR: 165, GBP: 190, CAD: 110, AUD: 100, NZD: 90,
+    PHP: 3, THB: 4, SGD: 112,
+  }
+  const FX_TO_USD: Record<string, number> = {
+    USD: 1, JPY: 1/150, EUR: 1.1, GBP: 1.27, CAD: 0.73, AUD: 0.67, NZD: 0.6,
+    PHP: 0.02, THB: 0.027, SGD: 0.75,
+  }
+
+  // Convert entry fee to display currency (JPY for ja, USD for en)
+  const minEntryFeeJpy = event.categories
     ?.filter((c) => c.entry_fee != null && c.entry_fee > 0)
-    .reduce<number | null>((min, c) => (min === null || c.entry_fee! < min ? c.entry_fee! : min), null)
+    .map((c) => Math.round(c.entry_fee! * (FX_TO_JPY[c.entry_fee_currency || 'JPY'] || 1)))
+    .reduce<number | null>((min, v) => (min === null || v < min ? v : min), null)
     ?? null
-  const restCost = totalCost && minEntryFee ? totalCost - minEntryFee : 0
+  const minEntryFeeUsd = event.categories
+    ?.filter((c) => c.entry_fee != null && c.entry_fee > 0)
+    .map((c) => Math.round(c.entry_fee! * (FX_TO_USD[c.entry_fee_currency || 'JPY'] || 1)))
+    .reduce<number | null>((min, v) => (min === null || v < min ? v : min), null)
+    ?? null
+  const minEntryFeeDisplay = isEn ? minEntryFeeUsd : minEntryFeeJpy
+  const entryCurrSymbol = isEn ? '$' : '¥'
+  const restCost = totalCost && minEntryFeeJpy ? totalCost - minEntryFeeJpy : 0
 
   const borderColor = raceTypeBorders[event.race_type ?? 'other'] ?? raceTypeBorders.other
   const badgeBg = raceTypeBadgeBg[event.race_type ?? 'other'] ?? raceTypeBadgeBg.other
@@ -187,10 +205,10 @@ export function EventCard({
                     <Banknote className="h-3 w-3" />
                     <span>{lang === 'en' ? 'Est.' : '目安'} {costEstimate}</span>
                   </div>
-                  {(minEntryFee || restCost > 0) && (
+                  {(minEntryFeeDisplay || restCost > 0) && (
                     <div className="absolute bottom-full right-0 mb-1 hidden group-hover/cost:block bg-popover border rounded-md px-2 py-1 text-[10px] text-muted-foreground shadow-md whitespace-nowrap z-10">
-                      {minEntryFee && <div>{lang === 'en' ? 'Entry fee' : '参加費'}: ¥{minEntryFee.toLocaleString()}</div>}
-                      {restCost > 0 && <div>{lang === 'en' ? 'Travel+Hotel' : '交通+宿泊'}: ¥{restCost.toLocaleString()}</div>}
+                      {minEntryFeeDisplay && <div>{isEn ? 'Entry fee' : '参加費'}: {entryCurrSymbol}{minEntryFeeDisplay.toLocaleString()}</div>}
+                      {restCost > 0 && <div>{isEn ? 'Travel+Hotel' : '交通+宿泊'}: ¥{restCost.toLocaleString()}</div>}
                     </div>
                   )}
                 </div>
