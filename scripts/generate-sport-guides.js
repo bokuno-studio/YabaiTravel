@@ -59,70 +59,97 @@ const SPORT_NAMES_EN = {
   adventure: 'Adventure Racing',
 }
 
-const PROMPT_JA = (sportName) => `あなたはエンデュランススポーツの専門家です。「${sportName}」について以下の JSON 構造で詳細なガイドコンテンツを日本語で生成してください。
+const SYSTEM_PROMPT_JA = `あなたはエンデュランス系スポーツの専門ライターです。
+完全な初心者に向けて、わかりやすく、具体的で、すぐに行動に移せる情報を提供してください。
+専門用語は必ず説明を添えてください。
+各セクションは指定された文字数を目安に、十分な情報量で記載してください。
+出力は JSON のみ返してください。マークダウンのコードブロックや説明文は不要です。`
 
-出力は **JSON のみ** 返してください。マークダウンのコードブロックや説明文は不要です。
+const SYSTEM_PROMPT_EN = `You are an expert endurance sports writer.
+Write for complete beginners — be clear, specific, and actionable.
+Always explain technical terms.
+Each section should meet the specified word count with substantial, useful information.
+Return JSON only. No markdown code blocks or explanations.`
+
+const PROMPT_JA = (sportName) => `「${sportName}」について以下の JSON 構造で詳細なガイドコンテンツを日本語で生成してください。
+各セクションの文字数目安を必ず守り、具体的なエピソードや数字を盛り込んでください。
 
 {
-  "overview": "スポーツの概要・歴史・魅力（200-300字）",
-  "rules": "ルール・形式の説明（200-300字）",
-  "getting_started": "始め方・必要なもの（300-400字）",
-  "recommended_races": "おすすめの入門大会（日本国内と海外の有名大会を含めて3-5件、大会名と簡単な説明を含む）",
-  "common_mistakes": "よくある失敗と対策（3-5項目、各項目は「失敗」と「対策」を含む）",
+  "overview": "500-600字: このスポーツの概要を詳しく説明してください。歴史的な背景（いつ頃始まり、どのように発展したか）、競技の基本的な特徴、なぜ近年人気が高まっているのか、どんな人に向いているか（体力レベル・性格・ライフスタイル）、参加者の年齢層や男女比、完走した時の達成感について具体的に記述してください。",
+  "rules": "400-500字: 競技の基本ルールを詳しく説明してください。レースフォーマット（個人/チーム）、距離カテゴリ（初心者向け〜上級者向け）とそれぞれの目安タイム、制限時間の考え方、失格になるケース、エイドステーション（補給所）のルール、ペナルティの種類、スタート方式（ウェーブスタート等）について記述してください。",
+  "getting_started": "500-600字: 完全初心者が始めるまでのステップバイステップガイドを記述してください。Step1: 情報収集（どこで情報を得るか）、Step2: 体力づくり（何ヶ月前から何をすべきか）、Step3: 装備準備（最低限必要なもの）、Step4: 練習計画（週何回・どんな練習か）、Step5: 大会エントリー（エントリー時期・方法）、Step6: 大会当日の流れ。各ステップに具体的な期間や数値を含めてください。",
+  "recommended_races": "300-400字: 初心者におすすめの大会を6-8件紹介してください。各大会について、大会名、開催地、特徴（コースの難易度、サポート体制、雰囲気）、初心者おすすめ度を含めてください。日本国内5-6件、海外1-2件のバランスで。",
+  "common_mistakes": "400-500字: 初心者がやりがちな失敗を6-8個挙げてください。各失敗について、具体的なシチュエーション（例:「大会1週間前に新しいシューズを買って本番で靴擦れ」）、なぜそれが問題なのか、具体的な対策を記述してください。",
   "gear": {
-    "essential": ["必須アイテム（5-8個）"],
-    "recommended": ["推奨アイテム（3-5個）"],
-    "budget": "初期費用の目安（円建て）"
+    "essential": ["必須アイテム6-8個。各アイテムについて「アイテム名: 選び方のポイント、おすすめの価格帯、初心者が間違えやすい点」の形式で詳しく記述"],
+    "recommended": ["推奨アイテム4-6個。同様の形式で記述"],
+    "budget": "初期投資の具体的な金額範囲を、最低限コース・標準コース・充実コースの3パターンで提示（例: 最低限3万円〜充実10万円）"
   },
-  "community": "コミュニティ情報（SNSハッシュタグ、練習会情報、主要なコミュニティサイト等）"
+  "community": "200-300字: 具体的なSNSハッシュタグ（5個以上）、主要なコミュニティサイトやアプリ（名前とURL）、練習会の見つけ方（どのプラットフォームで探すか）、初心者が仲間を見つけるためのアドバイスを記述してください。"
 }
 
 recommended_races は文字列（テキスト）で、大会名と説明を含む自然な文章にしてください。
-common_mistakes も文字列（テキスト）で、箇条書き風の自然な文章にしてください。`
+common_mistakes も文字列（テキスト）で、各失敗と対策をまとめた自然な文章にしてください。
+gear.essential と gear.recommended の各要素は詳しい説明を含む文字列にしてください。`
 
-const PROMPT_EN = (sportName) => `You are an endurance sports expert. Generate a detailed guide for "${sportName}" in the following JSON structure. Write in English.
-
-Return **JSON only**. No markdown code blocks or explanations.
+const PROMPT_EN = (sportName) => `Generate a detailed guide for "${sportName}" in the following JSON structure. Write in English.
+Each section must meet the specified word count with specific examples and numbers.
 
 {
-  "overview": "Sport overview, history, and appeal (150-250 words)",
-  "rules": "Rules and format explanation (150-250 words)",
-  "getting_started": "How to get started, what you need (200-300 words)",
-  "recommended_races": "Recommended beginner-friendly races (3-5 events including international ones, with names and brief descriptions)",
-  "common_mistakes": "Common mistakes and how to avoid them (3-5 items, each with the mistake and solution)",
+  "overview": "350-450 words: Explain this sport in detail. Cover its historical background (when it started, how it evolved), basic characteristics, why it has grown in popularity recently, what kind of person it suits (fitness level, personality, lifestyle), typical age range and demographics of participants, and the sense of achievement from completing an event.",
+  "rules": "300-350 words: Explain the competition rules in detail. Cover race format (individual/team), distance categories (beginner to advanced) with target times for each, time limits, disqualification scenarios, aid station rules, penalty types, and start formats (wave starts, etc.).",
+  "getting_started": "350-450 words: Provide a step-by-step guide for complete beginners. Step 1: Research (where to find info), Step 2: Building fitness (how many months before, what to do), Step 3: Gear preparation (minimum essentials), Step 4: Training plan (sessions per week, types of training), Step 5: Race entry (when and how to register), Step 6: Race day logistics. Include specific timeframes and numbers for each step.",
+  "recommended_races": "250-300 words: Recommend 6-8 beginner-friendly races. For each, include the race name, location, key features (course difficulty, support level, atmosphere), and a beginner-friendliness rating. Include 3-4 US/international races and 3-4 from other countries.",
+  "common_mistakes": "300-350 words: List 6-8 common beginner mistakes. For each, describe a specific scenario (e.g., 'Buying new shoes the week before race day and getting blisters'), explain why it's a problem, and give a concrete solution.",
   "gear": {
-    "essential": ["Essential items (5-8)"],
-    "recommended": ["Recommended items (3-5)"],
-    "budget": "Estimated initial budget (in USD)"
+    "essential": ["6-8 essential items. For each: 'Item name: selection tips, recommended price range, common beginner mistakes' in detailed format"],
+    "recommended": ["4-6 recommended items in the same format"],
+    "budget": "Specific budget ranges in three tiers: minimum, standard, and premium (e.g., minimum $200 to premium $800)"
   },
-  "community": "Community info (social media hashtags, training groups, key community sites)"
+  "community": "150-200 words: List specific social media hashtags (5+), major community sites and apps (with names), how to find training groups, and advice for beginners looking to connect with others."
 }
 
 recommended_races should be a string with race names and descriptions in natural text.
-common_mistakes should also be a string with items in natural text.`
+common_mistakes should also be a string in natural text format.
+Each element in gear.essential and gear.recommended should be a detailed string.`
 
 async function generateContent(client, sportKey, lang, maxRetries = 3) {
   const isJa = lang === 'ja'
   const sportName = isJa ? SPORT_NAMES_JA[sportKey] : SPORT_NAMES_EN[sportKey]
+  const systemPrompt = isJa ? SYSTEM_PROMPT_JA : SYSTEM_PROMPT_EN
   const prompt = isJa ? PROMPT_JA(sportName) : PROMPT_EN(sportName)
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const response = await client.messages.create({
-        model: 'claude-3-haiku-20240307',
-        max_tokens: 2000,
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4096,
+        system: systemPrompt,
         messages: [{ role: 'user', content: prompt }],
       })
 
-      const text = response.content[0].text.trim()
-      // Extract JSON from possible markdown code blocks
-      const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, text]
-      const json = JSON.parse(jsonMatch[1].trim())
+      let text = response.content[0].text.trim()
+      // Strip markdown code blocks if present
+      if (text.startsWith('```')) {
+        text = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '')
+      }
+      const json = JSON.parse(text)
+
+      // Validate key fields exist
+      const requiredKeys = ['overview', 'rules', 'getting_started', 'recommended_races', 'common_mistakes', 'gear', 'community']
+      for (const key of requiredKeys) {
+        if (!json[key]) throw new Error(`Missing required key: ${key}`)
+      }
+
+      // Log content length for verification
+      const totalChars = JSON.stringify(json).length
+      console.log(`  [${sportKey}/${lang}] content length: ${totalChars} chars`)
+
       return json
     } catch (err) {
-      console.warn(`  [${sportKey}/${lang}] attempt ${attempt}/${maxRetries} failed: ${err.message.slice(0, 80)}`)
+      console.warn(`  [${sportKey}/${lang}] attempt ${attempt}/${maxRetries} failed: ${err.message.slice(0, 120)}`)
       if (attempt < maxRetries) {
-        const delay = attempt * 5000 // 5s, 10s, 15s
+        const delay = attempt * 5000
         await new Promise((r) => setTimeout(r, delay))
       } else {
         throw err
@@ -154,28 +181,41 @@ async function upsertGuide(sportKey, contentJa, contentEn) {
 async function main() {
   const client = new Anthropic()
 
-  console.log(`=== スポーツガイドコンテンツ生成 (${SPORT_KEYS.length} スポーツ) ===\n`)
+  console.log(`=== スポーツガイドコンテンツ生成 (${SPORT_KEYS.length} スポーツ) ===`)
+  console.log(`Model: claude-haiku-4-5-20251001 | max_tokens: 4096\n`)
 
   for (const sportKey of SPORT_KEYS) {
     console.log(`[${sportKey}] 生成中...`)
 
     try {
-      // Generate JA and EN in parallel
-      const [contentJa, contentEn] = await Promise.all([
-        generateContent(client, sportKey, 'ja'),
-        generateContent(client, sportKey, 'en'),
-      ])
+      // Generate JA first, then EN (sequential to avoid rate limits)
+      const contentJa = await generateContent(client, sportKey, 'ja')
+      const contentEn = await generateContent(client, sportKey, 'en')
 
       console.log(`[${sportKey}] JA/EN 生成完了。DB に upsert 中...`)
       await upsertGuide(sportKey, contentJa, contentEn)
-      console.log(`[${sportKey}] 完了 ✓\n`)
+      console.log(`[${sportKey}] 完了\n`)
     } catch (err) {
       console.error(`[${sportKey}] エラー:`, err.message)
       // Continue with other sports
     }
+
+    // Small delay between sports to avoid rate limiting
+    await new Promise((r) => setTimeout(r, 1000))
   }
 
   console.log('=== 全スポーツの生成完了 ===')
+
+  // Verify data
+  console.log('\n--- 検証: DB に保存されたデータの文字数 ---')
+  const verifyResult = await queryManagementAPI(`
+    SELECT sport_key,
+           length(content_ja::text) as ja_chars,
+           length(content_en::text) as en_chars
+    FROM ${SCHEMA}.sport_guides
+    ORDER BY sport_key;
+  `)
+  console.table(verifyResult)
 }
 
 main().catch((err) => {

@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { createSquareCheckout, cancelMembership } from '@/lib/square'
+import { createStripeCheckout, cancelMembership } from '@/lib/stripe'
 import { useAuth } from '@/lib/auth'
 
 function Pricing() {
@@ -27,13 +27,11 @@ function Pricing() {
       if (isNaN(amount) || amount < 1) {
         throw new Error(isEn ? 'Please enter a valid amount' : '有効な金額を入力してください')
       }
-      const currency = 'usd'
       // USD: convert to cents
       const unitAmount = amount * 100
-      const url = await createSquareCheckout({
+      const url = await createStripeCheckout({
         mode: 'donation',
         amount: unitAmount,
-        currency,
         lang,
       })
       window.location.href = url
@@ -47,11 +45,10 @@ function Pricing() {
     setSubscriptionLoading(true)
     setError(null)
     try {
-      const url = await createSquareCheckout({
+      const url = await createStripeCheckout({
         mode: 'subscription',
         lang,
         email: user?.email || undefined,
-        displayName: user?.user_metadata?.full_name || user?.user_metadata?.name || undefined,
         userId: user?.id,
       })
       window.location.href = url
@@ -163,8 +160,8 @@ function Pricing() {
             </Button>
             <p className="text-xs text-muted-foreground text-center">
               {isEn
-                ? 'You will be redirected to Square for secure payment.'
-                : 'Square の安全な決済ページにリダイレクトされます。'}
+                ? 'You will be redirected to Stripe for secure payment.'
+                : 'Stripe の安全な決済ページにリダイレクトされます。'}
             </p>
           </CardFooter>
         </Card>
@@ -281,8 +278,8 @@ function Pricing() {
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">
                   {isEn
-                    ? 'You will be redirected to Square for secure payment.'
-                    : 'Square の安全な決済ページにリダイレクトされます。'}
+                    ? 'You will be redirected to Stripe for secure payment.'
+                    : 'Stripe の安全な決済ページにリダイレクトされます。'}
                 </p>
               </>
             )}

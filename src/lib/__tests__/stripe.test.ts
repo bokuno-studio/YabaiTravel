@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createSquareCheckout, cancelMembership } from '../square'
+import { createStripeCheckout, cancelMembership } from '../stripe'
 
 // Mock global fetch
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
-describe('createSquareCheckout', () => {
+describe('createStripeCheckout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -13,16 +13,16 @@ describe('createSquareCheckout', () => {
   it('returns checkout URL on success', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ url: 'https://checkout.example.com' }),
+      json: () => Promise.resolve({ url: 'https://checkout.stripe.com/c/pay_123' }),
     })
 
-    const url = await createSquareCheckout({
+    const url = await createStripeCheckout({
       mode: 'subscription',
       lang: 'ja',
     })
 
-    expect(url).toBe('https://checkout.example.com')
-    expect(mockFetch).toHaveBeenCalledWith('/api/create-square-checkout', {
+    expect(url).toBe('https://checkout.stripe.com/c/pay_123')
+    expect(mockFetch).toHaveBeenCalledWith('/api/create-stripe-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mode: 'subscription', lang: 'ja' }),
@@ -35,7 +35,7 @@ describe('createSquareCheckout', () => {
       json: () => Promise.resolve({ error: 'Card declined' }),
     })
 
-    await expect(createSquareCheckout({ mode: 'donation', amount: 1000 }))
+    await expect(createStripeCheckout({ mode: 'donation', amount: 1000 }))
       .rejects.toThrow('Card declined')
   })
 
@@ -45,31 +45,45 @@ describe('createSquareCheckout', () => {
       json: () => Promise.reject(new Error('Not JSON')),
     })
 
-    await expect(createSquareCheckout({ mode: 'donation' }))
+    await expect(createStripeCheckout({ mode: 'donation' }))
       .rejects.toThrow('Checkout creation failed')
   })
 
   it('passes all options to the API', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ url: 'https://checkout.example.com' }),
+      json: () => Promise.resolve({ url: 'https://checkout.stripe.com/c/pay_123' }),
     })
 
-    await createSquareCheckout({
+    await createStripeCheckout({
       mode: 'donation',
       amount: 5000,
-      currency: 'jpy',
       lang: 'ja',
       email: 'test@example.com',
-      displayName: 'Test',
       userId: 'u-1',
     })
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body)
     expect(body.mode).toBe('donation')
     expect(body.amount).toBe(5000)
-    expect(body.currency).toBe('jpy')
     expect(body.email).toBe('test@example.com')
+  })
+
+  it('supports comment mode with commentData', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ url: 'https://checkout.stripe.com/c/pay_456' }),
+    })
+
+    await createStripeCheckout({
+      mode: 'comment',
+      lang: 'en',
+      commentData: '{"content":"test"}',
+    })
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.mode).toBe('comment')
+    expect(body.commentData).toBe('{"content":"test"}')
   })
 })
 

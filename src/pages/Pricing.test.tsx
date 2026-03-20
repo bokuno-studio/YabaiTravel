@@ -18,8 +18,8 @@ vi.mock('@/lib/auth', () => ({
   useAuth: () => mockAuthState,
 }))
 
-vi.mock('@/lib/square', () => ({
-  createSquareCheckout: vi.fn(),
+vi.mock('@/lib/stripe', () => ({
+  createStripeCheckout: vi.fn(),
   cancelMembership: vi.fn(),
 }))
 

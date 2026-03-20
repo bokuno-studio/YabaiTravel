@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { SquareClient, SquareEnvironment } from 'square'
+import Stripe from 'stripe'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL!,
@@ -8,9 +8,8 @@ const supabase = createClient(
   { db: { schema: 'yabai_travel' } }
 )
 
-const squareClient = new SquareClient({
-  token: process.env.SQUARE_ACCESS_TOKEN!,
-  environment: SquareEnvironment.Production,
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2026-02-25.clover',
 })
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -36,25 +35,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Get user profile
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('id, membership, square_customer_id')
+      .select('id, membership, stripe_customer_id, stripe_subscription_id')
       .eq('id', user.id)
       .single()
 
     if (!profile) {
-      return notFound(res, 'Profile not found')
+      return res.status(404).json({ error: 'Profile not found' })
     }
 
     if (profile.membership !== 'supporter') {
       return res.status(400).json({ error: 'No active membership to cancel' })
     }
 
-    // Cancel any pending Square invoices for this customer
-    if (profile.square_customer_id) {
+    // Cancel Stripe subscription if exists
+    if (profile.stripe_subscription_id) {
       try {
-        await cancelPendingInvoices(profile.square_customer_id)
-      } catch (invoiceErr) {
-        console.error({ err: invoiceErr }, 'Failed to cancel Square invoices')
-        // Continue with local cancellation even if Square API fails
+        await stripe.subscriptions.cancel(profile.stripe_subscription_id)
+        console.log({ subscriptionId: profile.stripe_subscription_id }, 'Cancelled Stripe subscription')
+      } catch (stripeErr) {
+        console.error({ err: stripeErr }, 'Failed to cancel Stripe subscription')
+        // Continue with local cancellation even if Stripe API fails
       }
     }
 
@@ -64,6 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .update({
         membership: 'free',
         membership_expires_at: null,
+        stripe_subscription_id: null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
@@ -86,43 +87,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (e) {
     console.error({ err: e }, 'Cancel membership error')
     return res.status(500).json({ error: "Internal server error" })
-  }
-}
-
-/**
- * Cancel any pending/unpaid invoices for a Square customer.
- */
-async function cancelPendingInvoices(squareCustomerId: string) {
-  const locationId = process.env.SQUARE_LOCATION_ID!
-
-  // Search for pending invoices
-  const searchResult = await squareClient.invoices.search({
-    query: {
-      filter: {
-        locationIds: [locationId],
-        customerIds: [squareCustomerId],
-      },
-      sort: {
-        field: 'INVOICE_SORT_DATE',
-        order: 'DESC',
-      },
-    },
-  })
-
-  if (!searchResult.invoices) return
-
-  // Cancel unpaid invoices
-  for (const invoice of searchResult.invoices) {
-    if (invoice.status === 'UNPAID' || invoice.status === 'SCHEDULED') {
-      try {
-        await squareClient.invoices.cancel({
-          invoiceId: invoice.id!,
-          version: invoice.version!,
-        })
-        console.log({ invoiceId: invoice.id }, 'Cancelled Square invoice')
-      } catch (cancelErr) {
-        console.error({ err: cancelErr, invoiceId: invoice.id }, 'Failed to cancel invoice')
-      }
-    }
   }
 }
