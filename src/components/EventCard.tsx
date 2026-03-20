@@ -200,15 +200,16 @@ export function EventCard({
                 </p>
               )}
               {costEstimate && (
-                <div className="group/cost relative">
+                <div>
                   <div className="flex items-center gap-1 text-xs font-semibold text-primary">
                     <Banknote className="h-3 w-3" />
-                    <span>{lang === 'en' ? 'Est.' : '目安'} {costEstimate}</span>
+                    <span>{isEn ? 'Est.' : '目安'} {costEstimate}</span>
                   </div>
                   {(minEntryFeeDisplay || restCost > 0) && (
-                    <div className="absolute bottom-full right-0 mb-1 hidden group-hover/cost:block bg-popover border rounded-md px-2 py-1 text-[10px] text-muted-foreground shadow-md whitespace-nowrap z-10">
-                      {minEntryFeeDisplay && <div>{isEn ? 'Entry fee' : '参加費'}: {entryCurrSymbol}{minEntryFeeDisplay.toLocaleString()}</div>}
-                      {restCost > 0 && <div>{isEn ? 'Travel+Hotel' : '交通+宿泊'}: ¥{restCost.toLocaleString()}</div>}
+                    <div className="mt-0.5 text-[10px] text-muted-foreground leading-tight">
+                      {minEntryFeeDisplay && <span>{isEn ? 'Entry' : '参加'} {entryCurrSymbol}{minEntryFeeDisplay.toLocaleString()}</span>}
+                      {minEntryFeeDisplay && restCost > 0 && <span> / </span>}
+                      {restCost > 0 && <span>{isEn ? 'Travel+Stay' : '交通+宿泊'} ¥{restCost.toLocaleString()}</span>}
                     </div>
                   )}
                 </div>
