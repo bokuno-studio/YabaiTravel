@@ -158,6 +158,28 @@ async function generateAndSendReport(chatId: string) {
     }
   }
 
+  // Job status from GitHub Actions
+  const repo = 'bokunon/YabaiTravel'
+  const workflows = ['crawl-collect.yml', 'crawl-enrich.yml', 'crawl-daily-report.yml']
+  lines.push('')
+  lines.push('■ ジョブ実行状況')
+  for (const wf of workflows) {
+    try {
+      const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${wf}/runs?per_page=1&status=completed`, {
+        headers: { Accept: 'application/vnd.github+json' },
+      })
+      if (r.ok) {
+        const data = await r.json()
+        const run = data.workflow_runs?.[0]
+        if (run) {
+          const icon = run.conclusion === 'success' ? '✅' : run.conclusion === 'failure' ? '❌' : '⚠️'
+          const date = new Date(run.updated_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+          lines.push(`  ${icon} ${wf.replace('.yml', '')} ${date}`)
+        }
+      }
+    } catch { /* skip */ }
+  }
+
   const report = '<pre>' + lines.join('\n').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>'
 
   // Send (split if > 4096 chars)
