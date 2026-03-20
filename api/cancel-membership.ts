@@ -1,8 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { SquareClient, SquareEnvironment } from 'square'
-import { ok, unauthorized, badRequest, notFound, serverError } from './lib/response'
-import { logger } from './lib/logger'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL!,
@@ -25,14 +23,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Verify auth: expect Authorization header with Supabase JWT
     const authHeader = req.headers.authorization
     if (!authHeader?.startsWith('Bearer ')) {
-      return unauthorized(res)
+      return res.status(401).json({ error: "Unauthorized" })
     }
 
     const token = authHeader.slice(7)
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
 
     if (authError || !user) {
-      return unauthorized(res)
+      return res.status(401).json({ error: "Unauthorized" })
     }
 
     // Get user profile
@@ -47,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (profile.membership !== 'supporter') {
-      return badRequest(res, 'No active membership to cancel')
+      return res.status(400).json({ error: 'No active membership to cancel' })
     }
 
     // Cancel any pending Square invoices for this customer
@@ -55,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         await cancelPendingInvoices(profile.square_customer_id)
       } catch (invoiceErr) {
-        logger.error({ err: invoiceErr }, 'Failed to cancel Square invoices')
+        console.error({ err: invoiceErr }, 'Failed to cancel Square invoices')
         // Continue with local cancellation even if Square API fails
       }
     }
@@ -83,11 +81,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .eq('status', 'active')
     }
 
-    logger.info({ userId: user.id }, 'Membership cancelled')
-    return ok(res, { success: true })
+    console.log({ userId: user.id }, 'Membership cancelled')
+    return res.status(200).json({ data: { success: true } })
   } catch (e) {
-    logger.error({ err: e }, 'Cancel membership error')
-    return serverError(res)
+    console.error({ err: e }, 'Cancel membership error')
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -121,9 +119,9 @@ async function cancelPendingInvoices(squareCustomerId: string) {
           invoiceId: invoice.id!,
           version: invoice.version!,
         })
-        logger.info({ invoiceId: invoice.id }, 'Cancelled Square invoice')
+        console.log({ invoiceId: invoice.id }, 'Cancelled Square invoice')
       } catch (cancelErr) {
-        logger.error({ err: cancelErr, invoiceId: invoice.id }, 'Failed to cancel invoice')
+        console.error({ err: cancelErr, invoiceId: invoice.id }, 'Failed to cancel invoice')
       }
     }
   }

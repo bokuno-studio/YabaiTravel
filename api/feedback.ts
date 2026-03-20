@@ -1,9 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { z } from 'zod'
-import { ok, created, badRequest, serverError } from './lib/response'
-import { rateLimit } from './lib/rate-limit'
-import { logger } from './lib/logger'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL!,
@@ -11,22 +7,9 @@ const supabase = createClient(
   { db: { schema: 'yabai_travel' } }
 )
 
-const postSchema = z.object({
-  content: z.string().min(1).max(5000),
-  feedback_type: z.enum(['bug', 'feature']),
-  source_url: z.string().optional().nullable(),
-  channel: z.string().optional().nullable(),
-  user_id: z.string().optional().nullable(),
-})
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method === 'GET') {
-    return handleGet(req, res)
-  }
-  if (req.method === 'POST') {
-    return handlePost(req, res)
-  }
-
+  if (req.method === 'GET') return handleGet(req, res)
+  if (req.method === 'POST') return handlePost(req, res)
   res.setHeader('Allow', 'GET, POST')
   return res.status(405).json({ error: 'Method not allowed' })
 }
@@ -34,56 +17,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 async function handleGet(req: VercelRequest, res: VercelResponse) {
   try {
     const { type, status, limit, offset } = req.query
-
-    let query = supabase
-      .from('feedbacks')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (type && typeof type === 'string') {
-      query = query.eq('feedback_type', type)
-    }
-
-    if (status && typeof status === 'string') {
-      query = query.eq('status', status)
-    }
-
+    let query = supabase.from('feedbacks').select('*').order('created_at', { ascending: false })
+    if (type && typeof type === 'string') query = query.eq('feedback_type', type)
+    if (status && typeof status === 'string') query = query.eq('status', status)
     const queryLimit = limit ? parseInt(String(limit), 10) : 50
     const queryOffset = offset ? parseInt(String(offset), 10) : 0
     query = query.range(queryOffset, queryOffset + queryLimit - 1)
-
     const { data, error } = await query
-
-    if (error) {
-      logger.error({ err: error }, 'Failed to fetch feedbacks')
-      return serverError(res)
-    }
-
-    return ok(res, data)
-  } catch (err) {
-    logger.error({ err }, 'Unexpected error in feedback GET')
-    return serverError(res)
+    if (error) return res.status(500).json({ error: 'Internal server error' })
+    return res.status(200).json({ data })
+  } catch {
+    return res.status(500).json({ error: 'Internal server error' })
   }
 }
 
 async function handlePost(req: VercelRequest, res: VercelResponse) {
   try {
-    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown'
-    if (!rateLimit(`feedback:${ip}`, 10, 60000)) {
-      return res.status(429).json({ error: 'Too many requests' })
+    const { content, feedback_type, source_url, channel, user_id } = req.body || {}
+    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+      return res.status(400).json({ error: 'content is required' })
     }
-
-    const parsed = postSchema.safeParse(req.body)
-    if (!parsed.success) {
-      return badRequest(res, 'Validation failed', parsed.error.issues)
+    if (!['bug', 'feature'].includes(feedback_type)) {
+      return res.status(400).json({ error: 'feedback_type must be bug or feature' })
     }
-
-    const { content, feedback_type, source_url, channel, user_id } = parsed.data
 
     const { data, error } = await supabase
       .from('feedbacks')
       .insert({
-        content: content.trim(),
+        content: content.trim().slice(0, 5000),
         feedback_type,
         source_url: source_url || null,
         user_id: user_id || null,
@@ -93,13 +54,12 @@ async function handlePost(req: VercelRequest, res: VercelResponse) {
       .single()
 
     if (error) {
-      logger.error({ err: error }, 'Failed to insert feedback')
-      return serverError(res)
+      console.error('Failed to insert feedback:', error.message)
+      return res.status(500).json({ error: 'Internal server error' })
     }
-
-    return created(res, data)
+    return res.status(201).json({ data })
   } catch (err) {
-    logger.error({ err }, 'Unexpected error in feedback POST')
-    return serverError(res)
+    console.error('Unexpected error in feedback POST:', err)
+    return res.status(500).json({ error: 'Internal server error' })
   }
 }
