@@ -1,7 +1,6 @@
 import { useParams, Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import EventComments from '@/components/EventComments'
 import '../App.css'
 
 // --- Types ---
@@ -258,7 +257,6 @@ function SportGuide() {
         {/* Comments */}
         {sport && (
           <div style={{ maxWidth: '720px', marginTop: '2rem' }}>
-            <EventComments raceType={sport} isEn={isEn} limit={5} />
           </div>
         )}
 
@@ -309,7 +307,6 @@ function SportGuide() {
       {/* Comments */}
       {sport && (
         <div style={{ maxWidth: '720px', marginTop: '2rem' }}>
-          <EventComments raceType={sport} isEn={isEn} limit={5} />
         </div>
       )}
 
