@@ -123,7 +123,7 @@ async function generateContent(client, sportKey, lang, maxRetries = 3) {
     try {
       const response = await client.messages.create({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
+        max_tokens: 8192,
         system: systemPrompt,
         messages: [{ role: 'user', content: prompt }],
       })
@@ -182,7 +182,7 @@ async function main() {
   const client = new Anthropic()
 
   console.log(`=== スポーツガイドコンテンツ生成 (${SPORT_KEYS.length} スポーツ) ===`)
-  console.log(`Model: claude-haiku-4-5-20251001 | max_tokens: 4096\n`)
+  console.log(`Model: claude-haiku-4-5-20251001 | max_tokens: 8192\n`)
 
   for (const sportKey of SPORT_KEYS) {
     console.log(`[${sportKey}] 生成中...`)
