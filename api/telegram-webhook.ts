@@ -14,7 +14,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const text = message.text.trim().toLowerCase()
 
   if (text === 'レポート' || text === '/report') {
-    await generateAndSendReport(chatId)
+    try {
+      await generateAndSendReport(chatId)
+    } catch (err) {
+      console.error('Report failed:', err)
+      // Send error to Telegram for debugging
+      const botToken = process.env.TELEGRAM_BOT_TOKEN
+      if (botToken) {
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text: `エラー: ${err instanceof Error ? err.message : String(err)}` }),
+        }).catch(() => {})
+      }
+    }
   }
 
   return res.status(200).json({ ok: true })
