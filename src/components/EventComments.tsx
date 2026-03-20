@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Loader2, Lock } from 'lucide-react'
 import type { EventComment } from '@/types/event'
 
 interface EventCommentsProps {
@@ -8,7 +10,6 @@ interface EventCommentsProps {
   categoryId?: string
   raceType?: string
   isEn: boolean
-  /** Max comments to show (default: unlimited) */
   limit?: number
 }
 
@@ -19,63 +20,95 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
   const [displayName, setDisplayName] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const fetchComments = useCallback(async () => {
     try {
       const params = new URLSearchParams()
-      if (categoryId) {
-        params.set('category_id', categoryId)
-      } else if (eventId) {
-        params.set('event_id', eventId)
-      } else if (raceType) {
-        params.set('race_type', raceType)
-      }
-      if (limit) {
-        params.set('limit', String(limit))
-      }
-      const res = await fetch(`/api/event-comment?${params.toString()}`)
+      if (categoryId) params.set('category_id', categoryId)
+      else if (eventId) params.set('event_id', eventId)
+      else if (raceType) params.set('race_type', raceType)
+      if (limit) params.set('limit', String(limit))
+      const res = await fetch(`/api/event-comment?${params}`)
       if (!res.ok) throw new Error('Failed to fetch comments')
       const json = await res.json()
       setComments(json.data ?? [])
     } catch {
-      console.error('Failed to load comments')
+      /* ignore */
     } finally {
       setLoading(false)
     }
   }, [eventId, categoryId, raceType, limit])
 
-  useEffect(() => {
-    fetchComments()
-  }, [fetchComments])
+  useEffect(() => { fetchComments() }, [fetchComments])
 
-  const handleSubmit = async () => {
+  // Handle return from Square payment
+  useEffect(() => {
+    const pendingComment = searchParams.get('pending_comment')
+    if (pendingComment) {
+      try {
+        const data = JSON.parse(decodeURIComponent(pendingComment))
+        // Post the comment with payment confirmed
+        fetch('/api/event-comment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...data,
+            payment_id: 'square-confirmed',
+          }),
+        }).then(res => {
+          if (res.ok) fetchComments()
+        })
+      } catch { /* ignore */ }
+      // Clean up URL
+      const newParams = new URLSearchParams(searchParams)
+      newParams.delete('pending_comment')
+      setSearchParams(newParams, { replace: true })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handlePublish = async () => {
     if (!content.trim() || !eventId) return
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch('/api/event-comment', {
+      // Store comment data for after payment
+      const commentData = {
+        event_id: eventId,
+        category_id: categoryId || null,
+        content: content.trim(),
+        display_name: displayName.trim() || null,
+        race_type: raceType || null,
+      }
+
+      // Create Square payment link for $1
+      const res = await fetch('/api/create-square-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          event_id: eventId,
-          category_id: categoryId || null,
-          content: content.trim(),
-          user_id: null,
-          display_name: displayName.trim() || null,
-          race_type: raceType || null,
-          payment_id: 'mvp-free', // MVP: no actual payment yet
+          mode: 'comment',
+          amount: 100, // $1 in cents
+          currency: 'usd',
+          lang: isEn ? 'en' : 'ja',
+          commentData: JSON.stringify(commentData),
         }),
       })
+
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
-        throw new Error(json.error || 'Failed to post comment')
+        throw new Error(json.error || 'Payment creation failed')
       }
-      setContent('')
-      setDisplayName('')
-      await fetchComments()
+
+      const { url } = await res.json()
+      if (url) {
+        // Save pending comment to sessionStorage as backup
+        sessionStorage.setItem('yabai_pending_comment', JSON.stringify(commentData))
+        window.location.href = url
+      } else {
+        throw new Error('No payment URL returned')
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to post comment')
-    } finally {
+      setError(err instanceof Error ? err.message : 'Failed')
       setSubmitting(false)
     }
   }
@@ -84,12 +117,9 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
     try {
       const date = new Date(d)
       return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
-    } catch {
-      return d
-    }
+    } catch { return d }
   }
 
-  // Read-only mode: no eventId means we can only show, not post (e.g. SportGuide)
   const canPost = !!eventId
 
   return (
@@ -98,19 +128,15 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
         <CardTitle className="text-base">
           {isEn ? 'Race Reports' : 'レースレポート・口コミ'}
         </CardTitle>
-        <p className="text-xs text-muted-foreground">
-          {isEn ? '$1/comment (coming soon)' : '$1/コメント（近日対応予定）'}
-        </p>
       </CardHeader>
       <CardContent>
-        {/* Comment list */}
         {loading ? (
           <p className="text-sm text-muted-foreground">
-            {isEn ? 'Loading comments...' : 'コメントを読み込み中...'}
+            {isEn ? 'Loading...' : '読み込み中...'}
           </p>
         ) : comments.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {isEn ? 'No comments yet. Be the first to share your experience!' : 'まだコメントはありません。最初のレポートを投稿しましょう！'}
+            {isEn ? 'No reports yet. Be the first!' : 'まだレポートはありません。最初の投稿者になりましょう！'}
           </p>
         ) : (
           <div className="space-y-4">
@@ -130,13 +156,12 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
           </div>
         )}
 
-        {/* Post form - no login required */}
         {canPost && (
           <div className="mt-6 border-t border-border pt-4">
             <div className="space-y-3">
               <input
                 type="text"
-                placeholder={isEn ? 'Display name (optional, default: Anonymous)' : '表示名（任意、デフォルト: 匿名）'}
+                placeholder={isEn ? 'Display name (optional)' : '表示名（任意）'}
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 maxLength={50}
@@ -150,21 +175,19 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
                 rows={4}
                 className="w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
-              {error && (
-                <p className="text-xs text-destructive">{error}</p>
-              )}
+              {error && <p className="text-xs text-destructive">{error}</p>}
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
-                  {content.length}/5000
-                </span>
+                <span className="text-xs text-muted-foreground">{content.length}/5000</span>
                 <Button
                   size="sm"
                   disabled={submitting || !content.trim()}
-                  onClick={handleSubmit}
+                  onClick={handlePublish}
                 >
-                  {submitting
-                    ? (isEn ? 'Posting...' : '投稿中...')
-                    : (isEn ? 'Post' : '投稿する')}
+                  {submitting ? (
+                    <><Loader2 className="mr-1 h-3 w-3 animate-spin" />{isEn ? 'Redirecting...' : 'リダイレクト中...'}</>
+                  ) : (
+                    <><Lock className="mr-1 h-3 w-3" />{isEn ? 'Publish for $1' : '$1で公開する'}</>
+                  )}
                 </Button>
               </div>
             </div>
