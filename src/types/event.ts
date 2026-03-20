@@ -105,6 +105,19 @@ export type Accommodation = {
   updated_at: string | null
 }
 
+/** yabai_travel.event_comments テーブルの型 */
+export type EventComment = {
+  id: string
+  event_id: string
+  category_id: string | null
+  user_id: string | null
+  content: string
+  payment_id: string | null
+  race_type: string | null
+  display_name: string | null
+  created_at: string
+}
+
 /** yabai_travel.categories テーブルの型 */
 export type Category = {
   id: string

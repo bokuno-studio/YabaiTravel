@@ -25,6 +25,7 @@ import CourseMap from '@/components/category/CourseMap'
 import PastEditions from '@/components/category/PastEditions'
 import SectionCard from '@/components/category/SectionCard'
 import DLRow from '@/components/category/DLRow'
+import EventComments from '@/components/EventComments'
 
 const raceTypeColors: Record<string, string> = {
   trail: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -394,6 +395,7 @@ function CategoryDetail() {
 
         {/* レーススペック */}
         <RaceSpecs
+          eventId={event.id}
           category={category}
           isEn={isEn}
           formatInterval={formatInterval}
@@ -436,6 +438,7 @@ function CategoryDetail() {
 
         {/* アクセス情報 */}
         <AccessInfo
+          eventId={event.id}
           outbound={outbound}
           returnRoute={returnRoute}
           sameStartGoal={sameStartGoal}
@@ -447,6 +450,7 @@ function CategoryDetail() {
 
         {/* 宿泊情報 */}
         <AccommodationInfo
+          eventId={event.id}
           stayStatus={stayStatus}
           stayStatusLabel={stayStatusLabel}
           accommodations={accommodations}
@@ -521,6 +525,9 @@ function CategoryDetail() {
             </dl>
           </SectionCard>
         )}
+
+        {/* レースレポート・口コミ */}
+        <EventComments eventId={event.id} categoryId={category.id} raceType={event.race_type ?? undefined} isEn={isEn} />
 
         {/* 最終更新 */}
         {(category.updated_at || event.updated_at) && (

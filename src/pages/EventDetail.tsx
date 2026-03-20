@@ -19,6 +19,7 @@ import {
   Home,
   ChevronRight,
 } from 'lucide-react'
+import EventComments from '@/components/EventComments'
 
 const raceTypeColors: Record<string, string> = {
   trail: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -312,6 +313,9 @@ function EventDetail() {
             </Card>
           )}
 
+          {/* レースレポート・口コミ */}
+          <EventComments eventId={event.id} isEn={isEn} />
+
           {/* 最終更新 */}
           {event.updated_at && (
             <p className="mt-6 border-t border-border pt-4 text-right text-xs text-muted-foreground/70">
@@ -410,6 +414,9 @@ function EventDetail() {
             </Card>
           ))}
         </div>
+
+        {/* レースレポート・口コミ */}
+        <EventComments eventId={event.id} isEn={isEn} />
 
         {/* 最終更新 */}
         {event.updated_at && (

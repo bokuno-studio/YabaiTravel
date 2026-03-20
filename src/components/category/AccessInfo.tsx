@@ -3,8 +3,10 @@ import { cn } from '@/lib/utils'
 import type { AccessRoute } from '@/types/event'
 import SectionCard from './SectionCard'
 import DLRow from './DLRow'
+import ChangeRequestButton from '@/components/ChangeRequestButton'
 
 interface AccessInfoProps {
+  eventId: string
   outbound: AccessRoute | undefined
   returnRoute: AccessRoute | undefined
   sameStartGoal: boolean
@@ -15,6 +17,7 @@ interface AccessInfoProps {
 }
 
 function AccessInfo({
+  eventId,
   outbound,
   returnRoute,
   sameStartGoal,
@@ -26,7 +29,17 @@ function AccessInfo({
   return (
     <>
       {/* 公共交通機関で行けるか */}
-      <SectionCard title={isEn ? 'Public transit access' : '公共交通機関で行けるか'} icon={<Train className="h-4 w-4 text-primary" />}>
+      <SectionCard
+        title={isEn ? 'Public transit access' : '公共交通機関で行けるか'}
+        icon={<Train className="h-4 w-4 text-primary" />}
+        action={
+          <ChangeRequestButton
+            eventId={eventId}
+            fieldName={isEn ? 'Access info' : 'アクセス情報'}
+            currentValue={[outbound?.route_detail, outbound?.cost_estimate].filter(Boolean).join(' / ') || undefined}
+          />
+        }
+      >
         {outbound?.transit_accessible != null && (
           <p className={cn(
             'mb-3 rounded-lg px-3 py-2 text-sm font-medium',

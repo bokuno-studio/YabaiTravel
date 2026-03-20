@@ -2,6 +2,7 @@ import { Banknote } from 'lucide-react'
 import type { Event, Category, AccessRoute, Accommodation } from '@/types/event'
 import SectionCard from './SectionCard'
 import DLRow from './DLRow'
+import ChangeRequestButton from '@/components/ChangeRequestButton'
 
 const FX_TO_JPY: Record<string, number> = {
   JPY: 1, USD: 150, EUR: 165, GBP: 190, CAD: 110, AUD: 100, NZD: 90,
@@ -26,7 +27,18 @@ function CostBreakdown({ event, category, outbound, returnRoute, accommodations,
   const isConverted = originalCurrency !== 'JPY' && category.entry_fee != null
 
   return (
-    <SectionCard title={isEn ? 'Cost' : 'コストはいくら？'} icon={<Banknote className="h-4 w-4 text-primary" />}>
+    <SectionCard
+      title={isEn ? 'Cost' : 'コストはいくら？'}
+      icon={<Banknote className="h-4 w-4 text-primary" />}
+      action={
+        <ChangeRequestButton
+          eventId={event.id}
+          categoryId={category.id}
+          fieldName={isEn ? 'Cost breakdown' : 'コスト'}
+          currentValue={event.total_cost_estimate ? `${parseInt(event.total_cost_estimate, 10).toLocaleString()}円` : undefined}
+        />
+      }
+    >
       {event.total_cost_estimate && (
         <DLRow
           label={isEn ? 'Total cost' : 'トータルコスト'}

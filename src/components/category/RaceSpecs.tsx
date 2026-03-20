@@ -9,8 +9,10 @@ import type { Category } from '@/types/event'
 import SectionCard from './SectionCard'
 import StatBox from './StatBox'
 import DLRow from './DLRow'
+import ChangeRequestButton from '@/components/ChangeRequestButton'
 
 interface RaceSpecsProps {
+  eventId: string
   category: Category
   isEn: boolean
   formatInterval: (v: string | null) => string | null
@@ -25,6 +27,7 @@ interface RaceSpecsProps {
 }
 
 function RaceSpecs({
+  eventId,
   category,
   isEn,
   formatInterval,
@@ -53,7 +56,22 @@ function RaceSpecs({
   })()
 
   return (
-    <SectionCard title={isEn ? 'Race specs' : 'このレースのスペックは？'} icon={<Mountain className="h-4 w-4 text-primary" />}>
+    <SectionCard
+      title={isEn ? 'Race specs' : 'このレースのスペックは？'}
+      icon={<Mountain className="h-4 w-4 text-primary" />}
+      action={
+        <ChangeRequestButton
+          eventId={eventId}
+          categoryId={category.id}
+          fieldName={isEn ? 'Race specs' : 'レーススペック'}
+          currentValue={[
+            category.distance_km != null ? `${category.distance_km}km` : null,
+            category.elevation_gain != null ? `D+${category.elevation_gain}m` : null,
+            category.entry_fee != null ? `${category.entry_fee.toLocaleString()}${category.entry_fee_currency ?? '円'}` : null,
+          ].filter(Boolean).join(' / ') || undefined}
+        />
+      }
+    >
       {/* Quick stats grid */}
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {category.distance_km != null && (
