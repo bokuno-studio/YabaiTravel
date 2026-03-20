@@ -158,24 +158,28 @@ async function generateAndSendReport(chatId: string) {
     }
   }
 
-  // Job status from GitHub Actions
+  // Job status from GitHub Actions (last 24h)
   const repo = 'bokunon/YabaiTravel'
   const workflows = ['crawl-collect.yml', 'crawl-enrich.yml', 'crawl-daily-report.yml']
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   lines.push('')
-  lines.push('■ ジョブ実行状況')
+  lines.push('■ ジョブ実行状況（24h）')
   for (const wf of workflows) {
     try {
-      const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${wf}/runs?per_page=1&status=completed`, {
+      const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${wf}/runs?per_page=30&created=${encodeURIComponent('>' + since)}`, {
         headers: { Accept: 'application/vnd.github+json' },
       })
       if (r.ok) {
         const data = await r.json()
-        const run = data.workflow_runs?.[0]
-        if (run) {
-          const icon = run.conclusion === 'success' ? '✅' : run.conclusion === 'failure' ? '❌' : '⚠️'
-          const date = new Date(run.updated_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-          lines.push(`  ${icon} ${wf.replace('.yml', '')} ${date}`)
-        }
+        const runs = data.workflow_runs || []
+        const completed = runs.filter((r: { status: string }) => r.status === 'completed')
+        const success = completed.filter((r: { conclusion: string }) => r.conclusion === 'success').length
+        const failed = completed.filter((r: { conclusion: string }) => r.conclusion === 'failure').length
+        const latest = completed[0]
+        const icon = failed > 0 ? '❌' : success > 0 ? '✅' : '⚪'
+        const lastTime = latest ? new Date(latest.updated_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' }) : '-'
+        const name = wf.replace('.yml', '').replace('crawl-', '')
+        lines.push(`  ${icon} ${name} ${completed.length}回${failed > 0 ? `(失敗${failed})` : ''} 最終${lastTime}`)
       }
     } catch { /* skip */ }
   }
