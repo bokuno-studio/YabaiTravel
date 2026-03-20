@@ -439,6 +439,7 @@ function CategoryDetail() {
         {/* アクセス情報 */}
         <AccessInfo
           eventId={event.id}
+          categoryId={category.id}
           outbound={outbound}
           returnRoute={returnRoute}
           sameStartGoal={sameStartGoal}
@@ -451,6 +452,7 @@ function CategoryDetail() {
         {/* 宿泊情報 */}
         <AccommodationInfo
           eventId={event.id}
+          categoryId={category.id}
           stayStatus={stayStatus}
           stayStatusLabel={stayStatusLabel}
           accommodations={accommodations}
