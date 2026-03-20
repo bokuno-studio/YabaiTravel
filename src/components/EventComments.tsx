@@ -13,6 +13,8 @@ interface EventCommentsProps {
   limit?: number
 }
 
+const COMMENTS_ENABLED = !import.meta.env.PROD || !!import.meta.env.VITE_ENABLE_COMMENTS
+
 function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventCommentsProps) {
   const [comments, setComments] = useState<EventComment[]>([])
   const [loading, setLoading] = useState(true)
@@ -120,6 +122,8 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
   }
 
   const canPost = !!eventId
+
+  if (!COMMENTS_ENABLED) return null
 
   return (
     <Card className="mb-4 mt-6">
