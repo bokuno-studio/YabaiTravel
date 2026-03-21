@@ -105,13 +105,24 @@ async function generateAndSendReport(chatId: string) {
   let eventEst = '不明'
   let catEst = '不明'
   if (history && history.length >= 2) {
-    const first = history[0]
-    const last = history[history.length - 1]
+    // history is DESC order: [0]=newest, [last]=oldest
+    const newest = history[0]
+    const oldest = history[history.length - 1]
     const days = Math.max(1, history.length - 1)
-    const eventRate = (last.enriched_events - first.enriched_events) / days
-    const catRate = (last.enriched_categories - first.enriched_categories) / days
-    eventEst = eventRate > 0 ? `約${Math.ceil(eventBacklog / eventRate)}日` : '停滞中'
-    catEst = catRate > 0 ? `約${Math.ceil(catBacklog / catRate)}日` : '停滞中'
+    const eventRate = (newest.enriched_events - oldest.enriched_events) / days
+    const catRate = (newest.enriched_categories - oldest.enriched_categories) / days
+    if (eventBacklog <= 0) eventEst = '完了'
+    else if (eventRate > 0) eventEst = `約${Math.ceil(eventBacklog / eventRate)}日後`
+    else eventEst = `${eventBacklog}件未処理（消化ペース0）`
+    if (catBacklog <= 0) catEst = '完了'
+    else if (catRate > 0) catEst = `約${Math.ceil(catBacklog / catRate)}日後`
+    else catEst = `${catBacklog}件未処理（消化ペース0）`
+  } else if (eventBacklog <= 0) {
+    eventEst = '完了'
+  } else {
+    // 1日分のデータしかない場合、現在値から推定
+    eventEst = eventBacklog <= 0 ? '完了' : `${eventBacklog}件残（データ不足）`
+    catEst = catBacklog <= 0 ? '完了' : `${catBacklog}件残（データ不足）`
   }
 
   // Build report
