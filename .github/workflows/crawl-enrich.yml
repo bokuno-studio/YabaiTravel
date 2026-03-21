@@ -1,5 +1,5 @@
-# 詳細・ロジ収集（3時間おき）
-name: Enrich Events
+# 旧統合ワークフロー（手動トリガーのみ。定期実行は enrich-events.yml + enrich-categories.yml に分離）
+name: Enrich Events (Legacy)
 
 on:
   workflow_dispatch:
@@ -16,8 +16,7 @@ on:
         description: '特定イベントIDを再enrich（洗替）する場合に指定'
         required: false
         default: ''
-  schedule:
-    - cron: '*/5 * * * *'  # 5分おき（バックログ消化加速）
+  # schedule disabled — replaced by enrich-events.yml + enrich-categories.yml
 
 permissions:
   issues: write

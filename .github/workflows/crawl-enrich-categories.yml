@@ -1,0 +1,33 @@
+# ②-B カテゴリ詳細収集
+name: Enrich Categories (②-B)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/10 * * * *'  # 10分おき
+
+permissions:
+  issues: write
+
+jobs:
+  enrich-categories:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: カテゴリ詳細収集
+        run: node scripts/crawl/orchestrator.js --category-only
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_SCHEMA: yabai_travel
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}

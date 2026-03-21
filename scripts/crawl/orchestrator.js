@@ -28,6 +28,8 @@ if (existsSync(envPath)) {
 const args = process.argv.slice(2)
 const DRY_RUN = args.includes('--dry-run')
 const ONCE = args.includes('--once')
+const EVENT_ONLY = args.includes('--event-only')    // ②-A + ③ のみ（②-B スキップ）
+const CATEGORY_ONLY = args.includes('--category-only') // ②-B のみ（②-A スキップ）
 const concurrencyIdx = args.indexOf('--concurrency')
 const CONCURRENCY = concurrencyIdx >= 0 ? parseInt(args[concurrencyIdx + 1], 10) : 20
 
@@ -118,10 +120,10 @@ async function run() {
 
     const batchResults = await Promise.allSettled(
       batch.map(async (event) => {
-        // ②-A: イベント情報 + コース特定（未処理の場合のみ）
+        // ②-A: イベント情報 + コース特定（--category-only 時はスキップ）
         let eventOk = !!event.event_done  // 既に ②-A 完了済みならスキップ
         let eventResultLocation = null
-        if (!event.event_done) {
+        if (!event.event_done && !CATEGORY_ONLY) {
           const eventResult = await enrichEvent(event, { dryRun: DRY_RUN }).catch(async (e) => {
             if (e instanceof InsufficientBalanceError) throw e
             // enrichEvent が throw した場合でも last_error_type を設定
@@ -153,8 +155,8 @@ async function run() {
           }
         }
 
-        // ②-B: 各カテゴリの詳細収集
-        if (eventOk) {
+        // ②-B: 各カテゴリの詳細収集（--event-only 時はスキップ）
+        if (eventOk && !EVENT_ONLY) {
           try {
             const catClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
             await catClient.connect()
@@ -189,7 +191,8 @@ async function run() {
           }
         }
 
-        // ③: ロジ収集
+        // ③: ロジ収集（--category-only 時はスキップ）
+        if (CATEGORY_ONLY) return
         const enrichedEvent = eventResultLocation ? { ...event, location: eventResultLocation } : event
         const logiResult = await enrichLogi(enrichedEvent, { dryRun: DRY_RUN }).catch((e) => {
           if (e instanceof InsufficientBalanceError) throw e
