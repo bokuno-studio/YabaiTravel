@@ -44,6 +44,22 @@ const raceTypeColors: Record<string, string> = {
   other: 'bg-stone-50 text-stone-600 border-stone-200',
 }
 
+/** Parse PostgreSQL text[] format {"item1","item2"} into a readable newline-separated string */
+function formatPostgresArray(val: string | string[] | null | undefined): string | null | undefined {
+  if (val == null) return val
+  if (Array.isArray(val)) return val.join('\n')
+  const s = String(val)
+  const match = s.match(/^\{(.+)\}$/)
+  if (match) {
+    return match[1]
+      .split(',')
+      .map(item => item.replace(/^"|"$/g, '').trim())
+      .filter(Boolean)
+      .join('\n')
+  }
+  return s
+}
+
 function CategoryDetail() {
   const { eventId, categoryId, lang } = useParams<{ eventId: string; categoryId: string; lang: string }>()
   const location = useLocation()
@@ -251,6 +267,8 @@ function CategoryDetail() {
     : event.event_date
 
   // #8: Prefer _en fields for English pages
+  const displayName = isEn ? (event.name_en ?? event.name) : event.name
+  const displayCategoryName = isEn ? (category.name_en ?? category.name) : category.name
   const displayLocation = isEn ? (event.location_en ?? event.location) : event.location
   const displayReceptionPlace = isEn
     ? (category.reception_place_en ?? category.reception_place ?? event.reception_place_en ?? event.reception_place)
@@ -258,9 +276,9 @@ function CategoryDetail() {
   const displayStartPlace = isEn
     ? (category.start_place_en ?? category.start_place ?? event.start_place_en ?? event.start_place)
     : (category.start_place ?? event.start_place)
-  const displayMandatoryGear = isEn ? (category.mandatory_gear_en ?? category.mandatory_gear) : category.mandatory_gear
-  const displayRecommendedGear = isEn ? (category.recommended_gear_en ?? category.recommended_gear) : category.recommended_gear
-  const displayProhibitedItems = isEn ? (category.prohibited_items_en ?? category.prohibited_items) : category.prohibited_items
+  const displayMandatoryGear = formatPostgresArray(isEn ? (category.mandatory_gear_en ?? category.mandatory_gear) : category.mandatory_gear)
+  const displayRecommendedGear = formatPostgresArray(isEn ? (category.recommended_gear_en ?? category.recommended_gear) : category.recommended_gear)
+  const displayProhibitedItems = formatPostgresArray(isEn ? (category.prohibited_items_en ?? category.prohibited_items) : category.prohibited_items)
   const displayRequiredPace = isEn ? (category.required_pace_en ?? category.required_pace) : category.required_pace
   const displayRequiredClimbPace = isEn ? (category.required_climb_pace_en ?? category.required_climb_pace) : category.required_climb_pace
   const displayRequiredQualification = isEn ? (event.required_qualification_en ?? event.required_qualification) : event.required_qualification
@@ -275,10 +293,10 @@ function CategoryDetail() {
 
   return (
     <>
-      <title>{event.name} {category.name} | yabai.travel</title>
-      <meta name="description" content={`${event.name} ${category.name}${isEn ? ' - entry fee, access, accommodation, mandatory gear' : 'コースの参加費・アクセス・宿泊・必携品をまとめてチェック。'}`} />
-      <meta property="og:title" content={`${event.name} ${category.name} | yabai.travel`} />
-      <meta property="og:description" content={`${event.name} ${category.name}${isEn ? ' - entry fee, access, accommodation, mandatory gear' : 'コースの参加費・アクセス・宿泊・必携品をまとめてチェック。'}`} />
+      <title>{displayName} {displayCategoryName} | yabai.travel</title>
+      <meta name="description" content={`${displayName} ${displayCategoryName}${isEn ? ' - entry fee, access, accommodation, mandatory gear' : 'コースの参加費・アクセス・宿泊・必携品をまとめてチェック。'}`} />
+      <meta property="og:title" content={`${displayName} ${displayCategoryName} | yabai.travel`} />
+      <meta property="og:description" content={`${displayName} ${displayCategoryName}${isEn ? ' - entry fee, access, accommodation, mandatory gear' : 'コースの参加費・アクセス・宿泊・必携品をまとめてチェック。'}`} />
       <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}/categories/${category.id}`} />
       <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
       <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
@@ -299,16 +317,16 @@ function CategoryDetail() {
             to={`${langPrefix}/events/${eventId}`}
             className="transition-colors hover:text-primary"
           >
-            {event.name}
+            {displayName}
           </Link>
           <ChevronRight className="h-3.5 w-3.5" />
-          <span className="text-foreground">{category.name}</span>
+          <span className="text-foreground">{displayCategoryName}</span>
         </div>
 
         {/* Hero */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-            {event.name} — {category.name}
+            {displayName} — {displayCategoryName}
           </h1>
           <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
@@ -386,7 +404,7 @@ function CategoryDetail() {
                     : 'border-border/60 bg-secondary/50 text-secondary-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-primary',
                 )}
               >
-                {c.name}
+                {isEn ? (c.name_en ?? c.name) : c.name}
               </Link>
             ))}
           </div>

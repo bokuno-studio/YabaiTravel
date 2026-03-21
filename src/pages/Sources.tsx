@@ -4,7 +4,7 @@ import '../App.css'
 
 const SOURCES = [
   { name: 'RUNNET', url: 'https://runnet.jp/', types: 'trail' },
-  { name: 'SportsEntry', url: 'https://www.sportsentry.ne.jp/', types: 'marathon, trail, cycling, etc.' },
+  { name: 'SportsEntry', url: 'https://www.sportsentry.ne.jp/', types: 'marathon, trail, bike, etc.' },
   { name: 'Lawson DO!', url: 'https://do.l-tike.com/', types: 'triathlon, marathon, etc.' },
   { name: 'Spartan Race', url: 'https://www.spartan.com/', types: 'spartan' },
   { name: 'HYROX', url: 'https://hyrox.com/', types: 'hyrox' },
@@ -19,7 +19,7 @@ const SOURCES = [
   { name: 'Niseko Expedition', url: 'https://nisekoexpedition.jp/', types: 'adventure' },
   { name: 'AR World Series', url: 'https://arworldseries.com/races', types: 'adventure' },
   { name: 'Adventure1 Series', url: 'https://adventure1series.com/a1/', types: 'adventure' },
-  { name: 'Total Warrior', url: 'https://www.totalwarrior.com/', types: 'total_warrior' },
+  { name: 'Total Warrior', url: 'https://www.totalwarrior.co.uk/', types: 'total_warrior' },
 ]
 
 function Sources() {

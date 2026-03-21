@@ -5,12 +5,18 @@
  * 使い方: node scripts/generate-sitemap.js
  */
 import pg from 'pg'
-import fs from 'fs'
-import path from 'path'
+import fs, { existsSync, readFileSync } from 'fs'
+import path, { resolve } from 'path'
 import { fileURLToPath } from 'url'
-import { config } from 'dotenv'
 
-config({ path: '.env.local' })
+// .env.local 読み込み（ローカル実行用）
+const envPath = resolve(process.cwd(), '.env.local')
+if (existsSync(envPath)) {
+  readFileSync(envPath, 'utf8').split('\n').forEach((line) => {
+    const m = line.match(/^([^#=]+)=(.*)$/)
+    if (m) process.env[m[1].trim()] = m[2].trim().replace(/^["']|["']$/g, '')
+  })
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SCHEMA = process.env.VITE_SUPABASE_SCHEMA || 'yabai_travel'
@@ -41,7 +47,7 @@ async function generateSitemap() {
     )
 
     for (const event of events) {
-      const lastmod = event.updated_at?.slice(0, 10)
+      const lastmod = event.updated_at instanceof Date ? event.updated_at.toISOString().slice(0, 10) : event.updated_at?.slice(0, 10)
       for (const lang of LANGS) {
         urls.push({
           loc: `${BASE_URL}/${lang}/events/${event.id}`,
@@ -61,7 +67,7 @@ async function generateSitemap() {
     )
 
     for (const cat of categories) {
-      const lastmod = cat.updated_at?.slice(0, 10)
+      const lastmod = cat.updated_at instanceof Date ? cat.updated_at.toISOString().slice(0, 10) : cat.updated_at?.slice(0, 10)
       for (const lang of LANGS) {
         urls.push({
           loc: `${BASE_URL}/${lang}/events/${cat.event_id}/categories/${cat.id}`,

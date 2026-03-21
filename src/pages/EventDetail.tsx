@@ -140,6 +140,7 @@ function EventDetail() {
     : event.event_date ?? '—'
 
   // #8: Prefer _en fields for English pages
+  const displayName = isEn ? (event.name_en ?? event.name) : event.name
   const displayLocation = isEn ? (event.location_en ?? event.location) : event.location
   const displayDescription = isEn ? (event.description_en ?? event.description) : event.description
 
@@ -147,10 +148,10 @@ function EventDetail() {
   if (categories.length === 0) {
     return (
       <>
-        <title>{event.name} | yabai.travel</title>
-        <meta name="description" content={displayDescription ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
-        <meta property="og:title" content={`${event.name} | yabai.travel`} />
-        <meta property="og:description" content={displayDescription ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+        <title>{displayName} | yabai.travel</title>
+        <meta name="description" content={displayDescription ?? `${displayName}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+        <meta property="og:title" content={`${displayName} | yabai.travel`} />
+        <meta property="og:description" content={displayDescription ?? `${displayName}の大会情報・アクセス・宿泊をまとめてチェック。`} />
         <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}`} />
         <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
         <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
@@ -172,7 +173,7 @@ function EventDetail() {
           {/* Hero */}
           <div className="mb-8">
             <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-              {event.name}
+              {displayName}
             </h1>
             {displayDescription && (
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
@@ -328,10 +329,10 @@ function EventDetail() {
   // カテゴリ2件以上: カテゴリ選択画面
   return (
     <>
-      <title>{event.name} | yabai.travel</title>
-      <meta name="description" content={displayDescription ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
-      <meta property="og:title" content={`${event.name} | yabai.travel`} />
-      <meta property="og:description" content={displayDescription ?? `${event.name}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+      <title>{displayName} | yabai.travel</title>
+      <meta name="description" content={displayDescription ?? `${displayName}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+      <meta property="og:title" content={`${displayName} | yabai.travel`} />
+      <meta property="og:description" content={displayDescription ?? `${displayName}の大会情報・アクセス・宿泊をまとめてチェック。`} />
       <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}`} />
       <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
       <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
@@ -353,7 +354,7 @@ function EventDetail() {
         {/* Hero */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-            {event.name}
+            {displayName}
           </h1>
           {displayDescription && (
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
@@ -396,7 +397,7 @@ function EventDetail() {
                 >
                   <div className="min-w-0 flex-1">
                     <span className="text-base font-semibold text-foreground transition-colors group-hover:text-primary">
-                      {cat.name}
+                      {isEn ? (cat.name_en ?? cat.name) : cat.name}
                     </span>
                     {(cat.distance_km != null || cat.elevation_gain != null) && (
                       <span className="ml-3 text-sm text-muted-foreground">

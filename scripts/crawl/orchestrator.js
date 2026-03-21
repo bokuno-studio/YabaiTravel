@@ -284,15 +284,21 @@ async function run() {
       UPDATE ${SCHEMA}.events e SET total_cost_estimate = sub.total::text
       FROM (
         SELECT e2.id,
-          COALESCE((SELECT MIN(c.entry_fee * CASE c.entry_fee_currency
-            WHEN 'USD' THEN 150 WHEN 'EUR' THEN 165 WHEN 'GBP' THEN 190
-            WHEN 'CAD' THEN 110 WHEN 'AUD' THEN 100 WHEN 'NZD' THEN 90
-            WHEN 'PHP' THEN 3 WHEN 'THB' THEN 4 WHEN 'SGD' THEN 112
-            ELSE 1 END) FROM ${SCHEMA}.categories c WHERE c.event_id = e2.id AND c.entry_fee IS NOT NULL), 0)
-          + COALESCE((SELECT NULLIF(replace((regexp_match(ar.cost_estimate, '([0-9][0-9,]*)'))[1], ',', ''), '')::int FROM ${SCHEMA}.access_routes ar WHERE ar.event_id = e2.id AND ar.direction = 'outbound' AND ar.cost_estimate ~ '[0-9]' LIMIT 1), 0)
-          + COALESCE((SELECT NULLIF(replace((regexp_match(ar2.cost_estimate, '([0-9][0-9,]*)'))[1], ',', ''), '')::int FROM ${SCHEMA}.access_routes ar2 WHERE ar2.event_id = e2.id AND ar2.direction = 'return' AND ar2.cost_estimate ~ '[0-9]' LIMIT 1), 0)
-          + COALESCE((SELECT a.avg_cost_3star FROM ${SCHEMA}.accommodations a WHERE a.event_id = e2.id LIMIT 1), 0)
-          AS total
+          GREATEST(
+            COALESCE((SELECT MIN(ROUND(c.entry_fee * CASE c.entry_fee_currency
+              WHEN 'USD' THEN 150 WHEN 'EUR' THEN 165 WHEN 'GBP' THEN 190
+              WHEN 'CAD' THEN 110 WHEN 'AUD' THEN 100 WHEN 'NZD' THEN 90
+              WHEN 'PHP' THEN 3 WHEN 'THB' THEN 4 WHEN 'SGD' THEN 112
+              ELSE 1 END)) FROM ${SCHEMA}.categories c WHERE c.event_id = e2.id AND c.entry_fee IS NOT NULL), 0)
+            + COALESCE((SELECT NULLIF(replace((regexp_match(ar.cost_estimate, '([0-9][0-9,]*)'))[1], ',', ''), '')::int FROM ${SCHEMA}.access_routes ar WHERE ar.event_id = e2.id AND ar.direction = 'outbound' AND ar.cost_estimate ~ '[0-9]' LIMIT 1), 0)
+            + COALESCE((SELECT NULLIF(replace((regexp_match(ar2.cost_estimate, '([0-9][0-9,]*)'))[1], ',', ''), '')::int FROM ${SCHEMA}.access_routes ar2 WHERE ar2.event_id = e2.id AND ar2.direction = 'return' AND ar2.cost_estimate ~ '[0-9]' LIMIT 1), 0)
+            + COALESCE((SELECT a.avg_cost_3star FROM ${SCHEMA}.accommodations a WHERE a.event_id = e2.id LIMIT 1), 0),
+            COALESCE((SELECT MIN(ROUND(c.entry_fee * CASE c.entry_fee_currency
+              WHEN 'USD' THEN 150 WHEN 'EUR' THEN 165 WHEN 'GBP' THEN 190
+              WHEN 'CAD' THEN 110 WHEN 'AUD' THEN 100 WHEN 'NZD' THEN 90
+              WHEN 'PHP' THEN 3 WHEN 'THB' THEN 4 WHEN 'SGD' THEN 112
+              ELSE 1 END)) FROM ${SCHEMA}.categories c WHERE c.event_id = e2.id AND c.entry_fee IS NOT NULL), 0)
+          ) AS total
         FROM ${SCHEMA}.events e2
         WHERE e2.collected_at IS NOT NULL
       ) sub

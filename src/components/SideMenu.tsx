@@ -12,7 +12,7 @@ const SPORT_GUIDES = [
   { key: 'spartan', ja: 'スパルタンレース', en: 'Spartan Race' },
   { key: 'hyrox', ja: 'HYROX', en: 'HYROX' },
   { key: 'obstacle', ja: 'オブスタクルレース', en: 'OCR' },
-  { key: 'cycling', ja: 'サイクリング', en: 'Cycling' },
+  { key: 'bike', ja: 'バイク', en: 'Bike' },
   { key: 'duathlon', ja: 'デュアスロン', en: 'Duathlon' },
   { key: 'rogaining', ja: 'ロゲイニング', en: 'Rogaining' },
   { key: 'adventure', ja: 'アドベンチャーレース', en: 'Adventure Racing' },

@@ -241,7 +241,7 @@ async function collectOtherSourceRaces(url) {
       })
       return limitForEnv(races, 1)
     }
-    if (url.includes('totalwarrior.com')) {
+    if (url.includes('totalwarrior.co.uk')) {
       const $ = cheerio.load(html)
       const races = []
       $('a[href]').each((_, el) => {
@@ -250,7 +250,7 @@ async function collectOtherSourceRaces(url) {
         if (!href || !text || text.length < 5 || text.length > 100) return
         // Look for event/location-style links
         if (!/event|race|location|venue/i.test(href) && !/warrior/i.test(text)) return
-        const officialUrl = href.startsWith('http') ? href : new URL(href, 'https://www.totalwarrior.com/').href
+        const officialUrl = href.startsWith('http') ? href : new URL(href, 'https://www.totalwarrior.co.uk/').href
         if (races.find((r) => r.official_url === officialUrl)) return
         races.push({ name: text, official_url: officialUrl, entry_url: officialUrl, race_type: 'total_warrior', country: 'UK', source: 'total-warrior' })
       })

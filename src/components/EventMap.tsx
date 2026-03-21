@@ -11,7 +11,8 @@ interface EventMapProps {
   lang?: string
 }
 
-function EventMap({ events, langPrefix, raceTypeLabel, lang }: EventMapProps) {
+function EventMap({ events, langPrefix, raceTypeLabel, lang: langProp }: EventMapProps) {
+  const isEn = langProp === 'en'
   const [selectedEvent, setSelectedEvent] = useState<EventWithCategories | null>(null)
 
   const mappable = events.filter((e) => e.latitude != null && e.longitude != null)
@@ -23,7 +24,7 @@ function EventMap({ events, langPrefix, raceTypeLabel, lang }: EventMapProps) {
   if (!API_KEY || mappable.length === 0) return null
 
   // #7: Set map language based on route lang
-  const mapLanguage = lang === 'en' ? 'en' : 'ja'
+  const mapLanguage = isEn ? 'en' : 'ja'
 
   return (
     <APIProvider apiKey={API_KEY} language={mapLanguage}>
@@ -50,11 +51,11 @@ function EventMap({ events, langPrefix, raceTypeLabel, lang }: EventMapProps) {
               <div style={{ fontFamily: 'system-ui, sans-serif', maxWidth: '250px' }}>
                 <strong style={{ fontSize: '0.9rem' }}>
                   <a href={`${langPrefix}/events/${selectedEvent.id}`} style={{ color: '#0f172a', textDecoration: 'none' }}>
-                    {selectedEvent.name}
+                    {isEn ? (selectedEvent.name_en ?? selectedEvent.name) : selectedEvent.name}
                   </a>
                 </strong>
                 <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#475569' }}>
-                  {selectedEvent.event_date || ''} / {selectedEvent.location || ''}
+                  {selectedEvent.event_date || ''} / {isEn ? (selectedEvent.location_en ?? selectedEvent.location ?? '') : (selectedEvent.location || '')}
                 </p>
                 <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
                   {raceTypeLabel(selectedEvent.race_type)}

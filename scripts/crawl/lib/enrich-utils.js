@@ -41,7 +41,7 @@ export const RELEVANT_URL_PATTERNS = [
 ]
 
 export const VALID_RACE_TYPES = [
-  'marathon', 'trail', 'triathlon', 'cycling', 'duathlon', 'rogaining',
+  'marathon', 'trail', 'triathlon', 'bike', 'duathlon', 'rogaining',
   'spartan', 'hyrox', 'tough_mudder', 'obstacle', 'adventure', 'devils_circuit', 'strong_viking',
 ]
 
@@ -52,7 +52,7 @@ const RACE_TYPE_CLASSIFY_PROMPT = `あなたはレースイベントの分類エ
 - marathon: ロードレース、マラソン、ハーフマラソン、リレーマラソン、ファンラン、ウルトラマラソン、ウルトラマラニック等の舗装路ランニング大会
 - trail: トレイルランニング、山岳レース、ウルトラトレイル等の未舗装路ランニング大会
 - triathlon: トライアスロン（スイム+バイク+ラン）、アクアスロン
-- cycling: 自転車レース、クリテリウム、ヒルクライム、ロングライド、グラベル、エンデューロ（自転車）、サイクルフェスタ、ツール・ド
+- bike: 自転車レース、クリテリウム、ヒルクライム、ロングライド、グラベル、エンデューロ（自転車）、サイクルフェスタ、ツール・ド
 - duathlon: デュアスロン（ラン+バイク+ラン）
 - rogaining: ロゲイニング、フォトロゲ
 - spartan: スパルタンレース

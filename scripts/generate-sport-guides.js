@@ -30,7 +30,7 @@ const SCHEMA = process.env.VITE_SUPABASE_SCHEMA ?? 'yabai_travel'
 
 const SPORT_KEYS = [
   'marathon', 'trail', 'triathlon', 'spartan', 'hyrox',
-  'obstacle', 'cycling', 'duathlon', 'rogaining', 'adventure',
+  'obstacle', 'bike', 'duathlon', 'rogaining', 'adventure',
 ]
 
 const SPORT_NAMES_JA = {
@@ -40,7 +40,7 @@ const SPORT_NAMES_JA = {
   spartan: 'スパルタンレース',
   hyrox: 'HYROX',
   obstacle: 'オブスタクルレース（OCR）',
-  cycling: 'サイクリング（エンデュランス系）',
+  bike: 'バイク（エンデュランス系）',
   duathlon: 'デュアスロン',
   rogaining: 'ロゲイニング',
   adventure: 'アドベンチャーレース',
@@ -53,7 +53,7 @@ const SPORT_NAMES_EN = {
   spartan: 'Spartan Race',
   hyrox: 'HYROX',
   obstacle: 'Obstacle Course Racing (OCR)',
-  cycling: 'Endurance Cycling',
+  bike: 'Endurance Cycling',
   duathlon: 'Duathlon',
   rogaining: 'Rogaining',
   adventure: 'Adventure Racing',

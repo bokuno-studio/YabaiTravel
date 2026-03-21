@@ -70,10 +70,16 @@ function markVoted(feedbackId: string) {
 type TypeFilter = 'all' | 'feature' | 'bug'
 type StatusFilter = 'all' | 'new' | 'in_progress' | 'resolved'
 
-const STATUS_LABEL: Record<string, string> = {
+const STATUS_LABEL_JA: Record<string, string> = {
   new: '新規',
   in_progress: '対応中',
   resolved: '解決済み',
+}
+
+const STATUS_LABEL_EN: Record<string, string> = {
+  new: 'New',
+  in_progress: 'In Progress',
+  resolved: 'Resolved',
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -110,30 +116,31 @@ function VoteButton({
   )
 }
 
-function TypeBadge({ type }: { type: 'feature' | 'bug' }) {
+function TypeBadge({ type, isEn }: { type: 'feature' | 'bug'; isEn: boolean }) {
   if (type === 'bug') {
     return (
       <Badge className="bg-red-100 text-red-700 border-red-200">
         <Bug className="size-3" />
-        バグ
+        {isEn ? 'Bug' : 'バグ'}
       </Badge>
     )
   }
   return (
     <Badge className="bg-blue-100 text-blue-700 border-blue-200">
       <Lightbulb className="size-3" />
-      要望
+      {isEn ? 'Feature' : '要望'}
     </Badge>
   )
 }
 
-function StatusBadge({ status, resolvedAt }: { status: string; resolvedAt?: string }) {
+function StatusBadge({ status, resolvedAt, isEn }: { status: string; resolvedAt?: string; isEn: boolean }) {
+  const labels = isEn ? STATUS_LABEL_EN : STATUS_LABEL_JA
   const dateStr = resolvedAt && status === 'resolved'
-    ? ` (${new Date(resolvedAt).toLocaleDateString('ja-JP')})`
+    ? ` (${new Date(resolvedAt).toLocaleDateString(isEn ? 'en-US' : 'ja-JP')})`
     : ''
   return (
     <Badge className={cn('border-transparent', STATUS_COLOR[status] || '')}>
-      {STATUS_LABEL[status] || status}{dateStr}
+      {labels[status] || status}{dateStr}
     </Badge>
   )
 }
@@ -141,9 +148,11 @@ function StatusBadge({ status, resolvedAt }: { status: string; resolvedAt?: stri
 function CommentSection({
   feedbackId,
   lang,
+  isEn,
 }: {
   feedbackId: string
   lang: string
+  isEn: boolean
 }) {
   const { user, session, isSupporter } = useAuth()
   const [comments, setComments] = useState<FeedbackComment[]>([])
@@ -202,7 +211,7 @@ function CommentSection({
         className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
       >
         <MessageSquare className="size-3.5" />
-        <span>コメント{comments.length > 0 ? ` (${comments.length})` : ''}</span>
+        <span>{isEn ? 'Comments' : 'コメント'}{comments.length > 0 ? ` (${comments.length})` : ''}</span>
       </button>
 
       {expanded && (
@@ -210,10 +219,10 @@ function CommentSection({
           {loading ? (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="size-3 animate-spin" />
-              読み込み中...
+              {isEn ? 'Loading...' : '読み込み中...'}
             </div>
           ) : comments.length === 0 ? (
-            <p className="text-xs text-muted-foreground">コメントはまだありません</p>
+            <p className="text-xs text-muted-foreground">{isEn ? 'No comments yet' : 'コメントはまだありません'}</p>
           ) : (
             <div className="space-y-2">
               {comments.map((c) => (
@@ -223,7 +232,7 @@ function CommentSection({
                 >
                   <p>{c.content}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {new Date(c.created_at).toLocaleDateString('ja-JP')}
+                    {new Date(c.created_at).toLocaleDateString(isEn ? 'en-US' : 'ja-JP')}
                   </p>
                 </div>
               ))}
@@ -236,7 +245,7 @@ function CommentSection({
               <input
                 type="text"
                 className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder="コメントを入力..."
+                placeholder={isEn ? 'Write a comment...' : 'コメントを入力...'}
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 onKeyDown={(e) => {
@@ -264,7 +273,7 @@ function CommentSection({
                 to={`/${lang}/pricing`}
                 className="text-primary underline hover:no-underline"
               >
-                Crewになるとコメントできます
+                {isEn ? 'Become a Crew member to comment' : 'Crewになるとコメントできます'}
               </Link>
             </p>
           )}
@@ -278,10 +287,12 @@ function CommentSection({
 
 function NewFeedbackForm({
   isSupporter,
+  isEn,
   onSubmitted,
   onClose,
 }: {
   isSupporter: boolean
+  isEn: boolean
   onSubmitted: () => void
   onClose: () => void
 }) {
@@ -310,13 +321,13 @@ function NewFeedbackForm({
       })
       if (!res.ok) {
         const json = await res.json()
-        setError(json.error || '送信に失敗しました')
+        setError(json.error || (isEn ? 'Failed to submit' : '送信に失敗しました'))
         return
       }
       onSubmitted()
       onClose()
     } catch {
-      setError('送信に失敗しました')
+      setError(isEn ? 'Failed to submit' : '送信に失敗しました')
     } finally {
       setSubmitting(false)
     }
@@ -332,7 +343,7 @@ function NewFeedbackForm({
           <X className="size-5" />
         </button>
 
-        <h2 className="text-lg font-semibold mb-4">フィードバックを投稿</h2>
+        <h2 className="text-lg font-semibold mb-4">{isEn ? 'Post Feedback' : 'フィードバックを投稿'}</h2>
 
         {/* Type selector */}
         <div className="flex gap-2 mb-4">
@@ -346,7 +357,7 @@ function NewFeedbackForm({
             )}
           >
             <Lightbulb className="size-3.5" />
-            要望
+            {isEn ? 'Feature' : '要望'}
           </button>
           {isSupporter && (
             <button
@@ -359,14 +370,14 @@ function NewFeedbackForm({
               )}
             >
               <Bug className="size-3.5" />
-              バグ
+              {isEn ? 'Bug' : 'バグ'}
             </button>
           )}
         </div>
 
         <textarea
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[120px] resize-y"
-          placeholder="どんな改善があると嬉しいですか？"
+          placeholder={isEn ? 'What improvements would you like to see?' : 'どんな改善があると嬉しいですか？'}
           value={content}
           onChange={(e) => setContent(e.target.value)}
         />
@@ -374,7 +385,7 @@ function NewFeedbackForm({
         <input
           type="url"
           className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          placeholder="関連ページのURL（任意）"
+          placeholder={isEn ? 'Related page URL (optional)' : '関連ページのURL（任意）'}
           value={sourceUrl}
           onChange={(e) => setSourceUrl(e.target.value)}
         />
@@ -383,16 +394,16 @@ function NewFeedbackForm({
 
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>
-            キャンセル
+            {isEn ? 'Cancel' : 'キャンセル'}
           </Button>
           <Button onClick={handleSubmit} disabled={!content.trim() || submitting}>
             {submitting ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                送信中...
+                {isEn ? 'Submitting...' : '送信中...'}
               </>
             ) : (
-              '投稿する'
+              isEn ? 'Submit' : '投稿する'
             )}
           </Button>
         </div>
@@ -407,6 +418,8 @@ function Feedback() {
   const { lang } = useParams<{ lang: string }>()
   const isEn = lang === 'en'
   const { isSupporter } = useAuth()
+
+  const statusLabels = isEn ? STATUS_LABEL_EN : STATUS_LABEL_JA
 
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
   const [loading, setLoading] = useState(true)
@@ -504,7 +517,7 @@ function Feedback() {
               : 'Crewだけがリクエストを投稿できます。'}
             {' '}
             <Link to={`/${lang}/pricing`} className="text-primary underline hover:no-underline">
-              {isEn ? 'Crewになる' : 'Crewになる'}
+              {isEn ? 'Become a Crew member' : 'Crewになる'}
             </Link>
           </p>
         )}
@@ -526,7 +539,11 @@ function Feedback() {
                       : 'border-border text-muted-foreground hover:bg-muted'
                   )}
                 >
-                  {t === 'all' ? 'すべて' : t === 'feature' ? '要望' : 'バグ'}
+                  {t === 'all'
+                    ? (isEn ? 'All' : 'すべて')
+                    : t === 'feature'
+                      ? (isEn ? 'Feature' : '要望')
+                      : (isEn ? 'Bug' : 'バグ')}
                 </button>
               ))}
           </div>
@@ -546,7 +563,7 @@ function Feedback() {
                     : 'border-border text-muted-foreground hover:bg-muted'
                 )}
               >
-                {s === 'all' ? '全ステータス' : STATUS_LABEL[s]}
+                {s === 'all' ? (isEn ? 'All Status' : '全ステータス') : statusLabels[s]}
               </button>
             ))}
           </div>
@@ -571,8 +588,8 @@ function Feedback() {
         ) : visibleFeedbacks.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <MessageSquare className="size-12 mx-auto mb-3 opacity-30" />
-            <p>フィードバックはまだありません</p>
-            <p className="text-sm mt-1">最初の投稿をしてみましょう！</p>
+            <p>{isEn ? 'No feedback yet' : 'フィードバックはまだありません'}</p>
+            <p className="text-sm mt-1">{isEn ? 'Be the first to post!' : '最初の投稿をしてみましょう！'}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -594,8 +611,8 @@ function Feedback() {
 
                     {/* Badges */}
                     <div className="flex flex-wrap items-center gap-2 mt-2">
-                      <TypeBadge type={fb.feedback_type} />
-                      <StatusBadge status={fb.status} resolvedAt={fb.updated_at} />
+                      <TypeBadge type={fb.feedback_type} isEn={isEn} />
+                      <StatusBadge status={fb.status} resolvedAt={fb.updated_at} isEn={isEn} />
                       {fb.github_issue_url && (
                         <a
                           href={fb.github_issue_url}
@@ -621,12 +638,12 @@ function Feedback() {
                         </a>
                       )}
                       <span className="text-xs text-muted-foreground ml-auto">
-                        {new Date(fb.created_at).toLocaleDateString('ja-JP')}
+                        {new Date(fb.created_at).toLocaleDateString(isEn ? 'en-US' : 'ja-JP')}
                       </span>
                     </div>
 
                     {/* Comments */}
-                    <CommentSection feedbackId={fb.id} lang={lang || 'ja'} />
+                    <CommentSection feedbackId={fb.id} lang={lang || 'ja'} isEn={isEn} />
                   </div>
                 </div>
               </Card>
@@ -639,6 +656,7 @@ function Feedback() {
       {showForm && (
         <NewFeedbackForm
           isSupporter={isSupporter}
+          isEn={isEn}
           onSubmitted={fetchFeedbacks}
           onClose={() => setShowForm(false)}
         />

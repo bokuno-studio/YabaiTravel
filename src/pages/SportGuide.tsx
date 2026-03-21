@@ -54,9 +54,9 @@ const FALLBACK_GUIDES: Record<string, { ja: { title: string; body: string }; en:
     ja: { title: 'オブスタクルレース（OCR）', body: 'OCR（Obstacle Course Racing）は、コース上の様々な障害物を乗り越えながらゴールを目指す競技の総称です。' },
     en: { title: 'Obstacle Course Racing (OCR)', body: 'OCR involves navigating various obstacles while running a course.' },
   },
-  cycling: {
-    ja: { title: 'サイクリング', body: 'エンデュランス系サイクリングには、ロードレース、クリテリウム、ヒルクライム、ロングライドなど多様なカテゴリがあります。' },
-    en: { title: 'Cycling', body: 'Endurance cycling includes road races, criteriums, hill climbs, long rides, and gravel races.' },
+  bike: {
+    ja: { title: 'バイク', body: 'エンデュランス系バイクには、ロードレース、クリテリウム、ヒルクライム、ロングライドなど多様なカテゴリがあります。' },
+    en: { title: 'Bike', body: 'Endurance cycling includes road races, criteriums, hill climbs, long rides, and gravel races.' },
   },
   duathlon: {
     ja: { title: 'デュアスロン', body: 'デュアスロンはラン→バイク→ランの3セグメントで構成される複合競技です。' },
@@ -79,7 +79,7 @@ const SPORT_TITLES: Record<string, { ja: string; en: string }> = {
   spartan: { ja: 'スパルタンレース', en: 'Spartan Race' },
   hyrox: { ja: 'HYROX', en: 'HYROX' },
   obstacle: { ja: 'オブスタクルレース（OCR）', en: 'Obstacle Course Racing (OCR)' },
-  cycling: { ja: 'サイクリング', en: 'Cycling' },
+  bike: { ja: 'バイク', en: 'Bike' },
   duathlon: { ja: 'デュアスロン', en: 'Duathlon' },
   rogaining: { ja: 'ロゲイニング', en: 'Rogaining' },
   adventure: { ja: 'アドベンチャーレース', en: 'Adventure Racing' },

@@ -32,7 +32,7 @@ const EVENT_SYSTEM_PROMPT = `あなたはレースイベントの情報抽出エ
     "event_date_end": "YYYY-MM-DD（複数日の場合の最終日）",
     "location": "開催地。日本国内なら「○○県○○市」等。海外なら「都市名, 国名」。必ず自治体名を含める",
     "country": "国名（日本語）",
-    "race_type": "marathon|trail|triathlon|cycling|duathlon|rogaining|spartan|hyrox|tough_mudder|obstacle|adventure|devils_circuit|strong_viking|other",
+    "race_type": "marathon|trail|triathlon|bike|duathlon|rogaining|spartan|hyrox|tough_mudder|obstacle|adventure|devils_circuit|strong_viking|other",
     "official_url": "大会の公式サイトURL（ポータルや申込サイトではなく主催者の公式ページURL。runnet.jp, sportsentry.ne.jp, moshicom.com, l-tike.com 等はポータルなので除外）",
     "entry_url": "申込URL",
     "entry_start": "YYYY-MM-DD",
@@ -87,7 +87,7 @@ Extract the basic event information and unique course list from the given page c
     "event_date_end": "YYYY-MM-DD (last day if multi-day event)",
     "location": "Venue location. Format: 'City, Country'",
     "country": "Country name (in English)",
-    "race_type": "marathon|trail|triathlon|cycling|duathlon|rogaining|spartan|hyrox|tough_mudder|obstacle|adventure|devils_circuit|strong_viking|other",
+    "race_type": "marathon|trail|triathlon|bike|duathlon|rogaining|spartan|hyrox|tough_mudder|obstacle|adventure|devils_circuit|strong_viking|other",
     "official_url": "Official website URL of the event (NOT portal or registration sites like runnet.jp, sportsentry.ne.jp, moshicom.com, l-tike.com)",
     "entry_url": "Registration URL",
     "entry_start": "YYYY-MM-DD",
@@ -340,8 +340,30 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
       return { success: true, eventId, location: extracted.event?.location || null, categoriesCount: extracted.courses?.length ?? 0 }
     }
 
+    // --- エントリー期間バリデーション (#309) ---
+    const ev = extracted.event || {}
+    if (ev.entry_start && ev.event_date) {
+      const entryStart = new Date(ev.entry_start)
+      const eventDate = new Date(ev.event_date)
+      const diffDays = (eventDate - entryStart) / (1000 * 60 * 60 * 24)
+      if (diffDays >= 0 && diffDays <= 7) {
+        // entry_start is within 7 days before event_date → suspicious
+        console.log(`  [validate] ${name?.slice(0, 40)} | entry_start ${ev.entry_start} is ${diffDays.toFixed(0)}d before event → null`)
+        ev.entry_start = null
+      }
+    }
+    if (ev.entry_end && ev.event_date) {
+      const entryEnd = new Date(ev.entry_end)
+      const eventDate = new Date(ev.event_date)
+      if (entryEnd > eventDate) {
+        // entry_end is after event_date → invalid
+        console.log(`  [validate] ${name?.slice(0, 40)} | entry_end ${ev.entry_end} is after event_date → null`)
+        ev.entry_end = null
+      }
+    }
+
     // --- ステップ4: DB 書き込み ---
-    const e = extracted.event || {}
+    const e = ev
     const newOfficialUrl = e.official_url && !isPortalUrl(e.official_url) ? e.official_url : null
     const isPortalReplace = isPortalUrl(officialUrl)
 

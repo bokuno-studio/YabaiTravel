@@ -180,6 +180,32 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       }
     }
 
+    // --- ステップ2.5: Tavily検索でentry_fee補完 ---
+    if (extracted.entry_fee == null && process.env.TAVILY_API_KEY) {
+      try {
+        const feeQuery = `${eventName} ${catName} entry fee registration fee 参加費`
+        const feeResults = await fetchTavilySearch(feeQuery)
+        for (const content of feeResults) {
+          if (content.length < 30) continue
+          try {
+            const feeLang = detectLanguage(content)
+            const feePrompt = feeLang === 'en' ? CATEGORY_DETAIL_PROMPT_EN : CATEGORY_DETAIL_PROMPT
+            const feeUserMsg = feeLang === 'en' ? userMessageEn : userMessageJa
+            const result = await callLlm(anthropic, feePrompt, feeUserMsg + content)
+            totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
+            if (result.entry_fee != null) {
+              extracted.entry_fee = result.entry_fee
+              if (result.entry_fee_currency != null && extracted.entry_fee_currency == null) {
+                extracted.entry_fee_currency = result.entry_fee_currency
+              }
+              console.log(`  [tavily-fee] Found entry_fee=${result.entry_fee} for ${catLabel}`)
+              break
+            }
+          } catch { /* ignore individual search result failures */ }
+        }
+      } catch { /* ignore Tavily search failure entirely */ }
+    }
+
     if (dryRun) {
       console.log(`  DRY catDetail: ${eventName?.slice(0, 25)} / ${catLabel} | fee:${extracted.entry_fee ?? '?'} limit:${extracted.time_limit ?? '?'} tokens:${totalTokens}`)
       return { success: true, categoryId }
