@@ -74,14 +74,14 @@ async function run() {
        updated_at ASC`
   )
 
-  // ②-B のみ必要（②-A 完了だがカテゴリ詳細未収集 or 前回失敗で entry_fee が NULL のまま）
+  // ②-B のみ必要（②-A 完了だがカテゴリ詳細未収集）
   const { rows: needsCatDetail } = await client.query(
     `SELECT e.id, e.name, e.official_url, e.location, e.country, TRUE as event_done
      FROM ${SCHEMA}.events e
      WHERE e.collected_at IS NOT NULL
        AND EXISTS (
          SELECT 1 FROM ${SCHEMA}.categories c
-         WHERE c.event_id = e.id AND c.entry_fee IS NULL
+         WHERE c.event_id = e.id AND c.entry_fee IS NULL AND c.collected_at IS NULL
        )
      ORDER BY e.updated_at ASC`
   )
@@ -167,7 +167,7 @@ async function run() {
             await catClient.connect()
             const { rows: pendingCats } = await catClient.query(
               `SELECT id, name, distance_km FROM ${SCHEMA}.categories
-               WHERE event_id = $1 AND entry_fee IS NULL`,
+               WHERE event_id = $1 AND entry_fee IS NULL AND collected_at IS NULL`,
               [event.id]
             )
             await catClient.end()
