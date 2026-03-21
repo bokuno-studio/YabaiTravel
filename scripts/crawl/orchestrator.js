@@ -74,30 +74,35 @@ async function run() {
        updated_at ASC`
   )
 
-  // ②-B のみ必要（②-A 完了だがカテゴリ詳細未収集）
+  // ②-B のみ必要（②-A 完了だがカテゴリ詳細未収集 or 前回失敗で entry_fee が NULL のまま）
   const { rows: needsCatDetail } = await client.query(
     `SELECT e.id, e.name, e.official_url, e.location, e.country, TRUE as event_done
      FROM ${SCHEMA}.events e
      WHERE e.collected_at IS NOT NULL
        AND EXISTS (
          SELECT 1 FROM ${SCHEMA}.categories c
-         WHERE c.event_id = e.id AND c.entry_fee IS NULL AND c.collected_at IS NULL
+         WHERE c.event_id = e.id AND c.entry_fee IS NULL
        )
      ORDER BY e.updated_at ASC`
   )
 
   await client.end()
 
-  // マージ（②-A 未処理が優先、②-B のみは後ろに追加。ID重複除去）
+  // マージ（モードに応じてフィルタ）
   const seenIds = new Set()
   const pendingEvents = []
-  for (const ev of [...needsEventEnrich, ...needsCatDetail]) {
+  const sources = CATEGORY_ONLY
+    ? needsCatDetail                           // ②-B のみ
+    : EVENT_ONLY
+      ? needsEventEnrich                       // ②-A のみ
+      : [...needsEventEnrich, ...needsCatDetail] // 両方
+  for (const ev of sources) {
     if (seenIds.has(ev.id)) continue
     seenIds.add(ev.id)
     pendingEvents.push(ev)
   }
 
-  console.log(`処理対象: ${pendingEvents.length} 件（②-A未処理: ${needsEventEnrich.length}, ②-Bのみ: ${needsCatDetail.length}）\n`)
+  console.log(`処理対象: ${pendingEvents.length} 件（②-A未処理: ${needsEventEnrich.length}, ②-Bのみ: ${needsCatDetail.length}, モード: ${CATEGORY_ONLY ? 'category-only' : EVENT_ONLY ? 'event-only' : 'all'}）\n`)
 
   if (pendingEvents.length === 0) {
     console.log('処理対象なし。終了します。')
@@ -162,7 +167,7 @@ async function run() {
             await catClient.connect()
             const { rows: pendingCats } = await catClient.query(
               `SELECT id, name, distance_km FROM ${SCHEMA}.categories
-               WHERE event_id = $1 AND entry_fee IS NULL AND collected_at IS NULL`,
+               WHERE event_id = $1 AND entry_fee IS NULL`,
               [event.id]
             )
             await catClient.end()
