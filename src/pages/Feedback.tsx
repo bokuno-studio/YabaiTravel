@@ -29,6 +29,7 @@ interface Feedback {
   source_url: string | null
   user_id: string | null
   created_at: string
+  updated_at: string
 }
 
 interface FeedbackComment {
@@ -126,10 +127,13 @@ function TypeBadge({ type }: { type: 'feature' | 'bug' }) {
   )
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, resolvedAt }: { status: string; resolvedAt?: string }) {
+  const dateStr = resolvedAt && status === 'resolved'
+    ? ` (${new Date(resolvedAt).toLocaleDateString('ja-JP')})`
+    : ''
   return (
     <Badge className={cn('border-transparent', STATUS_COLOR[status] || '')}>
-      {STATUS_LABEL[status] || status}
+      {STATUS_LABEL[status] || status}{dateStr}
     </Badge>
   )
 }
@@ -591,7 +595,7 @@ function Feedback() {
                     {/* Badges */}
                     <div className="flex flex-wrap items-center gap-2 mt-2">
                       <TypeBadge type={fb.feedback_type} />
-                      <StatusBadge status={fb.status} />
+                      <StatusBadge status={fb.status} resolvedAt={fb.updated_at} />
                       {fb.github_issue_url && (
                         <a
                           href={fb.github_issue_url}
