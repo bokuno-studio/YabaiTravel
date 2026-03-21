@@ -29,7 +29,7 @@ const args = process.argv.slice(2)
 const DRY_RUN = args.includes('--dry-run')
 const ONCE = args.includes('--once')
 const concurrencyIdx = args.indexOf('--concurrency')
-const CONCURRENCY = concurrencyIdx >= 0 ? parseInt(args[concurrencyIdx + 1], 10) : 10
+const CONCURRENCY = concurrencyIdx >= 0 ? parseInt(args[concurrencyIdx + 1], 10) : 20
 
 const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
 
