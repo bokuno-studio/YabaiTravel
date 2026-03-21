@@ -1,5 +1,5 @@
 import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
+import { hydrateRoot, createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './lib/auth'
 import { initSentry } from './lib/sentry'
@@ -10,7 +10,8 @@ import AppRoutes from './App'
 
 initSentry()
 
-createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root')!
+const app = (
   <StrictMode>
     <ErrorBoundary>
       <AuthProvider>
@@ -19,5 +20,13 @@ createRoot(document.getElementById('root')!).render(
         </BrowserRouter>
       </AuthProvider>
     </ErrorBoundary>
-  </StrictMode>,
+  </StrictMode>
 )
+
+// SSR で既にレンダリング済みの HTML がある場合は hydrateRoot を使う
+// そうでなければ createRoot（開発モード or SPA フォールバック）
+if (rootElement.innerHTML.trim()) {
+  hydrateRoot(rootElement, app)
+} else {
+  createRoot(rootElement).render(app)
+}

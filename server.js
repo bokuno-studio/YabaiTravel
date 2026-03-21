@@ -40,8 +40,8 @@ if (process.argv[1] && process.argv[1].endsWith('server.js')) {
   app.use('/assets', express.static(path.resolve(__dirname, 'dist/assets')))
   app.use(express.static(path.resolve(__dirname, 'dist'), { index: false }))
 
-  // すべてのリクエストを SSR で処理
-  app.get('*', async (req, res) => {
+  // すべてのリクエストを SSR で処理（Express v5: wildcard は {*path} 形式）
+  app.get('{*path}', async (req, res) => {
     try {
       const html = await renderPage(req.originalUrl)
       res.status(200).set({ 'Content-Type': 'text/html' }).end(html)

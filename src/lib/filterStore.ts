@@ -33,6 +33,7 @@ const DEFAULT: FilterState = {
 let _state: FilterState | null = null
 
 function loadFromSession(): FilterState {
+  if (typeof sessionStorage === 'undefined') return { ...DEFAULT }
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY)
     if (!raw) return { ...DEFAULT }
@@ -61,6 +62,7 @@ export function getFilterState(): FilterState {
 
 export function saveFilterState(state: FilterState): void {
   _state = state
+  if (typeof sessionStorage === 'undefined') return
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   } catch { /* ignore */ }
@@ -68,5 +70,6 @@ export function saveFilterState(state: FilterState): void {
 
 export function resetFilterState(): void {
   _state = { ...DEFAULT }
+  if (typeof sessionStorage === 'undefined') return
   try { sessionStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
 }
