@@ -313,19 +313,7 @@ async function run() {
   console.log(`カテゴリ詳細:     OK ${totalCatOk} / ERR ${totalCatErr}`)
   console.log(`ロジエンリッチ:   OK ${totalLogiOk} / ERR ${totalLogiErr}`)
 
-  // 失敗率が50%以上の場合、GitHub Issue を自動起票 (#74)
-  const totalProcessed = totalEventOk + totalEventErr
-  if (totalProcessed > 0 && totalEventErr / totalProcessed >= 0.5) {
-    await createAlertIssue({
-      totalProcessed,
-      eventOk: totalEventOk,
-      eventErr: totalEventErr,
-      catOk: totalCatOk,
-      catErr: totalCatErr,
-      logiOk: totalLogiOk,
-      logiErr: totalLogiErr,
-    })
-  }
+  // アラート Issue 自動起票は無効化（Telegram レポートに一本化）
 }
 
 /** GitHub Issue を起票してenrich失敗をアラートする */
