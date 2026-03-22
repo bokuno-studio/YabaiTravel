@@ -6,74 +6,74 @@
 
 ### イベント単位の項目（events テーブル）
 
-| 表示項目 | DBカラム | 取得バッチ | 備考 |
-|---------|---------|-----------|------|
-| イベント名 | name / name_en | ① collect → ②-A enrich-event で更新 | ①で初期値、②-Aで正式名に更新 |
-| 説明文 | description / description_en | ②-A enrich-event | |
-| 開催日 | event_date / event_date_end | ②-A enrich-event | |
-| 開催地 | location / location_en | ②-A enrich-event | |
-| レース種別 | race_type | ②-A enrich-event | |
-| 公式URL | official_url | ① collect → ②-A で更新の場合あり | |
-| エントリーURL | entry_url | ②-A enrich-event | |
-| エントリー方式 | entry_type | ②-A enrich-event | 抽選/先着 |
-| 参加資格 | required_qualification / _en | ②-A enrich-event | |
-| エントリー開始日 | entry_start | ②-A enrich-event | |
-| エントリー締切日 | entry_end | ②-A enrich-event | |
-| 典型的エントリー開始日 | entry_start_typical | ②-A enrich-event | |
-| 典型的エントリー締切日 | entry_end_typical | ②-A enrich-event | |
-| 参加者数 | participant_count | ②-A enrich-event | |
-| 宿泊要否 | stay_status | ②-A enrich-event | カテゴリ側にもあり（フォールバック） |
-| 天気予報 | weather_forecast / _en | ②-A enrich-event | |
-| ビザ情報 | visa_info / _en | ②-A enrich-event | |
-| リカバリー施設 | recovery_facilities / _en | ②-A enrich-event | |
-| フォトスポット | photo_spots / _en | ②-A enrich-event | |
-| 禁止事項 | prohibited_items / _en | ②-A enrich-event | |
-| ふるさと納税URL | furusato_nozei_url | 手動入力 | バッチ対象外 |
-| 合計コスト見積もり | total_cost_estimate / _en | ②-A enrich-event | |
+| 必須 | 表示項目 | DBカラム | 取得バッチ | 備考 |
+|:----:|---------|---------|-----------|------|
+| [ ] | イベント名 | name / name_en | ① collect → ②-A enrich-event で更新 | ①で初期値、②-Aで正式名に更新 |
+| [ ] | 説明文 | description / description_en | ②-A enrich-event | |
+| [ ] | 開催日 | event_date / event_date_end | ②-A enrich-event | |
+| [ ] | 開催地 | location / location_en | ②-A enrich-event | |
+| [ ] | レース種別 | race_type | ②-A enrich-event | |
+| [ ] | 公式URL | official_url | ① collect → ②-A で更新の場合あり | |
+| [ ] | エントリーURL | entry_url | ②-A enrich-event | |
+| [ ] | エントリー方式 | entry_type | ②-A enrich-event | 抽選/先着 |
+| [ ] | 参加資格 | required_qualification / _en | ②-A enrich-event | |
+| [ ] | エントリー開始日 | entry_start | ②-A enrich-event | |
+| [ ] | エントリー締切日 | entry_end | ②-A enrich-event | |
+| [ ] | 典型的エントリー開始日 | entry_start_typical | ②-A enrich-event | |
+| [ ] | 典型的エントリー締切日 | entry_end_typical | ②-A enrich-event | |
+| [ ] | 参加者数 | participant_count | ②-A enrich-event | |
+| [ ] | 宿泊要否 | stay_status | ②-A enrich-event | カテゴリ側にもあり（フォールバック） |
+| [ ] | 天気予報 | weather_forecast / _en | ②-A enrich-event | |
+| [ ] | ビザ情報 | visa_info / _en | ②-A enrich-event | |
+| [ ] | リカバリー施設 | recovery_facilities / _en | ②-A enrich-event | |
+| [ ] | フォトスポット | photo_spots / _en | ②-A enrich-event | |
+| [ ] | 禁止事項 | prohibited_items / _en | ②-A enrich-event | |
+| [ ] | ふるさと納税URL | furusato_nozei_url | 手動入力 | バッチ対象外 |
+| [ ] | 合計コスト見積もり | total_cost_estimate / _en | ②-A enrich-event | |
 
 ### カテゴリ単位の項目（categories テーブル）
 
-| 表示項目 | DBカラム | 取得バッチ | 備考 |
-|---------|---------|-----------|------|
-| カテゴリ名 | name / name_en | ②-A enrich-event | コース一覧から INSERT |
-| 距離 | distance_km | ②-A enrich-event → ②-B で更新 | ②-Aで初期値、②-Bで精査 |
-| 参加費 | entry_fee / entry_fee_currency | ②-B enrich-category-detail | |
-| 制限時間 | time_limit | ②-B enrich-category-detail | |
-| スタート時間 | start_time | ②-B enrich-category-detail | |
-| 受付締切 | reception_end | ②-B enrich-category-detail | |
-| 受付場所 | reception_place / _en | ②-B enrich-category-detail | events からフォールバック |
-| スタート地点 | start_place / _en | ②-B enrich-category-detail | events からフォールバック |
-| 累積標高 | elevation_gain | ②-B enrich-category-detail | |
-| 必携品 | mandatory_gear / _en | ②-B enrich-category-detail | |
-| 推奨装備 | recommended_gear / _en | ②-B enrich-category-detail | |
-| 禁止事項 | prohibited_items / _en | ②-B enrich-category-detail | |
-| ポール可否 | poles_allowed | ②-B enrich-category-detail | |
-| 関門情報 | cutoff_times | ②-B enrich-category-detail | JSON配列 |
-| 必要ペース | required_pace / _en | ②-B enrich-category-detail | NULL時は time_limit÷distance で算出表示 |
-| 必要登りペース | required_climb_pace / _en | ②-B enrich-category-detail | |
-| 完走率 | finish_rate | ②-B enrich-category-detail | |
-| ITRAポイント | itra_points | ②-B enrich-category-detail | |
-| 宿泊要否 | stay_status | ②-B enrich-category-detail | events からフォールバック |
+| 必須 | 表示項目 | DBカラム | 取得バッチ | 備考 |
+|:----:|---------|---------|-----------|------|
+| [ ] | カテゴリ名 | name / name_en | ②-A enrich-event | コース一覧から INSERT |
+| [ ] | 距離 | distance_km | ②-A enrich-event → ②-B で更新 | ②-Aで初期値、②-Bで精査 |
+| [ ] | 参加費 | entry_fee / entry_fee_currency | ②-B enrich-category-detail | |
+| [ ] | 制限時間 | time_limit | ②-B enrich-category-detail | |
+| [ ] | スタート時間 | start_time | ②-B enrich-category-detail | |
+| [ ] | 受付締切 | reception_end | ②-B enrich-category-detail | |
+| [ ] | 受付場所 | reception_place / _en | ②-B enrich-category-detail | events からフォールバック |
+| [ ] | スタート地点 | start_place / _en | ②-B enrich-category-detail | events からフォールバック |
+| [ ] | 累積標高 | elevation_gain | ②-B enrich-category-detail | |
+| [ ] | 必携品 | mandatory_gear / _en | ②-B enrich-category-detail | |
+| [ ] | 推奨装備 | recommended_gear / _en | ②-B enrich-category-detail | |
+| [ ] | 禁止事項 | prohibited_items / _en | ②-B enrich-category-detail | |
+| [ ] | ポール可否 | poles_allowed | ②-B enrich-category-detail | |
+| [ ] | 関門情報 | cutoff_times | ②-B enrich-category-detail | JSON配列 |
+| [ ] | 必要ペース | required_pace / _en | ②-B enrich-category-detail | NULL時は time_limit÷distance で算出表示 |
+| [ ] | 必要登りペース | required_climb_pace / _en | ②-B enrich-category-detail | |
+| [ ] | 完走率 | finish_rate | ②-B enrich-category-detail | |
+| [ ] | ITRAポイント | itra_points | ②-B enrich-category-detail | |
+| [ ] | 宿泊要否 | stay_status | ②-B enrich-category-detail | events からフォールバック |
 
 ### アクセス情報（access_routes テーブル）
 
-| 表示項目 | DBカラム | 取得バッチ | 備考 |
-|---------|---------|-----------|------|
-| 経路詳細 | route_detail / _en | ③ enrich-logi | 往路/復路別 |
-| 所要時間 | total_time_estimate | ③ enrich-logi | |
-| 交通費 | cost_estimate | ③ enrich-logi | |
-| 公共交通アクセス可否 | transit_accessible | ③ enrich-logi | |
-| シャトルバス情報 | shuttle_available / _en | ③ enrich-logi | |
-| タクシー見積もり | taxi_estimate | ③ enrich-logi | |
-| 予約URL | booking_url | ③ enrich-logi | |
-| 現金必要 | cash_required | ③ enrich-logi | |
+| 必須 | 表示項目 | DBカラム | 取得バッチ | 備考 |
+|:----:|---------|---------|-----------|------|
+| [ ] | 経路詳細 | route_detail / _en | ③ enrich-logi | 往路/復路別 |
+| [ ] | 所要時間 | total_time_estimate | ③ enrich-logi | |
+| [ ] | 交通費 | cost_estimate | ③ enrich-logi | |
+| [ ] | 公共交通アクセス可否 | transit_accessible | ③ enrich-logi | |
+| [ ] | シャトルバス情報 | shuttle_available / _en | ③ enrich-logi | |
+| [ ] | タクシー見積もり | taxi_estimate | ③ enrich-logi | |
+| [ ] | 予約URL | booking_url | ③ enrich-logi | |
+| [ ] | 現金必要 | cash_required | ③ enrich-logi | |
 
 ### 宿泊情報（accommodations テーブル）
 
-| 表示項目 | DBカラム | 取得バッチ | 備考 |
-|---------|---------|-----------|------|
-| 推奨エリア | recommended_area / _en | ③ enrich-logi | |
-| 宿泊費目安 | avg_cost_3star | ③ enrich-logi | 3つ星基準 |
+| 必須 | 表示項目 | DBカラム | 取得バッチ | 備考 |
+|:----:|---------|---------|-----------|------|
+| [ ] | 推奨エリア | recommended_area / _en | ③ enrich-logi | |
+| [ ] | 宿泊費目安 | avg_cost_3star | ③ enrich-logi | 3つ星基準 |
 
 ---
 
