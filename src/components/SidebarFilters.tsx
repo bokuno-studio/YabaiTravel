@@ -263,6 +263,7 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
             props.onCostRangeChange(newMin, newMax >= props.costGlobalMax ? Infinity : newMax)
           }}
           currency={isEn ? '$' : '¥'}
+          lang={props.lang}
         />
       </FilterSection>
 

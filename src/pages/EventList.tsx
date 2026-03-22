@@ -37,15 +37,18 @@ function parseIntervalHours(v: string | null): number | null {
   return hours > 0 ? hours : null
 }
 
-/** 距離レンジの定義 */
-const DISTANCE_RANGES = [
-  { label: '〜10km', min: 0, max: 10 },
-  { label: '10〜20km', min: 10, max: 20 },
-  { label: '20〜30km', min: 20, max: 30 },
-  { label: '30〜50km', min: 30, max: 50 },
-  { label: '50〜100km', min: 50, max: 100 },
-  { label: '100km〜', min: 100, max: Infinity },
-] as const
+/** 距離レンジの定義（言語に応じてラベルを切り替え） */
+function getDistanceRanges(isEn: boolean) {
+  const sep = isEn ? '-' : '\u301C'
+  return [
+    { label: `${sep}10km`, min: 0, max: 10 },
+    { label: `10${sep}20km`, min: 10, max: 20 },
+    { label: `20${sep}30km`, min: 20, max: 30 },
+    { label: `30${sep}50km`, min: 30, max: 50 },
+    { label: `50${sep}100km`, min: 50, max: 100 },
+    { label: `100km${sep}`, min: 100, max: Infinity },
+  ] as const
+}
 
 /** Helper: parse Set<string> from URL param */
 function parseSetParam(searchParams: URLSearchParams, key: string): Set<string> {
@@ -62,6 +65,13 @@ function parseNumSetParam(searchParams: URLSearchParams, key: string): Set<numbe
 }
 
 function EventList() {
+  const { t } = useTranslation()
+  const { lang } = useParams<{ lang: string }>()
+  const isEn = lang === 'en'
+  const location = useLocation()
+  const langPrefix = `/${lang || 'ja'}`
+  const DISTANCE_RANGES = useMemo(() => getDistanceRanges(isEn), [isEn])
+
   const [events, setEvents] = useState<EventWithCategories[]>([])
   const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
@@ -360,11 +370,6 @@ function EventList() {
     return true
   })
 
-  const { t } = useTranslation()
-  const { lang } = useParams<{ lang: string }>()
-  const location = useLocation()
-  const langPrefix = `/${lang || 'ja'}`
-
   const raceTypeLabel = (type: string | null) => {
     if (!type) return t('raceType.other')
     return t(`raceType.${type}`, type)
@@ -423,18 +428,18 @@ function EventList() {
   if (error) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-12 text-center">
-        <p className="text-destructive">エラー: {error}</p>
+        <p className="text-destructive">{isEn ? 'Error:' : 'エラー:'} {error}</p>
       </div>
     )
   }
 
   return (
     <>
-      <title>エンデュランス大会を探す | yabai.travel</title>
-      <meta name="description" content="トレラン・スパルタン・HYROX・マラソンなどエンデュランス系大会の情報、アクセス・宿泊コストをまとめて比較できるポータルサイト。" />
-      <meta property="og:title" content="エンデュランス大会を探す | yabai.travel" />
-      <meta property="og:description" content="トレラン・スパルタン・HYROX・マラソンなどエンデュランス系大会の情報、アクセス・宿泊コストをまとめて比較できるポータルサイト。" />
-      <meta property="og:url" content="https://yabai-travel.vercel.app/ja" />
+      <title>{isEn ? 'Find Endurance Events | yabai.travel' : 'エンデュランス大会を探す | yabai.travel'}</title>
+      <meta name="description" content={isEn ? 'Compare trail running, Spartan, HYROX, marathon and other endurance events with access and accommodation costs.' : 'トレラン・スパルタン・HYROX・マラソンなどエンデュランス系大会の情報、アクセス・宿泊コストをまとめて比較できるポータルサイト。'} />
+      <meta property="og:title" content={isEn ? 'Find Endurance Events | yabai.travel' : 'エンデュランス大会を探す | yabai.travel'} />
+      <meta property="og:description" content={isEn ? 'Compare trail running, Spartan, HYROX, marathon and other endurance events with access and accommodation costs.' : 'トレラン・スパルタン・HYROX・マラソンなどエンデュランス系大会の情報、アクセス・宿泊コストをまとめて比較できるポータルサイト。'} />
+      <meta property="og:url" content={`https://yabai-travel.vercel.app/${lang || 'ja'}`} />
       <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
       <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
       <link rel="alternate" hrefLang="en" href={`https://yabai-travel.vercel.app${location.pathname}?lang=en`} />

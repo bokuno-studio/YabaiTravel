@@ -57,7 +57,13 @@ const raceTypeBadgeBg: Record<string, string> = {
 }
 
 /** Format date with day of week */
-function formatDateWithDay(dateStr: string): string {
+function formatDateWithDay(dateStr: string, isEn: boolean): string {
+  if (isEn) {
+    const daysEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const d = new Date(dateStr + 'T00:00:00')
+    if (isNaN(d.getTime())) return dateStr
+    return `${dateStr} (${daysEn[d.getDay()]})`
+  }
   const days = ['日', '月', '火', '水', '木', '金', '土']
   const d = new Date(dateStr + 'T00:00:00')
   if (isNaN(d.getTime())) return dateStr
@@ -77,16 +83,18 @@ export function EventCard({
   const isEn = lang === 'en'
 
   // #8: Prefer _en fields for English pages, fallback to Japanese
+  const displayName = isEn ? (event.name_en ?? event.name) : event.name
   const displayCountry = isEn ? (event.country_en ?? event.country) : event.country
   const displayLocation = isEn ? (event.location_en ?? event.location) : event.location
 
+  const sep = isEn ? ' - ' : '〜'
   const dateText = event.event_date_end && event.event_date && event.event_date_end !== event.event_date
-    ? `${formatDateWithDay(event.event_date)}〜${formatDateWithDay(event.event_date_end)}`
-    : event.event_date ? formatDateWithDay(event.event_date) : null
+    ? `${formatDateWithDay(event.event_date, isEn)}${sep}${formatDateWithDay(event.event_date_end, isEn)}`
+    : event.event_date ? formatDateWithDay(event.event_date, isEn) : null
 
   const entryPeriod = (() => {
-    if (event.entry_start && event.entry_end) return `${event.entry_start}〜${event.entry_end}`
-    if (event.entry_start_typical && event.entry_end_typical) return `${event.entry_start_typical}〜${event.entry_end_typical}`
+    if (event.entry_start && event.entry_end) return `${event.entry_start}${sep}${event.entry_end}`
+    if (event.entry_start_typical && event.entry_end_typical) return `${event.entry_start_typical}${sep}${event.entry_end_typical}`
     return null
   })()
 
@@ -94,7 +102,9 @@ export function EventCard({
     ? parseInt(event.total_cost_estimate, 10)
     : null
   const costEstimate = totalCost
-    ? `¥${totalCost.toLocaleString()}`
+    ? isEn
+      ? `$${Math.round(totalCost / 150).toLocaleString()}`
+      : `¥${totalCost.toLocaleString()}`
     : null
 
   // Currency conversion rates (same as orchestrator.js)
@@ -133,7 +143,7 @@ export function EventCard({
       )}>
         <CardContent className="p-4">
           <h3 className="truncate text-sm font-semibold text-foreground">
-            {event.name}
+            {displayName}
           </h3>
           <div className="mt-1 flex items-center gap-4 text-xs text-muted-foreground">
             {dateText && (
@@ -169,7 +179,7 @@ export function EventCard({
 
             {/* 2. Event name (bold, 2 lines max) */}
             <h3 className="text-sm font-semibold text-foreground line-clamp-2 leading-snug mb-2">
-              {event.name}
+              {displayName}
             </h3>
 
             {/* 3-4. Date and Location */}
@@ -211,7 +221,7 @@ export function EventCard({
                     <div className="mt-0.5 text-[10px] text-muted-foreground leading-tight">
                       {minEntryFeeDisplay && <span>{isEn ? 'Entry' : '参加'} {entryCurrSymbol}{minEntryFeeDisplay.toLocaleString()}</span>}
                       {minEntryFeeDisplay && restCost > 0 && <span> / </span>}
-                      {restCost > 0 && <span>{isEn ? 'Travel+Stay' : '交通+宿泊'} ¥{restCost.toLocaleString()}</span>}
+                      {restCost > 0 && <span>{isEn ? 'Travel+Stay' : '交通+宿泊'} {isEn ? `$${Math.round(restCost / 150).toLocaleString()}` : `¥${restCost.toLocaleString()}`}</span>}
                     </div>
                   )}
                 </div>
@@ -238,7 +248,7 @@ export function EventCard({
                     : undefined
                 }
               >
-                {cat.name}
+                {isEn ? (cat.name_en ?? cat.name) : cat.name}
               </Link>
             ))}
           </div>

@@ -7,11 +7,13 @@ interface PriceHistogramSliderProps {
   max: number
   onRangeChange: (min: number, max: number) => void
   currency?: string
+  lang?: string
 }
 
 const BUCKET_COUNT = 20
 
-function PriceHistogramSlider({ prices, min, max, onRangeChange, currency = '¥' }: PriceHistogramSliderProps) {
+function PriceHistogramSlider({ prices, min, max, onRangeChange, currency = '¥', lang }: PriceHistogramSliderProps) {
+  const isEn = lang === 'en'
   const { buckets, globalMin, globalMax, step } = useMemo(() => {
     if (prices.length === 0) return { buckets: [], globalMin: 0, globalMax: 0, step: 1 }
     const sorted = [...prices].sort((a, b) => a - b)
@@ -65,7 +67,7 @@ function PriceHistogramSlider({ prices, min, max, onRangeChange, currency = '¥'
               key={i}
               className={`price-histogram-bar${inRange ? ' price-histogram-bar--active' : ''}`}
               style={{ height: `${(count / maxBucket) * 100}%` }}
-              title={`${formatPrice(bucketStart)}〜${formatPrice(bucketEnd)}: ${count}件`}
+              title={isEn ? `${formatPrice(bucketStart)}-${formatPrice(bucketEnd)}: ${count} events` : `${formatPrice(bucketStart)}〜${formatPrice(bucketEnd)}: ${count}件`}
             />
           )
         })}
