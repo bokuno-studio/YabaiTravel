@@ -106,18 +106,22 @@ async function callLlmWithRetry(anthropic, params) {
 async function fetchDomesticLogiWithLlm(anthropic, location) {
   const msg = await callLlmWithRetry(anthropic, {
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
+    max_tokens: 1500,
     messages: [
       {
         role: 'user',
         content: `東京から「${location}」への経路を教えてください。
 飛行機・電車・路線バス・フェリーのみを使った経路にしてください。タクシーは経路に含めないでください。
+日本語と英語の両方で回答してください。
 以下のJSON形式で回答してください：
 {
   "transit_accessible": true または false（飛行機・電車・路線バス・フェリーのみで会場付近まで行けるか）,
-  "route_detail": "公共交通のみの経路詳細（タクシー不使用）",
+  "route_detail": "公共交通のみの経路詳細（タクシー不使用）（日本語）",
+  "route_detail_en": "Route details using public transit only (no taxi) (English)",
   "total_time_estimate": "所要時間（例: 約2時間30分）",
   "cost_estimate": "費用概算（公共交通のみ。例: 約3,000円〜5,000円）",
+  "shuttle_available": "シャトルバス情報（日本語。不明なら null）",
+  "shuttle_available_en": "Shuttle bus info (English. null if unknown)",
   "taxi_estimate": "transit_accessible が false の場合のみ、最寄りの公共交通アクセス地点からのタクシー費用概算。transit_accessible が true なら必ず null"
 }
 JSONのみ返してください。`,
@@ -167,22 +171,29 @@ async function extractOfficialShuttle(officialUrl) {
 async function fetchInternationalLogiWithLlm(anthropic, location, country) {
   const msg = await callLlmWithRetry(anthropic, {
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
+    max_tokens: 1500,
     messages: [
       {
         role: 'user',
         content: `日本（羽田・成田）から「${location}」（${country}）への一般的なアクセス方法を教えてください。往路・復路の概略経路、フライト所要時間、費用感を含めてください。
+日本語と英語の両方で回答してください。
 以下のJSON形式で回答してください：
 {
   "outbound": {
-    "route_detail": "往路の経路詳細",
+    "route_detail": "往路の経路詳細（日本語）",
+    "route_detail_en": "Outbound route details (English)",
     "total_time_estimate": "所要時間",
-    "cost_estimate": "費用概算"
+    "cost_estimate": "費用概算",
+    "shuttle_available": "シャトルバス情報（日本語。不明なら null）",
+    "shuttle_available_en": "Shuttle bus info (English. null if unknown)"
   },
   "return": {
-    "route_detail": "復路の経路詳細",
+    "route_detail": "復路の経路詳細（日本語）",
+    "route_detail_en": "Return route details (English)",
     "total_time_estimate": "所要時間",
-    "cost_estimate": "費用概算"
+    "cost_estimate": "費用概算",
+    "shuttle_available": "シャトルバス情報（日本語。不明なら null）",
+    "shuttle_available_en": "Shuttle bus info (English. null if unknown)"
   }
 }
 JSONのみ返してください。`,
@@ -200,14 +211,16 @@ JSONのみ返してください。`,
 async function fetchAccommodationWithLlm(anthropic, location) {
   const msg = await callLlmWithRetry(anthropic, {
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 512,
+    max_tokens: 768,
     messages: [
       {
         role: 'user',
         content: `「${location}」大会参加者向けの前泊推奨エリアと星3相当の宿泊費用目安を教えてください。
+日本語と英語の両方で回答してください。
 以下のJSON形式で回答してください：
 {
-  "recommended_area": "推奨宿泊エリア",
+  "recommended_area": "推奨宿泊エリア（日本語）",
+  "recommended_area_en": "Recommended accommodation area (English)",
   "avg_cost_3star": 数値（1泊あたり円換算の目安、数値のみ）
 }
 JSONのみ返してください。`,
@@ -222,6 +235,7 @@ JSONのみ返してください。`,
 }
 
 const DISCLAIMER = '\n※ この情報は目安です。実際のフライト・交通手段は出発前にご確認ください。'
+const DISCLAIMER_EN = '\n* This information is approximate. Please verify actual flights and transportation before departure.'
 
 /**
  * 単一イベントのロジ情報をエンリッチする
@@ -285,13 +299,21 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
         if (logiInfo) {
           outboundRoute = {
             route_detail: logiInfo.route_detail,
+            route_detail_en: logiInfo.route_detail_en || null,
             total_time_estimate: logiInfo.total_time_estimate,
             cost_estimate: logiInfo.cost_estimate,
+            shuttle_available_en: logiInfo.shuttle_available_en || null,
           }
           returnRoute = {
             route_detail: logiInfo.route_detail ? `${logiInfo.route_detail}（逆順）` : null,
+            route_detail_en: logiInfo.route_detail_en ? `${logiInfo.route_detail_en} (reverse)` : null,
             total_time_estimate: logiInfo.total_time_estimate,
             cost_estimate: logiInfo.cost_estimate,
+            shuttle_available_en: logiInfo.shuttle_available_en || null,
+          }
+          // LLM からのシャトル情報がある場合、公式ページ抽出の結果がなければ補完
+          if (!shuttleAvailable && logiInfo.shuttle_available) {
+            shuttleAvailable = logiInfo.shuttle_available
           }
           transitAccessible = typeof logiInfo.transit_accessible === 'boolean' ? logiInfo.transit_accessible : null
           // タクシー情報は公共交通で行けない場合のみ
@@ -302,16 +324,23 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
       // 海外: LLM のみ
       const logiInfo = await fetchInternationalLogiWithLlm(anthropic, location, country || '不明')
       if (logiInfo) {
-        const disclaimer = DISCLAIMER
         outboundRoute = {
-          route_detail: logiInfo.outbound?.route_detail ? logiInfo.outbound.route_detail + disclaimer : null,
+          route_detail: logiInfo.outbound?.route_detail ? logiInfo.outbound.route_detail + DISCLAIMER : null,
+          route_detail_en: logiInfo.outbound?.route_detail_en ? logiInfo.outbound.route_detail_en + DISCLAIMER_EN : null,
           total_time_estimate: logiInfo.outbound?.total_time_estimate || null,
           cost_estimate: logiInfo.outbound?.cost_estimate || null,
+          shuttle_available_en: logiInfo.outbound?.shuttle_available_en || null,
         }
         returnRoute = {
-          route_detail: logiInfo.return?.route_detail ? logiInfo.return.route_detail + disclaimer : null,
+          route_detail: logiInfo.return?.route_detail ? logiInfo.return.route_detail + DISCLAIMER : null,
+          route_detail_en: logiInfo.return?.route_detail_en ? logiInfo.return.route_detail_en + DISCLAIMER_EN : null,
           total_time_estimate: logiInfo.return?.total_time_estimate || null,
           cost_estimate: logiInfo.return?.cost_estimate || null,
+          shuttle_available_en: logiInfo.return?.shuttle_available_en || null,
+        }
+        // LLM からのシャトル情報がある場合、公式ページ抽出の結果がなければ補完
+        if (!shuttleAvailable && logiInfo.outbound?.shuttle_available) {
+          shuttleAvailable = logiInfo.outbound.shuttle_available
         }
       }
     }
@@ -331,6 +360,8 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
         shuttleAvailable,
         taxiEstimate,
         transitAccessible,
+        route.route_detail_en || null,
+        route.shuttle_available_en || null,
       ]
       if (existingDirections.has(direction)) {
         await client.query(
@@ -340,15 +371,17 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
             cost_estimate       = COALESCE(cost_estimate, $4),
             shuttle_available   = COALESCE(shuttle_available, $5),
             taxi_estimate       = COALESCE(taxi_estimate, $6),
-            transit_accessible  = COALESCE(transit_accessible, $7)
+            transit_accessible  = COALESCE(transit_accessible, $7),
+            route_detail_en     = COALESCE(route_detail_en, $8),
+            shuttle_available_en = COALESCE(shuttle_available_en, $9)
            WHERE id = $1`,
           [existingIds[direction], ...params]
         )
       } else {
         await client.query(
           `INSERT INTO ${SCHEMA}.access_routes
-            (event_id, direction, route_detail, total_time_estimate, cost_estimate, shuttle_available, taxi_estimate, transit_accessible)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            (event_id, direction, route_detail, total_time_estimate, cost_estimate, shuttle_available, taxi_estimate, transit_accessible, route_detail_en, shuttle_available_en)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
           [eventId, direction, ...params]
         )
       }
@@ -364,27 +397,23 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
         `SELECT id FROM ${SCHEMA}.accommodations WHERE event_id = $1`,
         [eventId]
       )
+      const accomArea = accomInfo.recommended_area || null
+      const accomAreaEn = accomInfo.recommended_area_en || null
+      const accomCost = accomInfo.avg_cost_3star != null ? parseInt(accomInfo.avg_cost_3star, 10) : null
       if (existingAccom.rows.length > 0) {
         await client.query(
           `UPDATE ${SCHEMA}.accommodations SET
-            recommended_area = COALESCE(recommended_area, $2),
-            avg_cost_3star   = COALESCE(avg_cost_3star, $3)
+            recommended_area    = COALESCE(recommended_area, $2),
+            avg_cost_3star      = COALESCE(avg_cost_3star, $3),
+            recommended_area_en = COALESCE(recommended_area_en, $4)
            WHERE id = $1`,
-          [
-            existingAccom.rows[0].id,
-            accomInfo.recommended_area || null,
-            accomInfo.avg_cost_3star != null ? parseInt(accomInfo.avg_cost_3star, 10) : null,
-          ]
+          [existingAccom.rows[0].id, accomArea, accomCost, accomAreaEn]
         )
       } else {
         await client.query(
-          `INSERT INTO ${SCHEMA}.accommodations (event_id, recommended_area, avg_cost_3star)
-           VALUES ($1, $2, $3)`,
-          [
-            eventId,
-            accomInfo.recommended_area || null,
-            accomInfo.avg_cost_3star != null ? parseInt(accomInfo.avg_cost_3star, 10) : null,
-          ]
+          `INSERT INTO ${SCHEMA}.accommodations (event_id, recommended_area, avg_cost_3star, recommended_area_en)
+           VALUES ($1, $2, $3, $4)`,
+          [eventId, accomArea, accomCost, accomAreaEn]
         )
       }
     }

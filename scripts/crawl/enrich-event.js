@@ -14,91 +14,47 @@ import {
   loadEnv, fetchHtml, extractRelevantContent, extractExternalOfficialLinks,
   extractRelevantLinks, callLlm, fetchTavilySearch, isPortalUrl,
   reclassifyRaceType, AGGREGATOR_DOMAINS, extractAndSaveCourseMap,
-  detectLanguage,
 } from './lib/enrich-utils.js'
 
 loadEnv()
 const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
 
-// --- LLM プロンプト（イベント専用） ---
+// --- LLM プロンプト（バイリンガル統合） ---
 
-const EVENT_SYSTEM_PROMPT = `あなたはレースイベントの情報抽出エキスパートです。
-与えられたページの内容から、イベント基本情報とユニークなコース一覧を JSON 形式で抽出してください。
-
-{
-  "event": {
-    "name": "正式な大会名（HTMLタグ・記号・改行・余分なスペースを除去した純粋なテキストのみ）",
-    "event_date": "YYYY-MM-DD（開催初日）",
-    "event_date_end": "YYYY-MM-DD（複数日の場合の最終日）",
-    "location": "開催地。日本国内なら「○○県○○市」等。海外なら「都市名, 国名」。必ず自治体名を含める",
-    "country": "国名（日本語）",
-    "race_type": "marathon|trail|triathlon|bike|duathlon|rogaining|spartan|hyrox|tough_mudder|obstacle|adventure|devils_circuit|strong_viking|other",
-    "official_url": "大会の公式サイトURL（ポータルや申込サイトではなく主催者の公式ページURL。runnet.jp, sportsentry.ne.jp, moshicom.com, l-tike.com 等はポータルなので除外）",
-    "entry_url": "申込URL",
-    "entry_start": "YYYY-MM-DD",
-    "entry_end": "YYYY-MM-DD",
-    "reception_place": "受付場所",
-    "start_place": "スタート場所",
-    "weather_forecast": "開催時期の気候（気温・天候・推奨装備）",
-    "visa_info": "海外レースのビザ情報。日本国内はnull",
-    "recovery_facilities": "会場周辺のリカバリー施設",
-    "photo_spots": "周辺のフォトスポット・観光名所",
-    "description": "大会の紹介文（140文字以内。特徴・魅力・コースの概要を簡潔に。公式サイトの情報がなければWebで検索して補完してよい）",
-    "latitude": "開催地の緯度（小数。例: 35.6762）",
-    "longitude": "開催地の経度（小数。例: 139.6503）"
-  },
-  "courses": [
-    { "name": "コース名", "distance_km": 数値 }
-  ]
-}
-
-コース抽出のルール:
-- courses はユニークなコース（距離・ルートが異なるもの）のみ出力する
-- 以下は「コースの違い」ではないため、1つにまとめること:
-  - 申込区分（一般 / R.LEAGUE / 早期申込 / レイトエントリー）
-  - 性別区分（男子 / 女子）
-  - 年齢区分（一般 / マスターズ / ジュニア / 親子 / 小学生 / 中学生以下 / 高校生以下 等）
-  - Wave start の違い（Wave 1 / Wave 2 / ...）
-  - エントリー人数の違い（1名 / 2名 / 3名 / ペア / チーム）
-  - 参加費の違いだけのもの（同じコースで料金プランが異なるだけ）
-  - 同じ距離の別名（例: 「フルマラソン」と「マラソン」は同じ42.195kmなので1つ）
-- 例: 「10km A組(男子)」「10km B組(女子)」「R.LEAGUE 10km」→ { "name": "10km", "distance_km": 10 } として1つ
-- コース名はシンプルに（例: 「フルマラソン」「ハーフマラソン」「10km」「ショート」「ロング」）
-- コース名に参加資格・年齢制限・参加条件を含めないこと（例: 「0.5km：親子幼稚園（子供は園児）」→ name は「0.5km」のみ）
-- 以下は参加コースではないため courses に含めないこと:
-  - 観戦・見学（Spectator / 応援 / 見学者 等）
-  - ボランティア（Volunteer）
-  - ペーサー（Pacer）
-  - スタッフ・クルー（Staff / Crew）
-  - キッズ体験・ファンラン（Kids Fun Run 等、競技でない体験イベント）
-
-その他:
-- ページに記載がない項目は null
-- 日付は YYYY-MM-DD 形式
-- JSON のみ返す`
-
-const EVENT_SYSTEM_PROMPT_EN = `You are an expert at extracting race event information.
+const EVENT_SYSTEM_PROMPT = `You are an expert at extracting race event information.
 Extract the basic event information and unique course list from the given page content in JSON format.
+IMPORTANT: For all text fields, provide BOTH Japanese and English values. Use the "_en" suffix fields for English.
+If the source is in Japanese, translate to English for _en fields. If the source is in English, translate to Japanese for the base fields.
 
 {
   "event": {
-    "name": "Official event name (pure text only, no HTML tags, symbols, line breaks, or extra spaces)",
+    "name": "正式な大会名（日本語。HTMLタグ・記号・改行・余分なスペースを除去した純粋なテキストのみ）",
+    "name_en": "Official event name in English (pure text only, no HTML tags, symbols, line breaks, or extra spaces)",
     "event_date": "YYYY-MM-DD (first day of the event)",
     "event_date_end": "YYYY-MM-DD (last day if multi-day event)",
-    "location": "Venue location. Format: 'City, Country'",
-    "country": "Country name (in English)",
+    "location": "開催地（日本語）。日本国内なら「○○県○○市」等。海外なら「都市名, 国名」。必ず自治体名を含める",
+    "location_en": "Venue location in English. Format: 'City, Country'",
+    "country": "国名（日本語）",
+    "country_en": "Country name in English",
     "race_type": "marathon|trail|triathlon|bike|duathlon|rogaining|spartan|hyrox|tough_mudder|obstacle|adventure|devils_circuit|strong_viking|other",
     "official_url": "Official website URL of the event (NOT portal or registration sites like runnet.jp, sportsentry.ne.jp, moshicom.com, l-tike.com)",
     "entry_url": "Registration URL",
     "entry_start": "YYYY-MM-DD",
     "entry_end": "YYYY-MM-DD",
-    "reception_place": "Check-in / registration location",
-    "start_place": "Start location",
-    "weather_forecast": "Expected weather during event period (temperature, conditions, recommended gear)",
-    "visa_info": "Visa information for the race location (for international travelers)",
-    "recovery_facilities": "Recovery facilities near the venue",
-    "photo_spots": "Photo spots and tourist attractions nearby",
-    "description": "Event description (140 chars max in English. Briefly cover key features, appeal, and course overview)",
+    "reception_place": "受付場所（日本語）",
+    "reception_place_en": "Check-in / registration location in English",
+    "start_place": "スタート場所（日本語）",
+    "start_place_en": "Start location in English",
+    "weather_forecast": "開催時期の気候（日本語。気温・天候・推奨装備）",
+    "weather_forecast_en": "Expected weather during event period in English (temperature, conditions, recommended gear)",
+    "visa_info": "海外レースのビザ情報（日本語）。日本国内はnull",
+    "visa_info_en": "Visa information in English. null for domestic Japan races",
+    "recovery_facilities": "会場周辺のリカバリー施設（日本語）",
+    "recovery_facilities_en": "Recovery facilities near the venue in English",
+    "photo_spots": "周辺のフォトスポット・観光名所（日本語）",
+    "photo_spots_en": "Photo spots and tourist attractions nearby in English",
+    "description": "大会の紹介文（日本語、140文字以内。特徴・魅力・コースの概要を簡潔に）",
+    "description_en": "Event description in English (140 chars max. Briefly cover key features, appeal, and course overview)",
     "latitude": "Venue latitude (decimal, e.g., 35.6762)",
     "longitude": "Venue longitude (decimal, e.g., 139.6503)"
   },
@@ -161,7 +117,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
           console.log(`  [${label}] ${name?.slice(0, 40)} | ${e.message} → Tavily検索`)
         } else {
           await client.query(
-            `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = enrich_attempt_count + 1, last_error_type = 'temporary' WHERE id = $1`,
+            `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), attempt_count = attempt_count + 1, last_error_type = 'temporary' WHERE id = $1`,
             [eventId]
           )
           return { success: false, eventId, error: `fetch failed: ${e.message}` }
@@ -173,34 +129,28 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
 
     let extracted = { event: {}, courses: [] }
     let totalTokens = 0
-    let sourceLang = 'ja' // デフォルトは日本語
 
     if (!fetchFailed && html) {
       // 直接取得成功 → LLM 抽出
       const content = extractRelevantContent(html)
       if (content.length < 50) {
         await client.query(
-          `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = enrich_attempt_count + 1, last_error_type = 'not_available' WHERE id = $1`,
+          `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), attempt_count = attempt_count + 1, last_error_type = 'not_available' WHERE id = $1`,
           [eventId]
         )
         return { success: false, eventId, error: 'page content too short' }
       }
-      sourceLang = detectLanguage(content)
-      const prompt = sourceLang === 'en' ? EVENT_SYSTEM_PROMPT_EN : EVENT_SYSTEM_PROMPT
-      const userMsg = sourceLang === 'en'
-        ? `Official page content for "${name}":\n\n${content}`
-        : `「${name}」の公式ページ内容:\n\n${content}`
-      const result = await callLlm(anthropic, prompt, userMsg)
+      const userMsg = `Page content for "${name}":\n\n${content}`
+      const result = await callLlm(anthropic, EVENT_SYSTEM_PROMPT, userMsg)
       totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
       extracted = result
-      console.log(`  [lang] ${name?.slice(0, 40)} | detected: ${sourceLang}`)
     } else {
       // Tavily フォールバック
       const query = `${name} 公式サイト エントリー 開催日 距離`
       const searchResults = await fetchTavilySearch(query, { includeUrls: true })
       if (searchResults.length === 0) {
         await client.query(
-          `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = enrich_attempt_count + 1, last_error_type = 'not_available' WHERE id = $1`,
+          `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), attempt_count = attempt_count + 1, last_error_type = 'not_available' WHERE id = $1`,
           [eventId]
         )
         return { success: false, eventId, error: 'no search results' }
@@ -218,34 +168,39 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
       for (const result of searchResults) {
         if (result.content.length < 50) continue
         try {
-          // Tavily 結果の言語を検出してプロンプトを切り替え
-          const searchLang = detectLanguage(result.content)
-          if (sourceLang === 'ja' && searchLang === 'en') sourceLang = 'en' // 英語コンテンツ発見時に更新
-          const searchPrompt = searchLang === 'en' ? EVENT_SYSTEM_PROMPT_EN : EVENT_SYSTEM_PROMPT
-          const searchUserMsg = searchLang === 'en'
-            ? `Information about "${name}":\n\n${result.content}`
-            : `「${name}」に関する情報:\n\n${result.content}`
-          const searchExtracted = await callLlm(anthropic, searchPrompt, searchUserMsg)
+          const searchUserMsg = `Information about "${name}":\n\n${result.content}`
+          const searchExtracted = await callLlm(anthropic, EVENT_SYSTEM_PROMPT, searchUserMsg)
           totalTokens += (searchExtracted._usage?.input_tokens || 0) + (searchExtracted._usage?.output_tokens || 0)
           const ae = searchExtracted.event || {}
           const e = extracted.event || {}
           extracted.event = {
             official_url:    e.official_url    ?? ae.official_url,
             name:            e.name            ?? ae.name,
+            name_en:         e.name_en         ?? ae.name_en,
             event_date:      e.event_date      ?? ae.event_date,
             event_date_end:  e.event_date_end  ?? ae.event_date_end,
             location:        e.location        ?? ae.location,
+            location_en:     e.location_en     ?? ae.location_en,
             country:         e.country         ?? ae.country,
+            country_en:      e.country_en      ?? ae.country_en,
             race_type:       e.race_type       ?? ae.race_type,
             entry_url:       e.entry_url       ?? ae.entry_url,
             entry_start:     e.entry_start     ?? ae.entry_start,
             entry_end:       e.entry_end       ?? ae.entry_end,
-            reception_place: e.reception_place ?? ae.reception_place,
-            start_place:     e.start_place     ?? ae.start_place,
-            weather_forecast:     e.weather_forecast     ?? ae.weather_forecast,
-            visa_info:            e.visa_info            ?? ae.visa_info,
-            recovery_facilities:  e.recovery_facilities  ?? ae.recovery_facilities,
-            photo_spots:          e.photo_spots          ?? ae.photo_spots,
+            reception_place:    e.reception_place    ?? ae.reception_place,
+            reception_place_en: e.reception_place_en ?? ae.reception_place_en,
+            start_place:        e.start_place        ?? ae.start_place,
+            start_place_en:     e.start_place_en     ?? ae.start_place_en,
+            weather_forecast:      e.weather_forecast      ?? ae.weather_forecast,
+            weather_forecast_en:   e.weather_forecast_en   ?? ae.weather_forecast_en,
+            visa_info:             e.visa_info             ?? ae.visa_info,
+            visa_info_en:          e.visa_info_en          ?? ae.visa_info_en,
+            recovery_facilities:      e.recovery_facilities      ?? ae.recovery_facilities,
+            recovery_facilities_en:   e.recovery_facilities_en   ?? ae.recovery_facilities_en,
+            photo_spots:       e.photo_spots       ?? ae.photo_spots,
+            photo_spots_en:    e.photo_spots_en    ?? ae.photo_spots_en,
+            description:       e.description       ?? ae.description,
+            description_en:    e.description_en    ?? ae.description_en,
           }
           // コースをマージ
           if (searchExtracted.courses?.length > 0) {
@@ -270,13 +225,8 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
           fetchFailed = false
           const content = extractRelevantContent(html)
           if (content.length >= 50) {
-            const directLang = detectLanguage(content)
-            if (directLang === 'en') sourceLang = 'en'
-            const directPrompt = directLang === 'en' ? EVENT_SYSTEM_PROMPT_EN : EVENT_SYSTEM_PROMPT
-            const directUserMsg = directLang === 'en'
-              ? `Official page content for "${name}":\n\n${content}`
-              : `「${name}」の公式ページ内容:\n\n${content}`
-            const directResult = await callLlm(anthropic, directPrompt, directUserMsg)
+            const directUserMsg = `Official page content for "${name}":\n\n${content}`
+            const directResult = await callLlm(anthropic, EVENT_SYSTEM_PROMPT, directUserMsg)
             totalTokens += (directResult._usage?.input_tokens || 0) + (directResult._usage?.output_tokens || 0)
             // マージ（直接取得結果を優先）
             const de = directResult.event || {}
@@ -306,12 +256,8 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
           const linkHtml = await fetchHtml(link)
           const linkContent = extractRelevantContent(linkHtml, 5000)
           if (linkContent.length < 50) continue
-          const linkLang = detectLanguage(linkContent)
-          const linkPrompt = linkLang === 'en' ? EVENT_SYSTEM_PROMPT_EN : EVENT_SYSTEM_PROMPT
-          const linkUserMsg = linkLang === 'en'
-            ? `Related page content for "${name}":\n\n${linkContent}`
-            : `「${name}」の関連ページ内容:\n\n${linkContent}`
-          const linkResult = await callLlm(anthropic, linkPrompt, linkUserMsg)
+          const linkUserMsg = `Related page content for "${name}":\n\n${linkContent}`
+          const linkResult = await callLlm(anthropic, EVENT_SYSTEM_PROMPT, linkUserMsg)
           totalTokens += (linkResult._usage?.input_tokens || 0) + (linkResult._usage?.output_tokens || 0)
           const le = linkResult.event || {}
           const e = extracted.event || {}
@@ -362,91 +308,61 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
       }
     }
 
-    // --- ステップ4: DB 書き込み ---
+    // --- ステップ4: DB 書き込み（バイリンガル統合: ja + en を同時に書き込み） ---
     const e = ev
     const newOfficialUrl = e.official_url && !isPortalUrl(e.official_url) ? e.official_url : null
     const isPortalReplace = isPortalUrl(officialUrl)
 
-    if (sourceLang === 'en') {
-      // 英語ソース: 抽出結果を _en カラムに保存し、日本語カラムにもフォールバックとして保存
-      // （翻訳モジュールが後から en→ja 翻訳して日本語カラムを上書きする）
-      await client.query(
-        `UPDATE ${SCHEMA}.events SET
-          name            = COALESCE(name, $1),
-          name_en         = COALESCE(name_en, $1),
-          event_date      = ${isPortalReplace ? 'COALESCE($2, event_date)' : 'COALESCE(event_date, $2)'},
-          location        = COALESCE(location, $3),
-          location_en     = COALESCE(location_en, $3),
-          country         = COALESCE(country, $4),
-          country_en      = COALESCE(country_en, $4),
-          race_type       = CASE WHEN race_type IS NULL OR race_type = 'other' THEN COALESCE($5, race_type) ELSE race_type END,
-          entry_url       = COALESCE(entry_url, $6),
-          entry_start     = COALESCE(entry_start, $7),
-          entry_end       = COALESCE(entry_end, $8),
-          reception_place    = COALESCE(reception_place, $9),
-          reception_place_en = COALESCE(reception_place_en, $9),
-          start_place        = COALESCE(start_place, $10),
-          start_place_en     = COALESCE(start_place_en, $10),
-          weather_forecast    = COALESCE(weather_forecast, $11),
-          weather_forecast_en = COALESCE(weather_forecast_en, $11),
-          visa_info            = COALESCE(visa_info, $12),
-          visa_info_en         = COALESCE(visa_info_en, $12),
-          recovery_facilities    = COALESCE(recovery_facilities, $13),
-          recovery_facilities_en = COALESCE(recovery_facilities_en, $13),
-          photo_spots    = COALESCE(photo_spots, $14),
-          photo_spots_en = COALESCE(photo_spots_en, $14),
-          official_url    = ${isPortalReplace ? 'COALESCE($15, official_url)' : 'COALESCE(official_url, $15)'},
-          description      = COALESCE(description, $17),
-          description_en   = COALESCE(description_en, $17),
-          latitude             = COALESCE(latitude, $18),
-          longitude            = COALESCE(longitude, $19),
-          source_language      = COALESCE(source_language, 'en')
-         WHERE id = $16`,
-        [
-          e.name || null, e.event_date || null, e.location || null, e.country || null,
-          finalRaceType || null, e.entry_url || null, e.entry_start || null, e.entry_end || null,
-          e.reception_place || null, e.start_place || null, e.weather_forecast || null,
-          e.visa_info || null, e.recovery_facilities || null, e.photo_spots || null,
-          newOfficialUrl, eventId, e.description || null,
-          e.latitude != null ? parseFloat(e.latitude) : null,
-          e.longitude != null ? parseFloat(e.longitude) : null,
-        ]
-      )
-    } else {
-      // 日本語ソース: 従来どおり日本語カラムに保存
-      await client.query(
-        `UPDATE ${SCHEMA}.events SET
-          name            = COALESCE(name, $1),
-          event_date      = ${isPortalReplace ? 'COALESCE($2, event_date)' : 'COALESCE(event_date, $2)'},
-          location        = COALESCE(location, $3),
-          country         = COALESCE(country, $4),
-          race_type       = CASE WHEN race_type IS NULL OR race_type = 'other' THEN COALESCE($5, race_type) ELSE race_type END,
-          entry_url       = COALESCE(entry_url, $6),
-          entry_start     = COALESCE(entry_start, $7),
-          entry_end       = COALESCE(entry_end, $8),
-          reception_place = COALESCE(reception_place, $9),
-          start_place     = COALESCE(start_place, $10),
-          weather_forecast     = COALESCE(weather_forecast, $11),
-          visa_info            = COALESCE(visa_info, $12),
-          recovery_facilities  = COALESCE(recovery_facilities, $13),
-          photo_spots          = COALESCE(photo_spots, $14),
-          official_url    = ${isPortalReplace ? 'COALESCE($15, official_url)' : 'COALESCE(official_url, $15)'},
-          description          = COALESCE(description, $17),
-          latitude             = COALESCE(latitude, $18),
-          longitude            = COALESCE(longitude, $19),
-          source_language      = COALESCE(source_language, 'ja')
-         WHERE id = $16`,
-        [
-          e.name || null, e.event_date || null, e.location || null, e.country || null,
-          finalRaceType || null, e.entry_url || null, e.entry_start || null, e.entry_end || null,
-          e.reception_place || null, e.start_place || null, e.weather_forecast || null,
-          e.visa_info || null, e.recovery_facilities || null, e.photo_spots || null,
-          newOfficialUrl, eventId, e.description || null,
-          e.latitude != null ? parseFloat(e.latitude) : null,
-          e.longitude != null ? parseFloat(e.longitude) : null,
-        ]
-      )
-    }
+    await client.query(
+      `UPDATE ${SCHEMA}.events SET
+        name            = COALESCE(name, $1),
+        name_en         = COALESCE(name_en, $2),
+        event_date      = ${isPortalReplace ? 'COALESCE($3, event_date)' : 'COALESCE(event_date, $3)'},
+        location        = COALESCE(location, $4),
+        location_en     = COALESCE(location_en, $5),
+        country         = COALESCE(country, $6),
+        country_en      = COALESCE(country_en, $7),
+        race_type       = CASE WHEN race_type IS NULL OR race_type = 'other' THEN COALESCE($8, race_type) ELSE race_type END,
+        entry_url       = COALESCE(entry_url, $9),
+        entry_start     = COALESCE(entry_start, $10),
+        entry_end       = COALESCE(entry_end, $11),
+        reception_place    = COALESCE(reception_place, $12),
+        reception_place_en = COALESCE(reception_place_en, $13),
+        start_place        = COALESCE(start_place, $14),
+        start_place_en     = COALESCE(start_place_en, $15),
+        weather_forecast    = COALESCE(weather_forecast, $16),
+        weather_forecast_en = COALESCE(weather_forecast_en, $17),
+        visa_info            = COALESCE(visa_info, $18),
+        visa_info_en         = COALESCE(visa_info_en, $19),
+        recovery_facilities    = COALESCE(recovery_facilities, $20),
+        recovery_facilities_en = COALESCE(recovery_facilities_en, $21),
+        photo_spots    = COALESCE(photo_spots, $22),
+        photo_spots_en = COALESCE(photo_spots_en, $23),
+        official_url    = ${isPortalReplace ? 'COALESCE($24, official_url)' : 'COALESCE(official_url, $24)'},
+        description      = COALESCE(description, $26),
+        description_en   = COALESCE(description_en, $27),
+        latitude             = COALESCE(latitude, $28),
+        longitude            = COALESCE(longitude, $29)
+       WHERE id = $25`,
+      [
+        e.name || null, e.name_en || null,
+        e.event_date || null,
+        e.location || null, e.location_en || null,
+        e.country || null, e.country_en || null,
+        finalRaceType || null,
+        e.entry_url || null, e.entry_start || null, e.entry_end || null,
+        e.reception_place || null, e.reception_place_en || null,
+        e.start_place || null, e.start_place_en || null,
+        e.weather_forecast || null, e.weather_forecast_en || null,
+        e.visa_info || null, e.visa_info_en || null,
+        e.recovery_facilities || null, e.recovery_facilities_en || null,
+        e.photo_spots || null, e.photo_spots_en || null,
+        newOfficialUrl, eventId,
+        e.description || null, e.description_en || null,
+        e.latitude != null ? parseFloat(e.latitude) : null,
+        e.longitude != null ? parseFloat(e.longitude) : null,
+      ]
+    )
 
     // コースを categories に INSERT（name + distance_km のみ）
     for (const course of extracted.courses || []) {
@@ -501,27 +417,27 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
     const hasQuality = cats.length >= 1 && cats.some((c) => c.distance_km != null)
 
     const { rows: [currentEvent] } = await client.query(
-      `SELECT enrich_attempt_count FROM ${SCHEMA}.events WHERE id = $1`,
+      `SELECT attempt_count FROM ${SCHEMA}.events WHERE id = $1`,
       [eventId]
     )
-    const attemptCount = (currentEvent?.enrich_attempt_count || 0) + 1
+    const attemptCount = (currentEvent?.attempt_count || 0) + 1
 
     if (hasQuality) {
       await client.query(
-        `UPDATE ${SCHEMA}.events SET collected_at = NOW(), last_attempted_at = NOW(), enrich_attempt_count = $2, last_error_type = NULL WHERE id = $1`,
+        `UPDATE ${SCHEMA}.events SET collected_at = NOW(), last_attempted_at = NOW(), attempt_count = $2, last_error_type = NULL WHERE id = $1`,
         [eventId, attemptCount]
       )
     } else if (attemptCount >= 3) {
       // 3回失敗 → 強制通過
       await client.query(
-        `UPDATE ${SCHEMA}.events SET collected_at = NOW(), last_attempted_at = NOW(), enrich_attempt_count = $2, enrich_quality = 'low', last_error_type = 'not_available' WHERE id = $1`,
+        `UPDATE ${SCHEMA}.events SET collected_at = NOW(), last_attempted_at = NOW(), attempt_count = $2, enrich_quality = 'low', last_error_type = 'not_available' WHERE id = $1`,
         [eventId, attemptCount]
       )
       console.log(`  [quality-gate] LOW ${name?.slice(0, 40)} | 3回失敗で強制通過`)
     } else {
       // 品質不足 → 次回再試行
       await client.query(
-        `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = $2, last_error_type = 'empty_response' WHERE id = $1`,
+        `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), attempt_count = $2, last_error_type = 'empty_response' WHERE id = $1`,
         [eventId, attemptCount]
       )
       console.log(`  [quality-gate] FAIL ${name?.slice(0, 40)} | cats:${cats.length} | attempt:${attemptCount}`)
@@ -543,7 +459,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
     }
     try {
       await client.query(
-        `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), enrich_attempt_count = enrich_attempt_count + 1, last_error_type = $2 WHERE id = $1`,
+        `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), attempt_count = attempt_count + 1, last_error_type = $2 WHERE id = $1`,
         [event.id, errorType]
       )
     } catch { /* ignore */ }
