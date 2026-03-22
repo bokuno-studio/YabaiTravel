@@ -1,6 +1,6 @@
 /**
  * ②-B カテゴリ詳細収集スクリプト
- * 1コース1LLM呼び出しで、参加費・制限時間・必携品等を focused に抽出
+ * 1コース1LLM呼び出しで、参加費・制限時間・必携品等を日英同時に抽出
  *
  * 使い方:
  *   node scripts/crawl/enrich-category-detail.js --event-id <uuid>      # イベントの全カテゴリ
@@ -11,39 +11,37 @@ import pg from 'pg'
 import Anthropic from '@anthropic-ai/sdk'
 import {
   loadEnv, fetchHtml, extractRelevantContent, extractRelevantLinks,
-  callLlm, fetchTavilySearch, isPortalUrl, detectLanguage,
+  callLlm, fetchTavilySearch, isPortalUrl,
 } from './lib/enrich-utils.js'
 
 loadEnv()
 const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
 
-// --- LLM プロンプト（カテゴリ専用） ---
-
-const CATEGORY_DETAIL_PROMPT = `あなたはレースイベントの情報抽出エキスパートです。
-指定されたコース（カテゴリ）の詳細情報のみを JSON 形式で抽出してください。
-
-{
-  "entry_fee": "数値（現地通貨、カンマなし。一般枠の標準料金）",
-  "entry_fee_currency": "JPY|USD|EUR 等のISO通貨コード",
-  "start_time": "HH:MM（wave startの場合は '09:00〜15:00' のように全waveの時間幅）",
-  "reception_end": "HH:MM（受付終了時間）",
-  "time_limit": "HH:MM:SS（制限時間）",
-  "cutoff_times": [{"point": "地点名・関門名", "time": "HH:MM"}],
-  "elevation_gain": "数値（累積標高メートル）",
-  "mandatory_gear": "必携品リスト",
-  "poles_allowed": true/false,
-  "itra_points": "数値（ITRAポイント）"
+// --- 必須フィールドテンプレート ---
+// 共通テンプレート: 全種別で必須
+const COMMON_REQUIRED_FIELDS = ['entry_fee']
+// 種別テンプレート: race_type ごとに追加（#318 で順次追加）
+const PER_RACE_TYPE_REQUIRED_FIELDS = {
+  // trail: ['time_limit', 'elevation_gain', 'mandatory_gear', 'cutoff_times'],
+  // marathon: ['time_limit', 'start_time'],
 }
 
-ルール:
-- ページに記載がない項目は null。推測しない
-- entry_fee は1名・一般枠・標準カテゴリの料金（R.LEAGUE割引、早期割引、ペア/チーム料金ではない）
-- wave start イベント（HYROX、スパルタン等）: start_time は全 wave の時間幅で返す
-- cutoff_times はカットオフ地点ごとに配列
-- JSON のみ返す`
+/** race_type に応じた必須フィールドリストを返す */
+function getRequiredFields(raceType) {
+  const raceFields = PER_RACE_TYPE_REQUIRED_FIELDS[raceType] || []
+  return [...new Set([...COMMON_REQUIRED_FIELDS, ...raceFields])]
+}
 
-const CATEGORY_DETAIL_PROMPT_EN = `You are an expert at extracting race event information.
-Extract only the detailed information for the specified course (category) in JSON format.
+/** 必須フィールドがすべて埋まっているか判定 */
+function isRequiredFieldsFilled(extracted, requiredFields) {
+  return requiredFields.every(field => extracted[field] != null)
+}
+
+// --- LLM プロンプト（統一バイリンガル） ---
+
+const CATEGORY_DETAIL_PROMPT = `You are an expert at extracting race event information.
+Extract the detailed information for the specified course (category) in JSON format.
+Provide BOTH Japanese and English for text fields.
 
 {
   "entry_fee": "Number (in local currency, no commas. Standard fee for general entry)",
@@ -51,11 +49,21 @@ Extract only the detailed information for the specified course (category) in JSO
   "start_time": "HH:MM (if wave start, show full range like '09:00-15:00')",
   "reception_end": "HH:MM (check-in deadline)",
   "time_limit": "HH:MM:SS (time limit / cutoff)",
-  "cutoff_times": [{"point": "Checkpoint name", "time": "HH:MM"}],
+  "cutoff_times": [{"point": "Checkpoint name", "point_en": "Checkpoint name in English", "time": "HH:MM"}],
   "elevation_gain": "Number (cumulative elevation gain in meters)",
-  "mandatory_gear": "Mandatory gear list",
+  "mandatory_gear": "必携品リスト（Japanese）",
+  "mandatory_gear_en": "Mandatory gear list (English)",
+  "recommended_gear": "推奨装備（Japanese）",
+  "recommended_gear_en": "Recommended gear (English)",
+  "prohibited_items": "使用禁止品（Japanese）",
+  "prohibited_items_en": "Prohibited items (English)",
+  "reception_place": "受付場所（Japanese）",
+  "reception_place_en": "Check-in location (English)",
+  "start_place": "スタート地点（Japanese）",
+  "start_place_en": "Start location (English)",
   "poles_allowed": true/false,
-  "itra_points": "Number (ITRA points)"
+  "itra_points": "Number (ITRA points)",
+  "finish_rate": "Number (0-100, finish rate percentage)"
 }
 
 Rules:
@@ -63,6 +71,7 @@ Rules:
 - entry_fee is the standard fee for 1 person, general category (NOT R.LEAGUE discount, early bird, pair/team pricing)
 - For wave start events (HYROX, Spartan, etc.): start_time should show the full wave time range
 - cutoff_times is an array per checkpoint
+- For Japanese text fields, provide the original Japanese. For English, translate or use the original if already English
 - Return JSON only`
 
 /**
@@ -96,7 +105,7 @@ function sanitizeTimeLimit(val) {
 
 /**
  * 単一カテゴリの詳細情報を抽出
- * @param {object} event - {id, name, official_url}
+ * @param {object} event - {id, name, official_url, race_type}
  * @param {object} category - {id, name, distance_km}
  * @param {object} opts - {dryRun, html} html は事前取得済みの場合に渡す
  */
@@ -107,12 +116,13 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
 
   try {
     await client.connect()
-    const { id: eventId, name: eventName, official_url: officialUrl } = event
+    const { id: eventId, name: eventName, official_url: officialUrl, race_type: raceType } = event
     const { id: categoryId, name: catName, distance_km: distKm } = category
 
     const catLabel = `${catName}${distKm ? `(${distKm}km)` : ''}`
-    const userMessageJa = `「${eventName}」の${catLabel}コースについて、以下のページ内容から詳細情報を抽出してください。\n\n`
-    const userMessageEn = `Extract detailed information for the "${catLabel}" course of "${eventName}" from the following page content:\n\n`
+    const userMessage = `Extract detailed information for the "${catLabel}" course of "${eventName}" from the following page content.\n「${eventName}」の${catLabel}コースについて、詳細情報を抽出してください。\n\n`
+
+    const requiredFields = getRequiredFields(raceType)
 
     // --- ステップ1: ページ取得 ---
     let html = opts.html || null
@@ -130,24 +140,18 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
     if (html) {
       const content = extractRelevantContent(html)
       if (content.length >= 50) {
-        const lang = detectLanguage(content)
-        const prompt = lang === 'en' ? CATEGORY_DETAIL_PROMPT_EN : CATEGORY_DETAIL_PROMPT
-        const userMsg = lang === 'en' ? userMessageEn : userMessageJa
-        const result = await callLlm(anthropic, prompt, userMsg + content)
+        const result = await callLlm(anthropic, CATEGORY_DETAIL_PROMPT, userMessage + content)
         totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
         extracted = result
       }
     } else {
       // Tavily フォールバック
-      const query = `${eventName} ${catName} ${distKm || ''}km エントリー 制限時間 必携品`
+      const query = `${eventName} ${catName} ${distKm || ''}km entry fee time limit mandatory gear 参加費 制限時間 必携品`
       const searchResults = await fetchTavilySearch(query)
       for (const content of searchResults) {
         if (content.length < 50) continue
         try {
-          const searchLang = detectLanguage(content)
-          const prompt = searchLang === 'en' ? CATEGORY_DETAIL_PROMPT_EN : CATEGORY_DETAIL_PROMPT
-          const userMsg = searchLang === 'en' ? userMessageEn : userMessageJa
-          const result = await callLlm(anthropic, prompt, userMsg + content)
+          const result = await callLlm(anthropic, CATEGORY_DETAIL_PROMPT, userMessage + content)
           totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
           // マージ
           for (const key of Object.keys(result)) {
@@ -158,8 +162,8 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       }
     }
 
-    // --- ステップ2: 関連ページ補完 ---
-    const needsMore = extracted.entry_fee == null || extracted.time_limit == null || extracted.start_time == null
+    // --- ステップ2: 関連ページ補完（必須フィールドが未取得の場合） ---
+    const needsMore = !isRequiredFieldsFilled(extracted, requiredFields)
     if (needsMore && html && fetchedUrl && !isPortalUrl(fetchedUrl)) {
       const relatedLinks = extractRelevantLinks(html, fetchedUrl).slice(0, 3)
       for (const link of relatedLinks) {
@@ -167,10 +171,7 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
           const linkHtml = await fetchHtml(link)
           const linkContent = extractRelevantContent(linkHtml, 5000)
           if (linkContent.length < 50) continue
-          const linkLang = detectLanguage(linkContent)
-          const linkPrompt = linkLang === 'en' ? CATEGORY_DETAIL_PROMPT_EN : CATEGORY_DETAIL_PROMPT
-          const linkUserMsg = linkLang === 'en' ? userMessageEn : userMessageJa
-          const result = await callLlm(anthropic, linkPrompt, linkUserMsg + linkContent)
+          const result = await callLlm(anthropic, CATEGORY_DETAIL_PROMPT, userMessage + linkContent)
           totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
           for (const key of Object.keys(result)) {
             if (key === '_usage') continue
@@ -180,28 +181,28 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       }
     }
 
-    // --- ステップ2.5: Tavily検索でentry_fee補完 ---
-    if (extracted.entry_fee == null && process.env.TAVILY_API_KEY) {
+    // --- ステップ2.5: Tavily検索で必須フィールド補完 ---
+    const stillNeedsMore = !isRequiredFieldsFilled(extracted, requiredFields)
+    if (stillNeedsMore && process.env.TAVILY_API_KEY) {
       try {
-        const feeQuery = `${eventName} ${catName} entry fee registration fee 参加費`
-        const feeResults = await fetchTavilySearch(feeQuery)
-        for (const content of feeResults) {
+        const missingFields = requiredFields.filter(f => extracted[f] == null)
+        const fieldKeywords = missingFields.map(f => {
+          const map = { entry_fee: 'entry fee 参加費', time_limit: '制限時間 time limit', elevation_gain: '累積標高 elevation', mandatory_gear: '必携品 mandatory gear', start_time: 'start time スタート時間' }
+          return map[f] || f
+        }).join(' ')
+        const searchQuery = `${eventName} ${catName} ${fieldKeywords}`
+        const searchResults = await fetchTavilySearch(searchQuery)
+        for (const content of searchResults) {
           if (content.length < 30) continue
           try {
-            const feeLang = detectLanguage(content)
-            const feePrompt = feeLang === 'en' ? CATEGORY_DETAIL_PROMPT_EN : CATEGORY_DETAIL_PROMPT
-            const feeUserMsg = feeLang === 'en' ? userMessageEn : userMessageJa
-            const result = await callLlm(anthropic, feePrompt, feeUserMsg + content)
+            const result = await callLlm(anthropic, CATEGORY_DETAIL_PROMPT, userMessage + content)
             totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
-            if (result.entry_fee != null) {
-              extracted.entry_fee = result.entry_fee
-              if (result.entry_fee_currency != null && extracted.entry_fee_currency == null) {
-                extracted.entry_fee_currency = result.entry_fee_currency
-              }
-              console.log(`  [tavily-fee] Found entry_fee=${result.entry_fee} for ${catLabel}`)
-              break
+            for (const key of Object.keys(result)) {
+              if (key === '_usage') continue
+              if (result[key] != null && extracted[key] == null) extracted[key] = result[key]
             }
-          } catch { /* ignore individual search result failures */ }
+            if (isRequiredFieldsFilled(extracted, requiredFields)) break
+          } catch { /* ignore */ }
         }
       } catch { /* ignore Tavily search failure entirely */ }
     }
@@ -211,7 +212,9 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       return { success: true, categoryId }
     }
 
-    // --- ステップ3: DB 書き込み ---
+    // --- ステップ3: 成功判定 + DB 書き込み ---
+    const allRequiredFilled = isRequiredFieldsFilled(extracted, requiredFields)
+
     const sanitizedTimeLimit = sanitizeTimeLimit(extracted.time_limit)
     const params = [
       categoryId,
@@ -223,9 +226,29 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       extracted.cutoff_times?.length > 0 ? JSON.stringify(extracted.cutoff_times) : null,
       extracted.elevation_gain ?? null,
       extracted.mandatory_gear || null,
+      extracted.mandatory_gear_en || null,
       extracted.poles_allowed ?? null,
       extracted.itra_points ?? null,
+      extracted.recommended_gear || null,
+      extracted.recommended_gear_en || null,
+      extracted.prohibited_items || null,
+      extracted.prohibited_items_en || null,
+      extracted.reception_place || null,
+      extracted.reception_place_en || null,
+      extracted.start_place || null,
+      extracted.start_place_en || null,
+      extracted.finish_rate ?? null,
     ]
+
+    // エラー分類
+    const hasAnyData = Object.keys(extracted).some(k => k !== '_usage' && extracted[k] != null)
+    let errorType = null
+    let errorMessage = null
+    if (!allRequiredFilled) {
+      const missing = requiredFields.filter(f => extracted[f] == null)
+      errorMessage = `Missing required: ${missing.join(', ')}`
+      errorType = hasAnyData ? 'partial' : 'empty_response'
+    }
 
     try {
       await client.query(
@@ -238,44 +261,77 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
           cutoff_times       = CASE WHEN cutoff_times IS NULL OR cutoff_times = '[]'::jsonb THEN $7 ELSE cutoff_times END,
           elevation_gain     = COALESCE(elevation_gain, $8),
           mandatory_gear     = COALESCE(mandatory_gear, $9),
-          poles_allowed      = COALESCE(poles_allowed, $10),
-          itra_points        = COALESCE(itra_points, $11),
-          collected_at       = NOW()
+          mandatory_gear_en  = COALESCE(mandatory_gear_en, $10),
+          poles_allowed      = COALESCE(poles_allowed, $11),
+          itra_points        = COALESCE(itra_points, $12),
+          recommended_gear   = COALESCE(recommended_gear, $13),
+          recommended_gear_en = COALESCE(recommended_gear_en, $14),
+          prohibited_items   = COALESCE(prohibited_items, $15),
+          prohibited_items_en = COALESCE(prohibited_items_en, $16),
+          reception_place    = COALESCE(reception_place, $17),
+          reception_place_en = COALESCE(reception_place_en, $18),
+          start_place        = COALESCE(start_place, $19),
+          start_place_en     = COALESCE(start_place_en, $20),
+          finish_rate        = COALESCE(finish_rate, $21),
+          collected_at       = CASE WHEN ${allRequiredFilled} THEN NOW() ELSE collected_at END,
+          attempt_count      = CASE WHEN ${allRequiredFilled} THEN attempt_count ELSE attempt_count + 1 END,
+          last_error_type    = CASE WHEN ${allRequiredFilled} THEN NULL ELSE $22 END,
+          last_error_message = CASE WHEN ${allRequiredFilled} THEN NULL ELSE $23 END
          WHERE id = $1`,
-        params
+        [...params, errorType, errorMessage]
       )
     } catch (dbErr) {
-      // INSERT失敗時: 問題のあるフィールドを NULL にしてリトライ
+      // DB書き込み失敗時: 問題のあるフィールドを NULL にしてリトライ
       console.warn(`  [cat-detail] DB write failed, retrying with nullified fields: ${dbErr.message?.slice(0, 80)}`)
       await client.query(
         `UPDATE ${SCHEMA}.categories SET
           entry_fee          = COALESCE(entry_fee, $2),
           entry_fee_currency = COALESCE(entry_fee_currency, $3),
-          start_time         = NULL,
-          reception_end      = NULL,
-          time_limit         = NULL,
-          cutoff_times       = CASE WHEN cutoff_times IS NULL OR cutoff_times = '[]'::jsonb THEN $4 ELSE cutoff_times END,
-          elevation_gain     = COALESCE(elevation_gain, $5),
-          mandatory_gear     = COALESCE(mandatory_gear, $6),
+          elevation_gain     = COALESCE(elevation_gain, $4),
+          mandatory_gear     = COALESCE(mandatory_gear, $5),
+          mandatory_gear_en  = COALESCE(mandatory_gear_en, $6),
           poles_allowed      = COALESCE(poles_allowed, $7),
           itra_points        = COALESCE(itra_points, $8),
-          collected_at       = NOW()
+          attempt_count      = attempt_count + 1,
+          last_error_type    = 'db_error',
+          last_error_message = $9
          WHERE id = $1`,
         [
           categoryId,
           params[1],  // entry_fee
           params[2],  // entry_fee_currency
-          params[6],  // cutoff_times
           params[7],  // elevation_gain
           params[8],  // mandatory_gear
-          params[9],  // poles_allowed
-          params[10], // itra_points
+          params[9],  // mandatory_gear_en
+          params[10], // poles_allowed
+          params[11], // itra_points
+          dbErr.message?.slice(0, 200),
         ]
       )
     }
 
-    return { success: true, categoryId }
+    return { success: allRequiredFilled, categoryId }
   } catch (e) {
+    // 致命的エラー: attempt_count を増やしてエラー記録
+    try {
+      const errClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
+      await errClient.connect()
+      let errorType = 'temporary'
+      const msg = e.message || ''
+      if (msg.includes('JSON') || msg.includes('parse') || e instanceof SyntaxError) errorType = 'parse_error'
+      else if (msg.includes('timeout') || msg.includes('ETIMEDOUT')) errorType = 'timeout'
+      else if (msg.includes('empty') || msg.includes('no JSON found')) errorType = 'empty_response'
+      else if (msg.includes('ECONNREFUSED') || msg.includes('relation') || msg.includes('duplicate key')) errorType = 'db_error'
+      await errClient.query(
+        `UPDATE ${SCHEMA}.categories SET
+          attempt_count = attempt_count + 1,
+          last_error_type = $2,
+          last_error_message = $3
+         WHERE id = $1`,
+        [category.id, errorType, msg.slice(0, 200)]
+      )
+      await errClient.end()
+    } catch { /* ignore */ }
     return { success: false, categoryId: category.id, error: e.message }
   } finally {
     try { await client.end() } catch { /* ignore */ }
@@ -299,24 +355,24 @@ async function runCli() {
 
   if (CAT_ID) {
     const { rows } = await client.query(
-      `SELECT c.id, c.name, c.distance_km, e.id as event_id, e.name as event_name, e.official_url
+      `SELECT c.id, c.name, c.distance_km, e.id as event_id, e.name as event_name, e.official_url, e.race_type
        FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id
        WHERE c.id = $1`,
       [CAT_ID]
     )
     targets = rows.map((r) => ({
-      event: { id: r.event_id, name: r.event_name, official_url: r.official_url },
+      event: { id: r.event_id, name: r.event_name, official_url: r.official_url, race_type: r.race_type },
       category: { id: r.id, name: r.name, distance_km: r.distance_km },
     }))
   } else if (EVENT_ID) {
     const { rows: [ev] } = await client.query(
-      `SELECT id, name, official_url FROM ${SCHEMA}.events WHERE id = $1`,
+      `SELECT id, name, official_url, race_type FROM ${SCHEMA}.events WHERE id = $1`,
       [EVENT_ID]
     )
     if (!ev) { console.log('イベントが見つかりません'); process.exit(1) }
     const { rows: cats } = await client.query(
       `SELECT id, name, distance_km FROM ${SCHEMA}.categories
-       WHERE event_id = $1 AND (entry_fee IS NULL OR start_time IS NULL OR time_limit IS NULL)`,
+       WHERE event_id = $1 AND collected_at IS NULL AND attempt_count < 3`,
       [EVENT_ID]
     )
     targets = cats.map((c) => ({ event: ev, category: c }))

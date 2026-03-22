@@ -15,7 +15,7 @@ import { enrichEvent } from './enrich-event.js'
 import { InsufficientBalanceError } from './lib/enrich-utils.js'
 import { enrichCategoryDetail } from './enrich-category-detail.js'
 import { enrichLogi } from './enrich-logi.js'
-import { translateEvent } from './enrich-translate.js'
+// translateEvent は廃止（#316: 全ステップで日英同時抽出に統一）
 
 const envPath = resolve(process.cwd(), '.env.local')
 if (existsSync(envPath)) {
@@ -50,38 +50,25 @@ async function run() {
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
   await client.connect()
 
-  // ②-A 未処理イベント
+  // ②-A 未処理イベント（統一リトライ: collected_at IS NULL AND attempt_count < 3）
   const { rows: needsEventEnrich } = await client.query(
-    `SELECT id, name, official_url, location, country, FALSE as event_done
+    `SELECT id, name, official_url, location, country, race_type, FALSE as event_done
      FROM ${SCHEMA}.events
-     WHERE (
-       collected_at IS NULL
-       OR event_date IS NULL
-       OR location IS NULL
-       OR country IS NULL
-       OR race_type IS NULL
-     )
-     AND (enrich_quality IS NULL OR enrich_quality != 'low')
-     AND last_error_type IS DISTINCT FROM 'bug'
-     AND (
-       last_attempted_at IS NULL
-       OR (last_error_type = 'not_available' AND last_attempted_at < NOW() - INTERVAL '3 days')
-       OR (last_error_type = 'temporary'     AND last_attempted_at < NOW() - INTERVAL '0 days')
-       OR (last_error_type IS NULL           AND last_attempted_at < NOW() - INTERVAL '1 day')
-     )
+     WHERE collected_at IS NULL
+       AND attempt_count < 3
      ORDER BY
-       CASE WHEN collected_at IS NULL THEN 0 ELSE 1 END,
+       CASE WHEN attempt_count = 0 THEN 0 ELSE 1 END,
        updated_at ASC`
   )
 
   // ②-B のみ必要（②-A 完了だがカテゴリ詳細未収集）
   const { rows: needsCatDetail } = await client.query(
-    `SELECT e.id, e.name, e.official_url, e.location, e.country, TRUE as event_done
+    `SELECT e.id, e.name, e.official_url, e.location, e.country, e.race_type, TRUE as event_done
      FROM ${SCHEMA}.events e
      WHERE e.collected_at IS NOT NULL
        AND EXISTS (
          SELECT 1 FROM ${SCHEMA}.categories c
-         WHERE c.event_id = e.id AND c.entry_fee IS NULL AND c.collected_at IS NULL
+         WHERE c.event_id = e.id AND c.collected_at IS NULL AND c.attempt_count < 3
        )
      ORDER BY e.updated_at ASC`
   )
@@ -142,8 +129,8 @@ async function run() {
               else if (msg.includes('empty') || msg.includes('no JSON found')) errorType = 'empty_response'
               else if (msg.includes('ECONNREFUSED') || msg.includes('relation') || msg.includes('duplicate key')) errorType = 'db_error'
               await errClient.query(
-                `UPDATE ${SCHEMA}.events SET last_error_type = $2 WHERE id = $1 AND last_error_type IS NULL`,
-                [event.id, errorType]
+                `UPDATE ${SCHEMA}.events SET last_error_type = $2, last_error_message = $3, attempt_count = attempt_count + 1 WHERE id = $1`,
+                [event.id, errorType, msg.slice(0, 200)]
               )
               await errClient.end()
             } catch { /* ignore */ }
@@ -167,14 +154,14 @@ async function run() {
             await catClient.connect()
             const { rows: pendingCats } = await catClient.query(
               `SELECT id, name, distance_km FROM ${SCHEMA}.categories
-               WHERE event_id = $1 AND entry_fee IS NULL AND collected_at IS NULL`,
+               WHERE event_id = $1 AND collected_at IS NULL AND attempt_count < 3`,
               [event.id]
             )
             await catClient.end()
 
             for (const cat of pendingCats) {
               const catResult = await enrichCategoryDetail(
-                { id: event.id, name: event.name, official_url: event.official_url },
+                { id: event.id, name: event.name, official_url: event.official_url, race_type: event.race_type },
                 cat,
                 { dryRun: DRY_RUN }
               ).catch((e) => {
@@ -211,16 +198,7 @@ async function run() {
           console.log(`  [logi]   ERR ${event.name?.slice(0, 40)} | ${logiResult.error?.slice(0, 50)}`)
         }
 
-        // ⑤: 翻訳（name_en が未設定の場合のみ）
-        const transResult = await translateEvent(event, { dryRun: DRY_RUN }).catch((e) => {
-          if (e instanceof InsufficientBalanceError) throw e
-          return { success: false, error: e.message }
-        })
-        if (transResult.success) {
-          console.log(`  [trans]  OK  ${event.name?.slice(0, 40)}`)
-        } else {
-          console.log(`  [trans]  ERR ${event.name?.slice(0, 40)} | ${transResult.error?.slice(0, 50)}`)
-        }
+        // ⑤ 翻訳は廃止（#316: 全ステップで日英同時抽出に統一）
       })
     )
 
@@ -241,38 +219,6 @@ async function run() {
     // バッチ間ウェイト: Anthropic API レートリミット対策 (#69)
     if (batchIdx < batches.length - 1) {
       await new Promise((r) => setTimeout(r, 3000))
-    }
-  }
-
-  // ⑤ 翻訳パス（メインループとは独立。enrich 済みで未翻訳のイベントを処理）
-  if (!DRY_RUN) {
-    const transClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
-    await transClient.connect()
-    const { rows: untranslated } = await transClient.query(
-      `SELECT id, name FROM ${SCHEMA}.events
-       WHERE collected_at IS NOT NULL AND (
-         (source_language IS DISTINCT FROM 'en' AND name_en IS NULL)
-         OR (source_language = 'en' AND name = name_en)
-       )
-       ORDER BY collected_at DESC LIMIT 20`
-    )
-    await transClient.end()
-
-    if (untranslated.length > 0) {
-      console.log(`\n--- 翻訳パス (${untranslated.length} 件) ---`)
-      for (const ev of untranslated) {
-        try {
-          const r = await translateEvent(ev, { dryRun: false })
-          if (r.success) console.log(`  [trans]  OK  ${ev.name?.slice(0, 40)}`)
-          else console.log(`  [trans]  ERR ${ev.name?.slice(0, 40)} | ${r.error?.slice(0, 50)}`)
-        } catch (e) {
-          if (e instanceof InsufficientBalanceError) {
-            console.log('\n=== API 残高不足により翻訳を中断します ===')
-            break
-          }
-          console.log(`  [trans]  ERR ${ev.name?.slice(0, 40)} | ${e.message?.slice(0, 50)}`)
-        }
-      }
     }
   }
 

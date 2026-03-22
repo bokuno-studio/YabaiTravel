@@ -35,8 +35,8 @@ export type Event = {
   weather_forecast: string | null
   entry_start: string | null
   entry_end: string | null
-  entry_start_typical: string | null
-  entry_end_typical: string | null
+  entry_start_typical: string | null  // 廃止予定（#316）- DB互換のため残置
+  entry_end_typical: string | null   // 廃止予定（#316）- DB互換のため残置
   reception_place: string | null
   start_place: string | null
   prohibited_items: string | null
