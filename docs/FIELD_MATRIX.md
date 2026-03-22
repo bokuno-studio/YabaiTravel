@@ -42,7 +42,7 @@
 | C5 | | スタート時間 | start_time | ②-B enrich-category-detail | 種別テンプレートで必須化可能 |
 | C6 | | 受付締切 | reception_end | ②-B enrich-category-detail | |
 | C7 | | 受付場所 | reception_place / _en | ②-B enrich-category-detail | events からフォールバック |
-| C8 | **○** | スタート地点 | start_place / _en | ②-B enrich-category-detail | events からフォールバック |
+| C8 | | スタート地点 | start_place / _en | ②-A enrich-event（イベント単位） | ②-Aの必須項目。カテゴリ別差異は稀 |
 | C9 | | 累積標高 | elevation_gain | ②-B enrich-category-detail | 種別テンプレートで必須化可能 |
 | C10 | | 必携品 | mandatory_gear / _en | ②-B enrich-category-detail | 種別テンプレートで必須化可能 |
 | C11 | | 推奨装備 | recommended_gear / _en | ②-B enrich-category-detail | |
@@ -108,8 +108,10 @@
 ### 共通テンプレート（②-B カテゴリ詳細）
 
 ```
-entry_fee, start_place
+entry_fee
 ```
+
+※ start_place は②-Aの必須項目として扱う（95%以上のケースでイベント単位で共通のため）
 
 ### 種別テンプレート（別チケットで順次検討・追加）
 
