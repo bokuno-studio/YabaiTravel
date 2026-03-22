@@ -91,7 +91,7 @@ function RaceSpecs({
         <DLRow label={isEn ? 'Required climb pace?' : '登りに必要なペースは？'} value={displayRequiredClimbPace} eventId={eventId} categoryId={category.id} />
         <DLRow label={isEn ? 'Mandatory gear?' : '必携品は？'} value={displayMandatoryGear} multiline eventId={eventId} categoryId={category.id} />
         <DLRow label={isEn ? 'Recommended gear?' : '持っておくと良いものは？'} value={displayRecommendedGear} multiline eventId={eventId} categoryId={category.id} />
-        <DLRow label={isEn ? 'Prohibited items?' : '使用禁止品は？'} value={displayProhibitedItems} eventId={eventId} categoryId={category.id} />
+        <DLRow label={isEn ? 'Prohibited items?' : '使用禁止品は？'} value={displayProhibitedItems} multiline eventId={eventId} categoryId={category.id} />
         <DLRow label={isEn ? 'Poles allowed?' : 'ポールは使える？'} value={category.poles_allowed != null ? (category.poles_allowed ? (isEn ? 'Allowed' : '可') : (isEn ? 'Not allowed' : '不可')) : null} eventId={eventId} categoryId={category.id} />
         <DLRow
           label={isEn ? 'Entry fee?' : '参加費はいくら？'}

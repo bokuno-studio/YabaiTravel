@@ -44,18 +44,44 @@ const raceTypeColors: Record<string, string> = {
   other: 'bg-stone-50 text-stone-600 border-stone-200',
 }
 
-/** Parse PostgreSQL text[] format {"item1","item2"} into a readable newline-separated string */
+/** Parse PostgreSQL text[] format {"item1","item2"} into a readable newline-separated string.
+ *  Handles quoted items that may contain commas, e.g. {"a, b","c"} → "a, b\nc"
+ */
 function formatPostgresArray(val: string | string[] | null | undefined): string | null | undefined {
   if (val == null) return val
   if (Array.isArray(val)) return val.join('\n')
   const s = String(val)
-  const match = s.match(/^\{(.+)\}$/)
-  if (match) {
-    return match[1]
-      .split(',')
-      .map(item => item.replace(/^"|"$/g, '').trim())
-      .filter(Boolean)
-      .join('\n')
+  if (s.startsWith('{') && s.endsWith('}')) {
+    const inner = s.slice(1, -1)
+    if (!inner) return s
+    const items: string[] = []
+    let i = 0
+    while (i < inner.length) {
+      if (inner[i] === '"') {
+        i++
+        let item = ''
+        while (i < inner.length) {
+          if (inner[i] === '\\' && i + 1 < inner.length) {
+            item += inner[i + 1]
+            i += 2
+          } else if (inner[i] === '"') {
+            i++
+            break
+          } else {
+            item += inner[i]
+            i++
+          }
+        }
+        items.push(item.trim())
+        if (i < inner.length && inner[i] === ',') i++
+      } else {
+        const commaIdx = inner.indexOf(',', i)
+        const item = commaIdx === -1 ? inner.slice(i) : inner.slice(i, commaIdx)
+        items.push(item.trim())
+        i = commaIdx === -1 ? inner.length : commaIdx + 1
+      }
+    }
+    return items.filter(Boolean).join('\n')
   }
   return s
 }
@@ -289,7 +315,7 @@ function CategoryDetail() {
   const displayRecoveryFacilities = isEn ? (event.recovery_facilities_en ?? event.recovery_facilities) : event.recovery_facilities
   const displayPhotoSpots = isEn ? (event.photo_spots_en ?? event.photo_spots) : event.photo_spots
   const displayVisaInfo = isEn ? (event.visa_info_en ?? event.visa_info) : event.visa_info
-  const displayEventProhibitedItems = isEn ? (event.prohibited_items_en ?? event.prohibited_items) : event.prohibited_items
+  const displayEventProhibitedItems = formatPostgresArray(isEn ? (event.prohibited_items_en ?? event.prohibited_items) : event.prohibited_items)
 
   return (
     <>
@@ -530,7 +556,7 @@ function CategoryDetail() {
         {(displayEventProhibitedItems || event.furusato_nozei_url) && (
           <SectionCard title={isEn ? 'Other info' : 'その他'}>
             <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
-              {displayEventProhibitedItems && <DLRow label={isEn ? 'Prohibited items?' : '使用禁止品は？'} value={displayEventProhibitedItems} />}
+              {displayEventProhibitedItems && <DLRow label={isEn ? 'Prohibited items?' : '使用禁止品は？'} value={displayEventProhibitedItems} multiline />}
               {event.furusato_nozei_url && (
                 <>
                   <dt className="text-muted-foreground">{isEn ? 'Furusato Nozei?' : 'ふるさと納税は？'}</dt>
