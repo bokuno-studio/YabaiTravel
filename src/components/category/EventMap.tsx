@@ -89,50 +89,41 @@ function EventMap({ latitude, longitude, accommodations, accessRoutes, isEn }: E
 
   return (
     <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={10} onLoad={onLoad}>
-      {/* 会場マーカー */}
+      {/* 会場マーカー 📍 */}
       <Marker
         position={center}
         title={isEn ? 'Venue' : '会場'}
+        label={{ text: '📍', fontSize: '24px' }}
         icon={{
           path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: '#ef4444',
-          fillOpacity: 1,
-          strokeColor: '#fff',
-          strokeWeight: 2,
+          scale: 0,
         }}
       />
 
-      {/* 宿泊マーカー */}
+      {/* 宿泊マーカー 🏨 */}
       {accommodations.filter(a => a.latitude && a.longitude).map((a, i) => (
         <Marker
           key={`hotel-${i}`}
           position={{ lat: a.latitude!, lng: a.longitude! }}
           title={isEn ? (a.recommended_area_en ?? a.recommended_area ?? 'Hotel') : (a.recommended_area ?? 'ホテル')}
+          label={{ text: '🏨', fontSize: '20px' }}
           icon={{
             path: google.maps.SymbolPath.CIRCLE,
-            scale: 6,
-            fillColor: '#3b82f6',
-            fillOpacity: 1,
-            strokeColor: '#fff',
-            strokeWeight: 2,
+            scale: 0,
           }}
         />
       ))}
 
-      {/* 空港・駅マーカー（英語版） */}
+      {/* 空港・駅マーカー（英語版） ✈️ 🚉 */}
       {transitMarkers.map((m, i) => (
         <Marker
           key={`transit-${i}`}
           position={{ lat: m.lat, lng: m.lng }}
           title={m.label}
+          label={{ text: m.label.toLowerCase().includes('airport') ? '✈️' : '🚉', fontSize: '20px' }}
           icon={{
             path: google.maps.SymbolPath.CIRCLE,
-            scale: 6,
-            fillColor: '#22c55e',
-            fillOpacity: 1,
-            strokeColor: '#fff',
-            strokeWeight: 2,
+            scale: 0,
           }}
         />
       ))}
@@ -142,7 +133,7 @@ function EventMap({ latitude, longitude, accommodations, accessRoutes, isEn }: E
         <Polyline
           key={`route-${i}`}
           path={path}
-          options={{ strokeColor: '#6366f1', strokeWeight: 3, strokeOpacity: 0.7 }}
+          options={{ strokeColor: '#ef4444', strokeWeight: 5, strokeOpacity: 0.8 }}
         />
       ))}
     </GoogleMap>
