@@ -75,9 +75,9 @@ Rules:
 - Return JSON only`
 
 /**
- * start_time / reception_end の値を PostgreSQL TIME 互換の HH:MM 形式にサニタイズ
- * - TBA/TBC → null
- * - Wave range "08:00-20:30" → earliest time "08:00"
+ * start_time / reception_end のサニタイズ（TEXT型カラム）
+ * - TBA/TBC/未定 → null
+ * - Wave range "08:00-20:30" → そのまま保存
  * - パースできない場合は null を返す
  */
 function sanitizeTime(val) {
@@ -85,9 +85,8 @@ function sanitizeTime(val) {
   const s = String(val).trim()
   // TBA / TBC → null
   if (/^(TBA|TBC|tba|tbc|未定)$/i.test(s)) return null
-  // Wave range pattern "HH:MM-HH:MM" → take earliest time
-  const rangeMatch = s.match(/^(\d{1,2}:\d{2})\s*[-–~〜]\s*\d{1,2}:\d{2}$/)
-  if (rangeMatch) return rangeMatch[1]
+  // Wave range pattern "HH:MM-HH:MM" → そのまま保存
+  if (/^\d{1,2}:\d{2}\s*[-–~〜]\s*\d{1,2}:\d{2}$/.test(s)) return s
   // Valid HH:MM or HH:MM:SS
   if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) return s
   return null
