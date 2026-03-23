@@ -53,21 +53,22 @@ npx vitest run src/pages/EventDetail.test.tsx
 
 ### バックエンド（クロールスクリプト群）
 
-4種のスクリプトで構成（設計書: `docs/SPEC_BACKEND_FLOW.md`）:
+スクリプト構成（設計書: `docs/SPEC_BACKEND_FLOW.md`）:
 
 | スクリプト | 役割 |
 |-----------|------|
-| `scripts/crawl/collect-races.js` | ① 各ソースからレース名・URL 収集 → `events` 投入 |
-| `scripts/crawl/enrich-event.js` | ②-A 公式ページ + LLM でイベント基本情報・コース一覧を収集 |
-| `scripts/crawl/enrich-category-detail.js` | ②-B コース単位で詳細情報（参加費・制限時間・必携品等）を収集 |
-| `scripts/crawl/enrich-logi.js` | ③ アクセス・宿泊情報収集（東京起点） |
+| `scripts/crawl/collect-races.js` | ① 各ソースからレース名・URL 収集 → `events` 投入（LLMで name_en 同時生成） |
+| `scripts/crawl/enrich-event.js` | ②-A 公式ページ + LLM でイベント基本情報・コース一覧を日英同時抽出 |
+| `scripts/crawl/enrich-category-detail.js` | ②-B コース単位で詳細情報（参加費・制限時間・必携品等）を日英同時抽出 |
+| `scripts/crawl/enrich-logi.js` | ③-ja アクセス・宿泊情報収集（東京起点、日本語版）※ #325 で enrich-logi-ja.js に改名予定 |
 | `scripts/crawl/orchestrator.js` | ④ ②-A → ②-B → ③ を順に呼び出す司令塔 |
 | `scripts/crawl/lib/enrich-utils.js` | ②-A / ②-B 共有ユーティリティ |
-| `scripts/crawl/enrich-detail.js` | 旧版②（CLI後方互換用。orchestrator からは呼ばれない） |
+| `scripts/crawl/sources/*.js` | ① のソースサイト別パーサープラグイン（39ファイル） |
 
-GitHub Actions で自動実行（2つのワークフローに分離）:
-- `crawl-collect.yml`: レース名収集（1日1回 06:00 JST）
-- `crawl-enrich.yml`: 詳細・ロジ収集（3時間おき）
+GitHub Actions で自動実行（3つのワークフローに分離）:
+- `crawl-collect.yml`: レース名収集（1日3回 06:00/14:00/22:00 JST）
+- `crawl-enrich-events.yml`: ②-A + ③ + コスト集計（10分おき）
+- `crawl-enrich-categories.yml`: ②-B（10分おき）
 
 ### DB スキーマ（`yabai_travel`）
 
