@@ -75,11 +75,32 @@ Rules:
 - Return JSON only`
 
 /**
+ * start_time / reception_end の値を PostgreSQL TIME 互換の HH:MM 形式にサニタイズ
+ * - TBA/TBC → null
+ * - Wave range "08:00-20:30" → earliest time "08:00"
+ * - パースできない場合は null を返す
+ */
+function sanitizeTime(val) {
+  if (!val) return null
+  const s = String(val).trim()
+  // TBA / TBC → null
+  if (/^(TBA|TBC|tba|tbc|未定)$/i.test(s)) return null
+  // Wave range pattern "HH:MM-HH:MM" → take earliest time
+  const rangeMatch = s.match(/^(\d{1,2}:\d{2})\s*[-–~〜]\s*\d{1,2}:\d{2}$/)
+  if (rangeMatch) return rangeMatch[1]
+  // Valid HH:MM or HH:MM:SS
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) return s
+  return null
+}
+
+/**
  * time_limit の値を PostgreSQL interval 互換の HH:MM:SS 形式にサニタイズ
  * パースできない場合は null を返す
  */
 function sanitizeTimeLimit(val) {
   if (!val) return null
+  // TBA / TBC → null
+  if (/^(TBA|TBC|tba|tbc|未定)$/i.test(String(val).trim())) return null
   // Already valid HH:MM:SS
   if (/^\d{1,2}:\d{2}:\d{2}$/.test(val)) return val
   // HH:MM format -> add :00
@@ -220,8 +241,8 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       categoryId,
       extracted.entry_fee != null ? parseInt(extracted.entry_fee, 10) : null,
       extracted.entry_fee_currency || null,
-      extracted.start_time || null,
-      extracted.reception_end || null,
+      sanitizeTime(extracted.start_time),
+      sanitizeTime(extracted.reception_end),
       sanitizedTimeLimit,
       extracted.cutoff_times?.length > 0 ? JSON.stringify(extracted.cutoff_times) : null,
       extracted.elevation_gain ?? null,

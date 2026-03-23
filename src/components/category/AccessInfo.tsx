@@ -4,6 +4,16 @@ import type { AccessRoute } from '@/types/event'
 import SectionCard from './SectionCard'
 import DLRow from './DLRow'
 
+/** Extract numeric yen value from a cost string like "¥15,000" or "約15,000円" and convert to USD display */
+function costToUsd(cost: string | null | undefined): string | null {
+  if (!cost) return null
+  const digits = cost.replace(/[^0-9]/g, '')
+  if (!digits) return cost // non-numeric → return as-is
+  const yen = parseInt(digits, 10)
+  if (isNaN(yen) || yen === 0) return cost
+  return `$${Math.round(yen / 150).toLocaleString()}`
+}
+
 interface AccessInfoProps {
   eventId: string
   categoryId?: string
@@ -50,12 +60,12 @@ function AccessInfo({
           <div className="flex items-baseline gap-2 text-sm">
             <span className="min-w-[2.5em] font-semibold text-muted-foreground">{isEn ? 'To' : '往路'}</span>
             <span className={outbound?.total_time_estimate ? '' : 'italic text-muted-foreground/60'}>{outbound?.total_time_estimate ?? '\u2014'}</span>
-            {outbound?.cost_estimate && <span className="font-medium text-primary">{outbound.cost_estimate}</span>}
+            {outbound?.cost_estimate && <span className="font-medium text-primary">{isEn ? costToUsd(outbound.cost_estimate) : outbound.cost_estimate}</span>}
           </div>
           <div className="flex items-baseline gap-2 text-sm">
             <span className="min-w-[2.5em] font-semibold text-muted-foreground">{isEn ? 'From' : '復路'}</span>
             <span className={returnRoute?.total_time_estimate ? '' : 'italic text-muted-foreground/60'}>{returnRoute?.total_time_estimate ?? '\u2014'}</span>
-            {returnRoute?.cost_estimate && <span className="font-medium text-primary">{returnRoute.cost_estimate}</span>}
+            {returnRoute?.cost_estimate && <span className="font-medium text-primary">{isEn ? costToUsd(returnRoute.cost_estimate) : returnRoute.cost_estimate}</span>}
           </div>
         </div>
       </SectionCard>
@@ -66,7 +76,7 @@ function AccessInfo({
         <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
           <DLRow label={isEn ? 'Route?' : 'どのルートで行く？'} value={displayOutboundRoute} multiline eventId={eventId} categoryId={categoryId} />
           <DLRow label={isEn ? 'Travel time?' : '所要時間は？'} value={outbound?.total_time_estimate} eventId={eventId} categoryId={categoryId} />
-          <DLRow label={isEn ? 'Cost estimate?' : '費用の目安は？'} value={outbound?.cost_estimate} eventId={eventId} categoryId={categoryId} />
+          <DLRow label={isEn ? 'Cost estimate?' : '費用の目安は？'} value={isEn ? costToUsd(outbound?.cost_estimate) : outbound?.cost_estimate} eventId={eventId} categoryId={categoryId} />
           <DLRow label={isEn ? 'Cash needed?' : '現金は必要？'} value={outbound?.cash_required != null ? (outbound.cash_required ? (isEn ? 'Yes' : 'あり') : (isEn ? 'No' : 'なし')) : null} eventId={eventId} categoryId={categoryId} />
           <dt className="text-muted-foreground">{isEn ? 'Booking site?' : '予約サイトは？'}</dt>
           <dd className={outbound?.booking_url ? '' : 'italic text-muted-foreground/60'}>
@@ -87,7 +97,7 @@ function AccessInfo({
             <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
               <DLRow label={isEn ? 'Route?' : 'どのルートで行く？'} value={displayReturnRoute} multiline eventId={eventId} categoryId={categoryId} />
               <DLRow label={isEn ? 'Travel time?' : '所要時間は？'} value={returnRoute?.total_time_estimate} eventId={eventId} categoryId={categoryId} />
-              <DLRow label={isEn ? 'Cost estimate?' : '費用の目安は？'} value={returnRoute?.cost_estimate} eventId={eventId} categoryId={categoryId} />
+              <DLRow label={isEn ? 'Cost estimate?' : '費用の目安は？'} value={isEn ? costToUsd(returnRoute?.cost_estimate) : returnRoute?.cost_estimate} eventId={eventId} categoryId={categoryId} />
             </dl>
           </>
         )}

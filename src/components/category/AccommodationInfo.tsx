@@ -3,6 +3,8 @@ import type { Accommodation, StayStatus } from '@/types/event'
 import SectionCard from './SectionCard'
 import DLRow from './DLRow'
 
+const JPY_PER_USD = 150
+
 interface AccommodationInfoProps {
   eventId: string
   categoryId?: string
@@ -31,7 +33,7 @@ function AccommodationInfo({ eventId, categoryId, stayStatus, stayStatusLabel, a
           label={isEn ? 'Accommodation cost?' : '宿泊費の目安は？'}
           value={accommodations.some((a) => a.avg_cost_3star != null)
             ? (isEn
-              ? `Approx. ${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()} JPY`
+              ? `Approx. $${Math.round((accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star ?? 0) / JPY_PER_USD).toLocaleString()}`
               : `\u7D04${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}\u5186`)
             : null}
           eventId={eventId} categoryId={categoryId}

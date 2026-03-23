@@ -8,6 +8,18 @@ const FX_TO_JPY: Record<string, number> = {
   PHP: 3, THB: 4, SGD: 112,
 }
 
+const JPY_PER_USD = 150
+
+/** Extract numeric yen value from a cost string like "¥15,000" or "約15,000円" and convert to USD display */
+function costToUsd(cost: string | null | undefined): string | null {
+  if (!cost) return null
+  const digits = cost.replace(/[^0-9]/g, '')
+  if (!digits) return cost
+  const yen = parseInt(digits, 10)
+  if (isNaN(yen) || yen === 0) return cost
+  return `$${Math.round(yen / JPY_PER_USD).toLocaleString()}`
+}
+
 interface CostBreakdownProps {
   event: Event
   category: Category
@@ -22,6 +34,7 @@ function CostBreakdown({ event, category, outbound, returnRoute, accommodations,
   const entryFeeJpy = category.entry_fee != null
     ? Math.round(category.entry_fee * (FX_TO_JPY[category.entry_fee_currency || 'JPY'] || 1))
     : null
+  const entryFeeUsd = entryFeeJpy != null ? Math.round(entryFeeJpy / JPY_PER_USD) : null
   const originalCurrency = category.entry_fee_currency || 'JPY'
   const isConverted = originalCurrency !== 'JPY' && category.entry_fee != null
 
@@ -33,7 +46,9 @@ function CostBreakdown({ event, category, outbound, returnRoute, accommodations,
       {event.total_cost_estimate && (
         <DLRow
           label={isEn ? 'Total cost' : 'トータルコスト'}
-          value={`\u00a5${parseInt(event.total_cost_estimate, 10).toLocaleString()}`}
+          value={isEn
+            ? `$${Math.round(parseInt(event.total_cost_estimate, 10) / JPY_PER_USD).toLocaleString()}`
+            : `\u00a5${parseInt(event.total_cost_estimate, 10).toLocaleString()}`}
           eventId={event.id}
           categoryId={category.id}
         />
@@ -41,18 +56,24 @@ function CostBreakdown({ event, category, outbound, returnRoute, accommodations,
       <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
         <DLRow
           label={isEn ? 'Entry fee' : '参加費'}
-          value={entryFeeJpy != null
-            ? `\u00a5${entryFeeJpy.toLocaleString()}${isConverted ? ` (${category.entry_fee!.toLocaleString()} ${originalCurrency})` : ''}`
-            : null}
+          value={isEn
+            ? (entryFeeUsd != null
+              ? `$${entryFeeUsd.toLocaleString()}${isConverted ? ` (${category.entry_fee!.toLocaleString()} ${originalCurrency})` : ''}`
+              : null)
+            : (entryFeeJpy != null
+              ? `\u00a5${entryFeeJpy.toLocaleString()}${isConverted ? ` (${category.entry_fee!.toLocaleString()} ${originalCurrency})` : ''}`
+              : null)}
           eventId={event.id}
           categoryId={category.id}
         />
-        <DLRow label={isEn ? 'Outbound transport' : '行きの交通費'} value={outbound?.cost_estimate} eventId={event.id} categoryId={category.id} />
-        <DLRow label={isEn ? 'Return transport' : '帰りの交通費'} value={returnRoute?.cost_estimate} eventId={event.id} categoryId={category.id} />
+        <DLRow label={isEn ? 'Outbound transport' : '行きの交通費'} value={isEn ? costToUsd(outbound?.cost_estimate) : outbound?.cost_estimate} eventId={event.id} categoryId={category.id} />
+        <DLRow label={isEn ? 'Return transport' : '帰りの交通費'} value={isEn ? costToUsd(returnRoute?.cost_estimate) : returnRoute?.cost_estimate} eventId={event.id} categoryId={category.id} />
         <DLRow
           label={isEn ? 'Accommodation' : '宿泊費'}
           value={accommodations.some((a) => a.avg_cost_3star != null)
-            ? `\u00a5${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}`
+            ? (isEn
+              ? `$${Math.round((accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star ?? 0) / JPY_PER_USD).toLocaleString()}`
+              : `\u00a5${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}`)
             : null}
           eventId={event.id}
           categoryId={category.id}
