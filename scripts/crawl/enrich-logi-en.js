@@ -159,6 +159,25 @@ async function fetchRoute(origin, destination, apiKey) {
   }
 }
 
+/** LLM で経路の費用を推定 */
+async function estimateCostWithLlm(anthropic, fromName, toLocation, routeDetail) {
+  try {
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 50,
+      messages: [{
+        role: 'user',
+        content: `Estimate the one-way transit cost from "${fromName}" to "${toLocation}". Route: ${routeDetail || 'unknown'}. Return ONLY the cost like "~$30" or "~€25". If unknown, return "null".`,
+      }],
+    })
+    const text = msg.content[0].type === 'text' ? msg.content[0].text.trim() : ''
+    if (!text || text === 'null' || text === 'unknown') return null
+    return text
+  } catch {
+    return null
+  }
+}
+
 // --- LLM フォールバック ---
 
 /** LLM で空港・駅情報を取得（Google API 失敗時のフォールバック） */
@@ -235,12 +254,14 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
         if (airports.length > 0 || stations.length > 0) {
           result = {}
 
+          const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
           // 空港1
           if (airports[0]) {
             const route = await fetchRoute(airports[0], location, apiKey)
             result.airport_1_name = airports[0].name
             result.airport_1_access = route ? `${route.time}${route.routeDetail ? ' — ' + route.routeDetail : ''}` : null
-            result.airport_1_cost = route?.cost || null
+            result.airport_1_cost = await estimateCostWithLlm(anthropic, airports[0].name, location, route?.routeDetail)
             airport1Coords = { lat: airports[0].lat, lng: airports[0].lng }
             airport1Polyline = route?.polyline || null
           }
@@ -249,7 +270,7 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
             const route = await fetchRoute(airports[1], location, apiKey)
             result.airport_2_name = airports[1].name
             result.airport_2_access = route ? `${route.time}${route.routeDetail ? ' — ' + route.routeDetail : ''}` : null
-            result.airport_2_cost = route?.cost || null
+            result.airport_2_cost = await estimateCostWithLlm(anthropic, airports[1].name, location, route?.routeDetail)
             airport2Coords = { lat: airports[1].lat, lng: airports[1].lng }
             airport2Polyline = route?.polyline || null
           }
@@ -258,7 +279,7 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
             const route = await fetchRoute(stations[0], location, apiKey)
             result.station_name = stations[0].name
             result.station_access = route ? `${route.time}${route.routeDetail ? ' — ' + route.routeDetail : ''}` : null
-            result.station_cost = route?.cost || null
+            result.station_cost = await estimateCostWithLlm(anthropic, stations[0].name, location, route?.routeDetail)
             stationCoords = { lat: stations[0].lat, lng: stations[0].lng }
             stationPolyline = route?.polyline || null
           }
