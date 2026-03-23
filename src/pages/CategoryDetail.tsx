@@ -22,6 +22,7 @@ import AccessInfo from '@/components/category/AccessInfo'
 import AccommodationInfo from '@/components/category/AccommodationInfo'
 import CostBreakdown from '@/components/category/CostBreakdown'
 import CourseMap from '@/components/category/CourseMap'
+import EventMap from '@/components/category/EventMap'
 import PastEditions from '@/components/category/PastEditions'
 import SectionCard from '@/components/category/SectionCard'
 import DLRow from '@/components/category/DLRow'
@@ -495,6 +496,19 @@ function CategoryDetail() {
           displayReturnRoute={displayReturnRoute}
           displayOutboundShuttle={displayOutboundShuttle}
         />
+
+        {/* 地図 */}
+        {event.latitude && event.longitude && (
+          <SectionCard title={isEn ? 'Map' : '地図'}>
+            <EventMap
+              latitude={event.latitude}
+              longitude={event.longitude}
+              accommodations={accommodations}
+              accessRoutes={accessRoutes}
+              isEn={isEn}
+            />
+          </SectionCard>
+        )}
 
         {/* 宿泊情報 */}
         <AccommodationInfo

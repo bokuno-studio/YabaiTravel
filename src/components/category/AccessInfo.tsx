@@ -118,21 +118,21 @@ function AccessInfo({
                     <>
                       <DLRow label="Nearest Airport" value={venueData.airport_1_name} eventId={eventId} categoryId={categoryId} />
                       <DLRow label="Airport to Venue" value={venueData.airport_1_access} eventId={eventId} categoryId={categoryId} />
-                      {venueData.airport_1_cost && <DLRow label="Cost" value={venueData.airport_1_cost} eventId={eventId} categoryId={categoryId} />}
+                      <DLRow label="Cost" value={venueData.airport_1_cost} eventId={eventId} categoryId={categoryId} />
                     </>
                   )}
                   {venueData.airport_2_name && (
                     <>
                       <DLRow label="Alternative Airport" value={venueData.airport_2_name} eventId={eventId} categoryId={categoryId} />
                       <DLRow label="Airport to Venue" value={venueData.airport_2_access} eventId={eventId} categoryId={categoryId} />
-                      {venueData.airport_2_cost && <DLRow label="Cost" value={venueData.airport_2_cost} eventId={eventId} categoryId={categoryId} />}
+                      <DLRow label="Cost" value={venueData.airport_2_cost} eventId={eventId} categoryId={categoryId} />
                     </>
                   )}
                   {venueData.station_name && (
                     <>
                       <DLRow label="Nearest Station" value={venueData.station_name} eventId={eventId} categoryId={categoryId} />
                       <DLRow label="Station to Venue" value={venueData.station_access} eventId={eventId} categoryId={categoryId} />
-                      {venueData.station_cost && <DLRow label="Cost" value={venueData.station_cost} eventId={eventId} categoryId={categoryId} />}
+                      <DLRow label="Cost" value={venueData.station_cost} eventId={eventId} categoryId={categoryId} />
                     </>
                   )}
                 </dl>
