@@ -31,6 +31,40 @@ function isVenueAccess(route: AccessRoute | undefined): boolean {
   return route?.origin_type === 'venue_access'
 }
 
+/** Structured venue access JSON from enrich-logi-en */
+interface VenueAccessData {
+  airport_1_name?: string
+  airport_1_distance_km?: number
+  airport_1_access?: string | null
+  airport_1_lat?: number
+  airport_1_lng?: number
+  airport_2_name?: string
+  airport_2_distance_km?: number
+  airport_2_access?: string | null
+  airport_2_lat?: number
+  airport_2_lng?: number
+  station_name?: string
+  station_distance_km?: number
+  station_access?: string | null
+  station_lat?: number
+  station_lng?: number
+}
+
+/** Try to parse route_detail_en as structured JSON; return null on failure */
+function parseVenueAccessJson(raw: string | null | undefined): VenueAccessData | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    // Validate it's an object with at least one expected key
+    if (typeof parsed === 'object' && parsed !== null && (parsed.airport_1_name || parsed.station_name)) {
+      return parsed as VenueAccessData
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 function AccessInfo({
   eventId,
   categoryId,
@@ -80,15 +114,46 @@ function AccessInfo({
       {/* どうやって行く？ / Venue Access */}
       <SectionCard title={isVenueAccess(outbound) ? 'Venue Access' : (isEn ? 'How to get there?' : 'どうやって行く？')} icon={<Train className="h-4 w-4 text-primary" />}>
         {isVenueAccess(outbound) ? (
-          /* venue_access mode: show airports/stations as pre-formatted text */
-          <div className="space-y-3 text-sm">
-            {displayOutboundRoute && (
-              <pre className="whitespace-pre-wrap font-sans leading-relaxed text-foreground">{displayOutboundRoute}</pre>
-            )}
-            {!displayOutboundRoute && (
-              <p className="italic text-muted-foreground/60">{'\u2014'}</p>
-            )}
-          </div>
+          /* venue_access mode: show airports/stations as DL rows */
+          (() => {
+            const venueData = parseVenueAccessJson(outbound?.route_detail_en)
+            if (venueData) {
+              return (
+                <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
+                  {venueData.airport_1_name && (
+                    <>
+                      <DLRow label="Nearest Airport" value={venueData.airport_1_name} eventId={eventId} categoryId={categoryId} />
+                      <DLRow label="Distance" value={venueData.airport_1_distance_km != null ? `${venueData.airport_1_distance_km}km` : null} eventId={eventId} categoryId={categoryId} />
+                      <DLRow label="Airport to Venue" value={venueData.airport_1_access} eventId={eventId} categoryId={categoryId} />
+                    </>
+                  )}
+                  {venueData.airport_2_name && (
+                    <>
+                      <DLRow label="Alternative Airport" value={venueData.airport_2_name} eventId={eventId} categoryId={categoryId} />
+                      <DLRow label="Distance" value={venueData.airport_2_distance_km != null ? `${venueData.airport_2_distance_km}km` : null} eventId={eventId} categoryId={categoryId} />
+                      <DLRow label="Airport to Venue" value={venueData.airport_2_access} eventId={eventId} categoryId={categoryId} />
+                    </>
+                  )}
+                  {venueData.station_name && (
+                    <>
+                      <DLRow label="Nearest Station" value={venueData.station_name} eventId={eventId} categoryId={categoryId} />
+                      <DLRow label="Station to Venue" value={venueData.station_access} eventId={eventId} categoryId={categoryId} />
+                    </>
+                  )}
+                </dl>
+              )
+            }
+            // Fallback: display raw text for old-format data
+            return (
+              <div className="space-y-3 text-sm">
+                {displayOutboundRoute ? (
+                  <pre className="whitespace-pre-wrap font-sans leading-relaxed text-foreground">{displayOutboundRoute}</pre>
+                ) : (
+                  <p className="italic text-muted-foreground/60">{'\u2014'}</p>
+                )}
+              </div>
+            )
+          })()
         ) : (
           /* tokyo origin mode: outbound/return */
           <>

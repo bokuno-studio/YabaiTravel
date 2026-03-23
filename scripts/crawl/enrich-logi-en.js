@@ -1,6 +1,7 @@
 /**
  * ③-en 英語版ロジ（会場アクセスポイント情報）
- * 起点を固定せず、会場側の到達方法を提示（国際的な訪問者向け）
+ * Google Places API + Google Routes API で空港・駅を検索し、会場へのルートを取得
+ * 取得できない場合のみ LLM フォールバック
  *
  * 使い方:
  *   node scripts/crawl/enrich-logi-en.js                   # 全未処理件
@@ -23,187 +24,264 @@ if (existsSync(envPath)) {
 
 const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
 
-/** LLM 呼び出しのラッパー（429時に60秒待機してリトライ） */
-async function callLlmWithRetry(anthropic, params) {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      return await anthropic.messages.create(params)
-    } catch (e) {
-      if (attempt === 0 && e.status === 429) {
-        console.warn(`  [LLM] 429 rate limit、60秒待機してリトライ...`)
-        await new Promise((r) => setTimeout(r, 60000))
-        continue
-      }
-      throw e
-    }
+// --- Google APIs ---
+
+/** 2点間の距離（km）を計算 */
+function calcDistKm(lat1, lng1, lat2, lng2) {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)))
+}
+
+/** Google Text Search API で周辺の主要空港を検索（レビュー数スコアリング） */
+async function searchNearbyAirports(location, apiKey) {
+  // まず会場のジオコーディング
+  const geocodeRes = await fetch(
+    `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&key=${apiKey}`
+  )
+  const geocodeData = await geocodeRes.json()
+  if (!geocodeData.results?.length) return []
+  const { lat, lng } = geocodeData.results[0].geometry.location
+
+  // Text Search で空港を検索（300km圏内）
+  const placesRes = await fetch(
+    `https://maps.googleapis.com/maps/api/place/textsearch/json?query=airport&location=${lat},${lng}&radius=300000&key=${apiKey}`
+  )
+  const placesData = await placesRes.json()
+  if (!placesData.results?.length) return []
+
+  // フィルタ + レビュー数÷距離でスコアリング → 上位2件
+  const airports = placesData.results
+    .filter(p => {
+      if (!p.geometry?.location) return false
+      if (!p.types?.includes('airport')) return false
+      const n = p.name.toLowerCase()
+      if (n.includes('heli')) return false
+      if (n.includes('aerodrom') || n.includes('aérodrom') || n.includes('aeródromo')) return false
+      if (n.includes('parking') || n.includes('lounge') || n.includes('rental') || n.includes('taxi') || n.includes('shuttle')) return false
+      return true
+    })
+    .map(p => {
+      const dist = calcDistKm(lat, lng, p.geometry.location.lat, p.geometry.location.lng)
+      const ratings = p.user_ratings_total || 0
+      const score = ratings / Math.max(dist, 1)
+      return { name: p.name, lat: p.geometry.location.lat, lng: p.geometry.location.lng, distance_km: dist, score }
+    })
+    .filter(p => p.distance_km <= 300)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 2)
+
+  return airports
+}
+
+/** Google Places API で周辺の駅を検索 */
+async function searchNearbyStations(location, apiKey) {
+  const geocodeRes = await fetch(
+    `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&key=${apiKey}`
+  )
+  const geocodeData = await geocodeRes.json()
+  if (!geocodeData.results?.length) return []
+  const { lat, lng } = geocodeData.results[0].geometry.location
+
+  const placesRes = await fetch(
+    `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=30000&type=train_station&key=${apiKey}`
+  )
+  const placesData = await placesRes.json()
+  if (!placesData.results?.length) return []
+
+  const stations = placesData.results
+    .filter(p => p.geometry?.location)
+    .map(p => {
+      const dist = calcDistKm(lat, lng, p.geometry.location.lat, p.geometry.location.lng)
+      return { name: p.name, lat: p.geometry.location.lat, lng: p.geometry.location.lng, distance_km: dist }
+    })
+    .sort((a, b) => a.distance_km - b.distance_km)
+    .slice(0, 1)
+
+  return stations
+}
+
+/** Google Routes API でルート情報を取得（polyline 付き） */
+async function fetchRoute(origin, destination, apiKey) {
+  try {
+    const res = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+      method: 'POST',
+      headers: {
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
+        destination: { address: destination },
+        travelMode: 'TRANSIT',
+        languageCode: 'en',
+      }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    if (!data.routes?.length) return null
+
+    const route = data.routes[0]
+    const durationSecs = parseInt(route.duration, 10)
+    const distanceKm = Math.round((route.distanceMeters || 0) / 1000)
+    const h = Math.floor(durationSecs / 3600)
+    const m = Math.floor((durationSecs % 3600) / 60)
+    const timeStr = h > 0 ? `${h}h${m > 0 ? ` ${m}min` : ''}` : `${m}min`
+    const polyline = route.polyline?.encodedPolyline || null
+
+    return { time: timeStr, distance_km: distanceKm, polyline }
+  } catch {
+    return null
   }
 }
 
-/** LLM で会場アクセスポイント情報を取得 */
-async function fetchVenueAccessWithLlm(anthropic, location, country) {
-  const msg = await callLlmWithRetry(anthropic, {
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 2000,
-    messages: [
-      {
-        role: 'user',
-        content: `For the event venue at "${location}" (${country || 'unknown country'}), provide access information for international visitors.
+// --- LLM フォールバック ---
 
+/** LLM で空港・駅情報を取得（Google API 失敗時のフォールバック） */
+async function fetchVenueAccessWithLlm(anthropic, location, country) {
+  const msg = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 500,
+    messages: [{
+      role: 'user',
+      content: `For "${location}" (${country || 'unknown'}), list the 2 nearest airports and 1 nearest train station.
 Return JSON only:
 {
-  "nearest_airports": [
-    {"name": "Airport Name", "code": "XXX", "distance_km": 75, "transport_to_venue": "Bus 2h (~$30) or rental car 1.5h"}
-  ],
-  "nearest_stations": [
-    {"name": "Station Name", "network": "SNCF/JR/etc", "transport_to_venue": "Walk 10min"}
-  ],
-  "access_summary": "Brief English summary of how to reach the venue from major transport hubs",
-  "access_summary_ja": "会場への主要交通手段からのアクセス方法（日本語）",
-  "recommended_area": "Best area to stay near the venue (English)",
-  "recommended_area_ja": "会場付近のおすすめ宿泊エリア（日本語）",
-  "avg_cost_3star": number (USD per night for 3-star hotel, number only)
+  "airport_1_name": "Name (CODE)",
+  "airport_1_distance_km": number,
+  "airport_1_access": "transport mode and time",
+  "airport_2_name": "Name (CODE)",
+  "airport_2_distance_km": number,
+  "airport_2_access": "transport mode and time",
+  "station_name": "Station Name",
+  "station_distance_km": number,
+  "station_access": "transport mode and time"
 }
-Return JSON only.`,
-      },
-    ],
+JSON only.`,
+    }],
   })
-
   const text = msg.content[0].type === 'text' ? msg.content[0].text : ''
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) return null
   return JSON.parse(jsonMatch[0])
 }
 
-/**
- * 空港・駅情報をフォーマットしてルート詳細テキストに変換
- */
-function formatAccessRouteDetail(venueInfo) {
-  if (!venueInfo) return { en: null, ja: null }
-
-  const parts_en = []
-  const parts_ja = []
-
-  // 空港情報
-  if (venueInfo.nearest_airports?.length > 0) {
-    parts_en.push('Nearest airports:')
-    parts_ja.push('最寄り空港:')
-    for (const apt of venueInfo.nearest_airports) {
-      const code = apt.code ? ` (${apt.code})` : ''
-      const dist = apt.distance_km ? ` - ${apt.distance_km}km` : ''
-      parts_en.push(`  ${apt.name}${code}${dist}: ${apt.transport_to_venue}`)
-      parts_ja.push(`  ${apt.name}${code}${dist}: ${apt.transport_to_venue}`)
-    }
-  }
-
-  // 駅情報
-  if (venueInfo.nearest_stations?.length > 0) {
-    parts_en.push('Nearest stations:')
-    parts_ja.push('最寄り駅:')
-    for (const stn of venueInfo.nearest_stations) {
-      const net = stn.network ? ` (${stn.network})` : ''
-      parts_en.push(`  ${stn.name}${net}: ${stn.transport_to_venue}`)
-      parts_ja.push(`  ${stn.name}${net}: ${stn.transport_to_venue}`)
-    }
-  }
-
-  return {
-    en: parts_en.length > 0 ? parts_en.join('\n') : null,
-    ja: parts_ja.length > 0 ? parts_ja.join('\n') : null,
-  }
-}
+// --- メイン ---
 
 /**
- * 単一イベントの英語版ロジ情報をエンリッチする（会場アクセスポイント）
- * @param {object} event - {id, name, location, country}
- * @param {object} opts - {dryRun: boolean}
- * @returns {Promise<{success: boolean, eventId: string, error?: string}>}
+ * 単一イベントの英語版ロジ情報をエンリッチする
  */
 export async function enrichLogiEn(event, opts = { dryRun: false }) {
   const { dryRun = false } = opts
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const apiKey = process.env.GOOGLE_DIRECTIONS_API_KEY
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
 
   try {
     await client.connect()
-
     const { id: eventId, name, location, country } = event
 
     if (!location) {
       return { success: false, eventId, error: 'no location' }
     }
 
-    // 既存の venue_access ルートを確認
-    const existingRoutes = await client.query(
+    // 既存チェック
+    const existing = await client.query(
       `SELECT id FROM ${SCHEMA}.access_routes WHERE event_id = $1 AND origin_type = 'venue_access'`,
       [eventId]
     )
-    // 既にあればスキップ（COALESCE で空フィールド補完のみ）
-    const existingId = existingRoutes.rows[0]?.id || null
+    if (existing.rows.length > 0) {
+      return { success: true, eventId } // 既にあればスキップ
+    }
 
-    const venueInfo = await fetchVenueAccessWithLlm(anthropic, location, country)
-    if (!venueInfo) {
-      return { success: false, eventId, error: 'LLM returned no venue access info' }
+    let result = null
+    // Coordinates and polylines from Google API (not available from LLM)
+    let airport1Coords = null
+    let airport1Polyline = null
+    let airport2Coords = null
+    let airport2Polyline = null
+    let stationCoords = null
+    let stationPolyline = null
+
+    // Google API で取得を試みる
+    if (apiKey) {
+      try {
+        const airports = await searchNearbyAirports(location, apiKey)
+        const stations = await searchNearbyStations(location, apiKey)
+
+        if (airports.length > 0 || stations.length > 0) {
+          result = {}
+
+          // 空港1
+          if (airports[0]) {
+            const route = await fetchRoute(airports[0], location, apiKey)
+            result.airport_1_name = airports[0].name
+            result.airport_1_distance_km = airports[0].distance_km
+            result.airport_1_access = route ? `${route.time}` : null
+            result.airport_1_lat = airports[0].lat
+            result.airport_1_lng = airports[0].lng
+            airport1Coords = { lat: airports[0].lat, lng: airports[0].lng }
+            airport1Polyline = route?.polyline || null
+          }
+          // 空港2
+          if (airports[1]) {
+            const route = await fetchRoute(airports[1], location, apiKey)
+            result.airport_2_name = airports[1].name
+            result.airport_2_distance_km = airports[1].distance_km
+            result.airport_2_access = route ? `${route.time}` : null
+            result.airport_2_lat = airports[1].lat
+            result.airport_2_lng = airports[1].lng
+            airport2Coords = { lat: airports[1].lat, lng: airports[1].lng }
+            airport2Polyline = route?.polyline || null
+          }
+          // 駅
+          if (stations[0]) {
+            const route = await fetchRoute(stations[0], location, apiKey)
+            result.station_name = stations[0].name
+            result.station_distance_km = stations[0].distance_km
+            result.station_access = route ? `${route.time}` : null
+            result.station_lat = stations[0].lat
+            result.station_lng = stations[0].lng
+            stationCoords = { lat: stations[0].lat, lng: stations[0].lng }
+            stationPolyline = route?.polyline || null
+          }
+        }
+      } catch (e) {
+        console.warn(`  [Google API] ${e.message?.slice(0, 60)}, falling back to LLM`)
+      }
+    }
+
+    // LLM フォールバック
+    if (!result) {
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+      result = await fetchVenueAccessWithLlm(anthropic, location, country)
+    }
+
+    if (!result) {
+      return { success: false, eventId, error: 'no access info obtained' }
     }
 
     if (dryRun) {
-      console.log(`  DRY enrichLogi-en: ${name?.slice(0, 40)} | airports: ${venueInfo.nearest_airports?.length ?? 0}, stations: ${venueInfo.nearest_stations?.length ?? 0}`)
+      console.log(`  DRY enrichLogi-en: ${name?.slice(0, 40)} | airport1: ${result.airport_1_name || '?'} | station: ${result.station_name || '?'}`)
       return { success: true, eventId }
     }
 
-    // ルート詳細をフォーマット
-    const routeDetail = formatAccessRouteDetail(venueInfo)
-    const accessSummaryEn = venueInfo.access_summary || null
-    const accessSummaryJa = venueInfo.access_summary_ja || null
+    // DB保存: route_detail_en に構造化JSONを保存
+    // Use airport_1 coordinates as primary lat/lng for the access_routes record
+    const primaryCoords = airport1Coords || stationCoords
+    const accessData = JSON.stringify(result)
+    // Combine all polylines into a single JSON array for route_polyline
+    const polylines = [airport1Polyline, airport2Polyline, stationPolyline].filter(Boolean)
+    const routePolyline = polylines.length > 0 ? JSON.stringify(polylines) : null
 
-    // route_detail にフォーマットされた空港・駅情報、route_detail_en にアクセスサマリーを格納
-    const routeDetailJa = [routeDetail.ja, accessSummaryJa].filter(Boolean).join('\n\n') || null
-    const routeDetailEn = [routeDetail.en, accessSummaryEn].filter(Boolean).join('\n\n') || null
-
-    if (existingId) {
-      // 既存レコードの空フィールドのみ補完
-      await client.query(
-        `UPDATE ${SCHEMA}.access_routes SET
-          route_detail     = COALESCE(route_detail, $2),
-          route_detail_en  = COALESCE(route_detail_en, $3)
-         WHERE id = $1`,
-        [existingId, routeDetailJa, routeDetailEn]
-      )
-    } else {
-      // 新規 INSERT
-      await client.query(
-        `INSERT INTO ${SCHEMA}.access_routes
-          (event_id, direction, origin_type, route_detail, route_detail_en)
-         VALUES ($1, 'access', 'venue_access', $2, $3)`,
-        [eventId, routeDetailJa, routeDetailEn]
-      )
-    }
-
-    // accommodations: 空フィールド補完のみ（③-ja で既に作成済みの場合が多い）
-    const recommendedAreaEn = venueInfo.recommended_area || null
-    const recommendedAreaJa = venueInfo.recommended_area_ja || null
-    const avgCost = venueInfo.avg_cost_3star != null ? parseInt(venueInfo.avg_cost_3star, 10) : null
-
-    const existingAccom = await client.query(
-      `SELECT id FROM ${SCHEMA}.accommodations WHERE event_id = $1`,
-      [eventId]
+    await client.query(
+      `INSERT INTO ${SCHEMA}.access_routes
+        (event_id, direction, origin_type, route_detail_en, latitude, longitude, route_polyline)
+       VALUES ($1, 'access', 'venue_access', $2, $3, $4, $5)`,
+      [eventId, accessData, primaryCoords?.lat || null, primaryCoords?.lng || null, routePolyline]
     )
-
-    if (existingAccom.rows.length > 0) {
-      await client.query(
-        `UPDATE ${SCHEMA}.accommodations SET
-          recommended_area    = COALESCE(recommended_area, $2),
-          recommended_area_en = COALESCE(recommended_area_en, $3),
-          avg_cost_3star      = COALESCE(avg_cost_3star, $4)
-         WHERE id = $1`,
-        [existingAccom.rows[0].id, recommendedAreaJa, recommendedAreaEn, avgCost]
-      )
-    } else {
-      await client.query(
-        `INSERT INTO ${SCHEMA}.accommodations (event_id, recommended_area, recommended_area_en, avg_cost_3star)
-         VALUES ($1, $2, $3, $4)`,
-        [eventId, recommendedAreaJa, recommendedAreaEn, avgCost]
-      )
-    }
 
     return { success: true, eventId }
   } catch (e) {
@@ -213,7 +291,7 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
   }
 }
 
-// --- CLI エントリーポイント ---
+// --- CLI ---
 
 async function runCli() {
   const args = process.argv.slice(2)
@@ -271,7 +349,6 @@ async function runCli() {
   console.log(`OK: ${ok}, Errors: ${errors}`)
 }
 
-// スクリプトとして直接実行された場合のみ CLI を起動
 if (process.argv[1]?.endsWith('enrich-logi-en.js')) {
   runCli().catch((e) => {
     console.error(e)

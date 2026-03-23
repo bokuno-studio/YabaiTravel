@@ -93,6 +93,10 @@ export type AccessRoute = {
   route_detail_en?: string | null
   shuttle_available_en?: string | null
   origin_name_en?: string | null
+  // map columns
+  latitude?: number | null
+  longitude?: number | null
+  route_polyline?: string | null
 }
 
 /** yabai_travel.accommodations テーブルの型 */
@@ -102,6 +106,8 @@ export type Accommodation = {
   recommended_area: string | null
   recommended_area_en: string | null
   avg_cost_3star: number | null
+  latitude: number | null
+  longitude: number | null
   updated_at: string | null
 }
 

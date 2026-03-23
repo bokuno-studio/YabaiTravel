@@ -27,7 +27,7 @@ if (existsSync(envPath)) {
 
 const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
 
-/** Routes API でルート情報を取得（Directions API Legacy の後継） */
+/** Routes API でルート情報を取得（Directions API Legacy の後継、polyline 付き） */
 async function fetchGoogleDirections(origin, destination, apiKey) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 15000)
@@ -36,7 +36,7 @@ async function fetchGoogleDirections(origin, destination, apiKey) {
       method: 'POST',
       headers: {
         'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'routes.duration,routes.legs.duration,routes.legs.steps.navigationInstruction,routes.legs.steps.transitDetails',
+        'X-Goog-FieldMask': 'routes.duration,routes.polyline.encodedPolyline,routes.legs.duration,routes.legs.steps.navigationInstruction,routes.legs.steps.transitDetails',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -68,7 +68,7 @@ function formatDuration(durationStr) {
   return `約${m}分`
 }
 
-/** Routes API レスポンスからルート情報を抽出 */
+/** Routes API レスポンスからルート情報を抽出（polyline 付き） */
 function parseGoogleDirections(data) {
   if (!data.routes || data.routes.length === 0) return null
 
@@ -81,11 +81,13 @@ function parseGoogleDirections(data) {
     .map((s) => s.navigationInstruction?.instructions || '')
     .filter(Boolean)
     .join(' → ')
+  const polyline = route.polyline?.encodedPolyline || null
 
   return {
     route_detail: steps || null,
     total_time_estimate: totalTime,
     cost_estimate: null,
+    route_polyline: polyline,
   }
 }
 
@@ -401,6 +403,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
         transitAccessible,
         route.route_detail_en || null,
         route.shuttle_available_en || null,
+        route.route_polyline || null,
       ]
       if (existingDirections.has(direction)) {
         await client.query(
@@ -412,15 +415,16 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
             taxi_estimate       = COALESCE(taxi_estimate, $6),
             transit_accessible  = COALESCE(transit_accessible, $7),
             route_detail_en     = COALESCE(route_detail_en, $8),
-            shuttle_available_en = COALESCE(shuttle_available_en, $9)
+            shuttle_available_en = COALESCE(shuttle_available_en, $9),
+            route_polyline      = COALESCE(route_polyline, $10)
            WHERE id = $1`,
           [existingIds[direction], ...params]
         )
       } else {
         await client.query(
           `INSERT INTO ${SCHEMA}.access_routes
-            (event_id, direction, origin_type, route_detail, total_time_estimate, cost_estimate, shuttle_available, taxi_estimate, transit_accessible, route_detail_en, shuttle_available_en)
-           VALUES ($1, $2, 'tokyo', $3, $4, $5, $6, $7, $8, $9, $10)`,
+            (event_id, direction, origin_type, route_detail, total_time_estimate, cost_estimate, shuttle_available, taxi_estimate, transit_accessible, route_detail_en, shuttle_available_en, route_polyline)
+           VALUES ($1, $2, 'tokyo', $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
           [eventId, direction, ...params]
         )
       }

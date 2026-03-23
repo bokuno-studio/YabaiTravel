@@ -19,6 +19,42 @@ import {
 loadEnv()
 const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
 
+// --- Google API ヘルパー ---
+
+const PRICE_LEVEL_TO_JPY = { 1: 5000, 2: 10000, 3: 15000, 4: 25000 }
+
+async function geocodeLocation(location, apiKey) {
+  const res = await fetch(
+    `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&key=${apiKey}`
+  )
+  const data = await res.json()
+  if (data.status !== 'OK' || !data.results?.length) return null
+  return data.results[0].geometry.location // { lat, lng }
+}
+
+async function searchNearbyLodging(lat, lng, apiKey) {
+  const res = await fetch(
+    `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=10000&type=lodging&key=${apiKey}`
+  )
+  const data = await res.json()
+  if (data.status !== 'OK') return []
+  return data.results.slice(0, 5).map((p) => ({
+    name: p.name,
+    place_id: p.place_id,
+    lat: p.geometry.location.lat,
+    lng: p.geometry.location.lng,
+    price_level: p.price_level,
+  }))
+}
+
+async function getPlaceNameInLanguage(placeId, language, apiKey) {
+  const res = await fetch(
+    `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=name&language=${language}&key=${apiKey}`
+  )
+  const data = await res.json()
+  return data.result?.name || null
+}
+
 // --- LLM プロンプト（バイリンガル統合） ---
 
 const EVENT_SYSTEM_PROMPT = `You are an expert at extracting race event information.
@@ -363,6 +399,68 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
         e.longitude != null ? parseFloat(e.longitude) : null,
       ]
     )
+
+    // --- Google Geocoding API: LLM の location から正確な座標を取得 ---
+    const googleApiKey = process.env.GOOGLE_DIRECTIONS_API_KEY
+    let venueLat = e.latitude != null ? parseFloat(e.latitude) : null
+    let venueLng = e.longitude != null ? parseFloat(e.longitude) : null
+
+    if (googleApiKey && e.location) {
+      try {
+        const geo = await geocodeLocation(e.location, googleApiKey)
+        if (geo) {
+          venueLat = geo.lat
+          venueLng = geo.lng
+          // Geocoding 結果で座標を上書き（LLM より精度が高い）
+          await client.query(
+            `UPDATE ${SCHEMA}.events SET latitude = $2, longitude = $3 WHERE id = $1`,
+            [eventId, venueLat, venueLng]
+          )
+          console.log(`  [geocode] ${name?.slice(0, 40)} | ${e.location} → ${venueLat.toFixed(4)}, ${venueLng.toFixed(4)}`)
+        }
+      } catch (geoErr) {
+        console.log(`  [geocode] WARN ${name?.slice(0, 40)} | ${geoErr.message?.slice(0, 60)}`)
+      }
+    }
+
+    // --- Google Places API: 会場周辺の宿泊施設を取得 ---
+    if (googleApiKey && venueLat != null && venueLng != null) {
+      try {
+        const lodgings = await searchNearbyLodging(venueLat, venueLng, googleApiKey)
+        if (lodgings.length > 0) {
+          // 既存の accommodations を確認
+          const { rows: existingAccoms } = await client.query(
+            `SELECT id FROM ${SCHEMA}.accommodations WHERE event_id = $1`,
+            [eventId]
+          )
+          // 既存レコードがなければ Google Places の結果を挿入
+          if (existingAccoms.length === 0) {
+            for (const lodge of lodgings) {
+              // 日本語名と英語名を取得
+              let nameJa = lodge.name
+              let nameEn = lodge.name
+              try {
+                const ja = await getPlaceNameInLanguage(lodge.place_id, 'ja', googleApiKey)
+                if (ja) nameJa = ja
+                const en = await getPlaceNameInLanguage(lodge.place_id, 'en', googleApiKey)
+                if (en) nameEn = en
+              } catch { /* Place Details 失敗は無視 */ }
+
+              const avgCost = lodge.price_level != null ? (PRICE_LEVEL_TO_JPY[lodge.price_level] || null) : null
+
+              await client.query(
+                `INSERT INTO ${SCHEMA}.accommodations (event_id, recommended_area, recommended_area_en, avg_cost_3star, latitude, longitude)
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [eventId, nameJa, nameEn, avgCost, lodge.lat, lodge.lng]
+              )
+            }
+            console.log(`  [places] ${name?.slice(0, 40)} | ${lodgings.length} lodgings inserted`)
+          }
+        }
+      } catch (placesErr) {
+        console.log(`  [places] WARN ${name?.slice(0, 40)} | ${placesErr.message?.slice(0, 60)}`)
+      }
+    }
 
     // コースを categories に INSERT（name + distance_km のみ）
     for (const course of extracted.courses || []) {
