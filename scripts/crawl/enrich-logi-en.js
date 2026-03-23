@@ -103,14 +103,14 @@ async function searchNearbyStations(location, apiKey) {
   return stations
 }
 
-/** Google Routes API でルート情報を取得（polyline 付き） */
+/** Google Routes API でルート情報を取得（経路詳細 + 費用 + polyline） */
 async function fetchRoute(origin, destination, apiKey) {
   try {
     const res = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
       method: 'POST',
       headers: {
         'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline',
+        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.steps.navigationInstruction,routes.legs.steps.transitDetails,routes.legs.steps.travelMode',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -126,13 +126,34 @@ async function fetchRoute(origin, destination, apiKey) {
 
     const route = data.routes[0]
     const durationSecs = parseInt(route.duration, 10)
-    const distanceKm = Math.round((route.distanceMeters || 0) / 1000)
     const h = Math.floor(durationSecs / 3600)
     const m = Math.floor((durationSecs % 3600) / 60)
     const timeStr = h > 0 ? `${h}h${m > 0 ? ` ${m}min` : ''}` : `${m}min`
     const polyline = route.polyline?.encodedPolyline || null
 
-    return { time: timeStr, distance_km: distanceKm, polyline }
+    // 経路詳細を抽出（Transit steps）
+    const leg = route.legs?.[0]
+    const steps = (leg?.steps || [])
+      .filter(s => s.transitDetails || s.navigationInstruction?.instructions)
+      .map(s => {
+        if (s.transitDetails) {
+          const td = s.transitDetails
+          const line = td.transitLine?.nameShort || td.transitLine?.name || ''
+          const vehicle = td.transitLine?.vehicle?.type || s.travelMode || ''
+          const stops = [td.stopDetails?.departureStop?.name, td.stopDetails?.arrivalStop?.name].filter(Boolean).join(' → ')
+          return [vehicle, line, stops].filter(Boolean).join(' ')
+        }
+        return s.navigationInstruction?.instructions || ''
+      })
+      .filter(Boolean)
+    const routeDetail = steps.join(' → ') || null
+
+    // 費用（transit fare）
+    // Routes API v2 doesn't return fare info directly; we'll estimate based on transit type
+    // For now, set cost to null (to be improved later)
+    const cost = null
+
+    return { time: timeStr, routeDetail, cost, polyline }
   } catch {
     return null
   }
@@ -218,10 +239,8 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
           if (airports[0]) {
             const route = await fetchRoute(airports[0], location, apiKey)
             result.airport_1_name = airports[0].name
-            result.airport_1_distance_km = airports[0].distance_km
-            result.airport_1_access = route ? `${route.time}` : null
-            result.airport_1_lat = airports[0].lat
-            result.airport_1_lng = airports[0].lng
+            result.airport_1_access = route ? `${route.time}${route.routeDetail ? ' — ' + route.routeDetail : ''}` : null
+            result.airport_1_cost = route?.cost || null
             airport1Coords = { lat: airports[0].lat, lng: airports[0].lng }
             airport1Polyline = route?.polyline || null
           }
@@ -229,10 +248,8 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
           if (airports[1]) {
             const route = await fetchRoute(airports[1], location, apiKey)
             result.airport_2_name = airports[1].name
-            result.airport_2_distance_km = airports[1].distance_km
-            result.airport_2_access = route ? `${route.time}` : null
-            result.airport_2_lat = airports[1].lat
-            result.airport_2_lng = airports[1].lng
+            result.airport_2_access = route ? `${route.time}${route.routeDetail ? ' — ' + route.routeDetail : ''}` : null
+            result.airport_2_cost = route?.cost || null
             airport2Coords = { lat: airports[1].lat, lng: airports[1].lng }
             airport2Polyline = route?.polyline || null
           }
@@ -240,10 +257,8 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
           if (stations[0]) {
             const route = await fetchRoute(stations[0], location, apiKey)
             result.station_name = stations[0].name
-            result.station_distance_km = stations[0].distance_km
-            result.station_access = route ? `${route.time}` : null
-            result.station_lat = stations[0].lat
-            result.station_lng = stations[0].lng
+            result.station_access = route ? `${route.time}${route.routeDetail ? ' — ' + route.routeDetail : ''}` : null
+            result.station_cost = route?.cost || null
             stationCoords = { lat: stations[0].lat, lng: stations[0].lng }
             stationPolyline = route?.polyline || null
           }

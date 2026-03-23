@@ -34,20 +34,14 @@ function isVenueAccess(route: AccessRoute | undefined): boolean {
 /** Structured venue access JSON from enrich-logi-en */
 interface VenueAccessData {
   airport_1_name?: string
-  airport_1_distance_km?: number
   airport_1_access?: string | null
-  airport_1_lat?: number
-  airport_1_lng?: number
+  airport_1_cost?: string | null
   airport_2_name?: string
-  airport_2_distance_km?: number
   airport_2_access?: string | null
-  airport_2_lat?: number
-  airport_2_lng?: number
+  airport_2_cost?: string | null
   station_name?: string
-  station_distance_km?: number
   station_access?: string | null
-  station_lat?: number
-  station_lng?: number
+  station_cost?: string | null
 }
 
 /** Try to parse route_detail_en as structured JSON; return null on failure */
@@ -123,21 +117,22 @@ function AccessInfo({
                   {venueData.airport_1_name && (
                     <>
                       <DLRow label="Nearest Airport" value={venueData.airport_1_name} eventId={eventId} categoryId={categoryId} />
-                      <DLRow label="Distance" value={venueData.airport_1_distance_km != null ? `${venueData.airport_1_distance_km}km` : null} eventId={eventId} categoryId={categoryId} />
                       <DLRow label="Airport to Venue" value={venueData.airport_1_access} eventId={eventId} categoryId={categoryId} />
+                      {venueData.airport_1_cost && <DLRow label="Cost" value={venueData.airport_1_cost} eventId={eventId} categoryId={categoryId} />}
                     </>
                   )}
                   {venueData.airport_2_name && (
                     <>
                       <DLRow label="Alternative Airport" value={venueData.airport_2_name} eventId={eventId} categoryId={categoryId} />
-                      <DLRow label="Distance" value={venueData.airport_2_distance_km != null ? `${venueData.airport_2_distance_km}km` : null} eventId={eventId} categoryId={categoryId} />
                       <DLRow label="Airport to Venue" value={venueData.airport_2_access} eventId={eventId} categoryId={categoryId} />
+                      {venueData.airport_2_cost && <DLRow label="Cost" value={venueData.airport_2_cost} eventId={eventId} categoryId={categoryId} />}
                     </>
                   )}
                   {venueData.station_name && (
                     <>
                       <DLRow label="Nearest Station" value={venueData.station_name} eventId={eventId} categoryId={categoryId} />
                       <DLRow label="Station to Venue" value={venueData.station_access} eventId={eventId} categoryId={categoryId} />
+                      {venueData.station_cost && <DLRow label="Cost" value={venueData.station_cost} eventId={eventId} categoryId={categoryId} />}
                     </>
                   )}
                 </dl>
