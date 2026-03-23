@@ -14,7 +14,8 @@ import { resolve } from 'path'
 import { enrichEvent } from './enrich-event.js'
 import { InsufficientBalanceError } from './lib/enrich-utils.js'
 import { enrichCategoryDetail } from './enrich-category-detail.js'
-import { enrichLogi } from './enrich-logi.js'
+import { enrichLogi } from './enrich-logi-ja.js'
+import { enrichLogiEn } from './enrich-logi-en.js'
 // translateEvent は廃止（#316: 全ステップで日英同時抽出に統一）
 
 const envPath = resolve(process.cwd(), '.env.local')
@@ -103,6 +104,8 @@ async function run() {
   let totalCatErr = 0
   let totalLogiOk = 0
   let totalLogiErr = 0
+  let totalLogiEnOk = 0
+  let totalLogiEnErr = 0
 
   for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
     const batch = batches[batchIdx]
@@ -192,10 +195,23 @@ async function run() {
         })
         if (logiResult.success) {
           totalLogiOk++
-          console.log(`  [logi]   OK  ${event.name?.slice(0, 40)}`)
+          console.log(`  [logi-ja] OK  ${event.name?.slice(0, 40)}`)
         } else {
           totalLogiErr++
-          console.log(`  [logi]   ERR ${event.name?.slice(0, 40)} | ${logiResult.error?.slice(0, 50)}`)
+          console.log(`  [logi-ja] ERR ${event.name?.slice(0, 40)} | ${logiResult.error?.slice(0, 50)}`)
+        }
+
+        // ③-en: 英語版ロジ（会場アクセスポイント）
+        const logiEnResult = await enrichLogiEn(enrichedEvent, { dryRun: DRY_RUN }).catch((e) => {
+          if (e instanceof InsufficientBalanceError) throw e
+          return { success: false, error: e.message }
+        })
+        if (logiEnResult.success) {
+          totalLogiEnOk++
+          console.log(`  [logi-en] OK  ${event.name?.slice(0, 40)}`)
+        } else {
+          totalLogiEnErr++
+          console.log(`  [logi-en] ERR ${event.name?.slice(0, 40)} | ${logiEnResult.error?.slice(0, 50)}`)
         }
 
         // ⑤ 翻訳は廃止（#316: 全ステップで日英同時抽出に統一）
@@ -257,7 +273,8 @@ async function run() {
   console.log('\n=== サマリー ===')
   console.log(`イベント情報:     OK ${totalEventOk} / ERR ${totalEventErr}`)
   console.log(`カテゴリ詳細:     OK ${totalCatOk} / ERR ${totalCatErr}`)
-  console.log(`ロジエンリッチ:   OK ${totalLogiOk} / ERR ${totalLogiErr}`)
+  console.log(`ロジ（日本語）:   OK ${totalLogiOk} / ERR ${totalLogiErr}`)
+  console.log(`ロジ（英語）:     OK ${totalLogiEnOk} / ERR ${totalLogiEnErr}`)
 
   // アラート Issue 自動起票は無効化（Telegram レポートに一本化）
 }

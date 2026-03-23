@@ -76,8 +76,8 @@ export type Event = {
 export type AccessRoute = {
   id: string
   event_id: string
-  direction: 'outbound' | 'return'
-  origin_type: 'tokyo' | 'nearest_airport'
+  direction: 'outbound' | 'return' | 'access'
+  origin_type: 'tokyo' | 'nearest_airport' | 'venue_access'
   origin_name: string | null
   origin_airport_code: string | null
   route_detail: string | null

@@ -283,9 +283,13 @@ function CategoryDetail() {
     )
   }
 
-  const outbound = accessRoutes.find((r) => r.direction === 'outbound')
-  const returnRoute = accessRoutes.find((r) => r.direction === 'return')
-  const sameStartGoal = !returnRoute || (outbound?.route_detail === returnRoute?.route_detail)
+  // #325: isEn の場合は venue_access ルートを優先表示、なければ tokyo にフォールバック
+  const venueAccessRoute = accessRoutes.find((r) => r.origin_type === 'venue_access')
+  const tokyoOutbound = accessRoutes.find((r) => r.direction === 'outbound' && r.origin_type !== 'venue_access')
+  const tokyoReturn = accessRoutes.find((r) => r.direction === 'return' && r.origin_type !== 'venue_access')
+  const outbound = isEn && venueAccessRoute ? venueAccessRoute : tokyoOutbound
+  const returnRoute = isEn && venueAccessRoute ? undefined : tokyoReturn
+  const sameStartGoal = isEn && venueAccessRoute ? true : (!tokyoReturn || (tokyoOutbound?.route_detail === tokyoReturn?.route_detail))
   const stayStatus = category.stay_status ?? event.stay_status
 
   const dateDisplay = event.event_date_end && event.event_date_end !== event.event_date
