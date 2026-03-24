@@ -501,19 +501,35 @@ export async function enrichLogi(event, opts = { dryRun: false, force: false }) 
       let accomCost = accomInfo.avg_cost_3star != null ? parseInt(accomInfo.avg_cost_3star, 10) : null
       // LLMが異常値を返した場合はnullに（1泊1000円未満はありえない）
       if (accomCost != null && (accomCost < 1000 || isNaN(accomCost))) accomCost = null
+
+      // recommended_areaからgeocodeして座標を取得
+      let accomLat = null, accomLng = null
+      const geoApiKey = process.env.GOOGLE_DIRECTIONS_API_KEY
+      if (geoApiKey && accomArea) {
+        try {
+          const geoQuery = location ? `${accomArea} ${location}` : accomArea
+          const geoRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(geoQuery)}&key=${geoApiKey}`)
+          const geoData = await geoRes.json()
+          if (geoData.results?.length) {
+            accomLat = geoData.results[0].geometry.location.lat
+            accomLng = geoData.results[0].geometry.location.lng
+          }
+        } catch { /* ignore */ }
+      }
+
       if (existingAccom.rows.length > 0) {
         const accomSetClause = force
-          ? 'recommended_area = $2, avg_cost_3star = $3, recommended_area_en = $4'
-          : 'recommended_area = COALESCE(recommended_area, $2), avg_cost_3star = COALESCE(avg_cost_3star, $3), recommended_area_en = COALESCE(recommended_area_en, $4)'
+          ? 'recommended_area = $2, avg_cost_3star = $3, recommended_area_en = $4, latitude = $5, longitude = $6'
+          : 'recommended_area = COALESCE(recommended_area, $2), avg_cost_3star = COALESCE(avg_cost_3star, $3), recommended_area_en = COALESCE(recommended_area_en, $4), latitude = COALESCE(latitude, $5), longitude = COALESCE(longitude, $6)'
         await client.query(
           `UPDATE ${SCHEMA}.accommodations SET ${accomSetClause} WHERE id = $1`,
-          [existingAccom.rows[0].id, accomArea, accomCost, accomAreaEn]
+          [existingAccom.rows[0].id, accomArea, accomCost, accomAreaEn, accomLat, accomLng]
         )
       } else {
         await client.query(
-          `INSERT INTO ${SCHEMA}.accommodations (event_id, recommended_area, avg_cost_3star, recommended_area_en)
-           VALUES ($1, $2, $3, $4)`,
-          [eventId, accomArea, accomCost, accomAreaEn]
+          `INSERT INTO ${SCHEMA}.accommodations (event_id, recommended_area, avg_cost_3star, recommended_area_en, latitude, longitude)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [eventId, accomArea, accomCost, accomAreaEn, accomLat, accomLng]
         )
       }
     }
