@@ -227,6 +227,26 @@ async function estimateCostWithLlm(anthropic, fromName, toLocation, routeDetail,
   }
 }
 
+/** LLM で空港/駅→会場の公共交通ルートを推定（Google Transit API未対応地域用） */
+async function estimateTransitWithLlm(anthropic, fromName, toLocation, country) {
+  try {
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 200,
+      messages: [{
+        role: 'user',
+        content: `Public transit route from "${fromName}" to "${toLocation}" in ${country || 'unknown'}. Reply in JSON: {"time":"~1h 30min","route":"1. Take X line to Y\\n2. Transfer to Z","cost":"~1500 JPY"}. Use ISO currency code. If no public transit exists, return {"time":null,"route":null,"cost":null}. JSON only.`,
+      }],
+    })
+    const text = msg.content[0].type === 'text' ? msg.content[0].text.trim() : ''
+    const match = text.match(/\{[\s\S]*\}/)
+    if (!match) return null
+    return JSON.parse(match[0])
+  } catch {
+    return null
+  }
+}
+
 /** LLM でタクシーコストを推定（公共交通なしの場合） */
 async function estimateTaxiCostWithLlm(anthropic, fromName, toLocation, distanceKm, country) {
   try {
@@ -290,6 +310,7 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
   try {
     await client.connect()
     const { id: eventId, name, location, country } = event
+    const isJapan = !country || country === '日本' || country.toLowerCase() === 'japan'
 
     if (!location) {
       return { success: false, eventId, error: 'no location' }
@@ -324,53 +345,63 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
 
           const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+          // ルート取得のヘルパー: Google API → LLMフォールバック（日本） or タクシー（海外）
+          const getRouteInfo = async (point, label) => {
+            const route = isJapan ? null : await fetchRoute(point, location, apiKey)
+            if (route) {
+              return {
+                access: `${route.time}${route.routeDetail ? '\n' + route.routeDetail : ''}`,
+                cost: await estimateCostWithLlm(anthropic, point.name, location, route.routeDetail, country),
+                polyline: route.polyline || null,
+              }
+            }
+            // Google API失敗 or 日本（Transit API未対応）
+            if (isJapan) {
+              const llm = await estimateTransitWithLlm(anthropic, point.name, location, country)
+              if (llm?.route) {
+                return { access: `${llm.time || ''}\n${llm.route}`, cost: llm.cost || null, polyline: null }
+              }
+            }
+            // 公共交通なし → タクシー
+            return {
+              access: `Taxi ~${Math.round(point.distance_km)}km`,
+              cost: await estimateTaxiCostWithLlm(anthropic, point.name, location, point.distance_km, country),
+              polyline: null,
+            }
+          }
+
           // 空港1
           if (airports[0]) {
-            const route = await fetchRoute(airports[0], location, apiKey)
+            const info = await getRouteInfo(airports[0], 'airport_1')
             result.airport_1_name = airports[0].name
             result.airport_1_lat = airports[0].lat
             result.airport_1_lng = airports[0].lng
-            if (route) {
-              result.airport_1_access = `${route.time}${route.routeDetail ? '\n' + route.routeDetail : ''}`
-              result.airport_1_cost = await estimateCostWithLlm(anthropic, airports[0].name, location, route.routeDetail, country)
-            } else {
-              result.airport_1_access = `Taxi ~${Math.round(airports[0].distance_km)}km`
-              result.airport_1_cost = await estimateTaxiCostWithLlm(anthropic, airports[0].name, location, airports[0].distance_km, country)
-            }
+            result.airport_1_access = info.access
+            result.airport_1_cost = info.cost
             airport1Coords = { lat: airports[0].lat, lng: airports[0].lng }
-            airport1Polyline = route?.polyline || null
+            airport1Polyline = info.polyline
           }
           // 空港2
           if (airports[1]) {
-            const route = await fetchRoute(airports[1], location, apiKey)
+            const info = await getRouteInfo(airports[1], 'airport_2')
             result.airport_2_name = airports[1].name
             result.airport_2_lat = airports[1].lat
             result.airport_2_lng = airports[1].lng
-            if (route) {
-              result.airport_2_access = `${route.time}${route.routeDetail ? '\n' + route.routeDetail : ''}`
-              result.airport_2_cost = await estimateCostWithLlm(anthropic, airports[1].name, location, route.routeDetail, country)
-            } else {
-              result.airport_2_access = `Taxi ~${Math.round(airports[1].distance_km)}km`
-              result.airport_2_cost = await estimateTaxiCostWithLlm(anthropic, airports[1].name, location, airports[1].distance_km, country)
-            }
+            result.airport_2_access = info.access
+            result.airport_2_cost = info.cost
             airport2Coords = { lat: airports[1].lat, lng: airports[1].lng }
-            airport2Polyline = route?.polyline || null
+            airport2Polyline = info.polyline
           }
           // 駅
           if (stations[0]) {
-            const route = await fetchRoute(stations[0], location, apiKey)
+            const info = await getRouteInfo(stations[0], 'station')
             result.station_name = stations[0].name
             result.station_lat = stations[0].lat
             result.station_lng = stations[0].lng
-            if (route) {
-              result.station_access = `${route.time}${route.routeDetail ? '\n' + route.routeDetail : ''}`
-              result.station_cost = await estimateCostWithLlm(anthropic, stations[0].name, location, route.routeDetail, country)
-            } else {
-              result.station_access = `Taxi ~${Math.round(stations[0].distance_km)}km`
-              result.station_cost = await estimateTaxiCostWithLlm(anthropic, stations[0].name, location, stations[0].distance_km, country)
-            }
+            result.station_access = info.access
+            result.station_cost = info.cost
             stationCoords = { lat: stations[0].lat, lng: stations[0].lng }
-            stationPolyline = route?.polyline || null
+            stationPolyline = info.polyline
           }
         }
       } catch (e) {
