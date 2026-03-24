@@ -50,21 +50,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Cancel Stripe subscription if exists
     if (profile.stripe_subscription_id) {
       try {
-        await stripe.subscriptions.cancel(profile.stripe_subscription_id)
-        console.log({ subscriptionId: profile.stripe_subscription_id }, 'Cancelled Stripe subscription')
+        await stripe.subscriptions.update(profile.stripe_subscription_id, { cancel_at_period_end: true })
+        console.log({ subscriptionId: profile.stripe_subscription_id }, 'Scheduled Stripe subscription cancellation at period end')
       } catch (stripeErr) {
         console.error({ err: stripeErr }, 'Failed to cancel Stripe subscription')
         // Continue with local cancellation even if Stripe API fails
       }
     }
 
-    // Update user profile: downgrade to free
+    // キャンセル予約のみ。実際のダウングレードはStripe webhook (customer.subscription.deleted) で行う
+    // membership は 'supporter' のまま維持し、期間末まで利用可能
     await supabase
       .from('user_profiles')
       .update({
-        membership: 'free',
-        membership_expires_at: null,
-        stripe_subscription_id: null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)

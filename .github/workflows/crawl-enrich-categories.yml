@@ -4,7 +4,7 @@ name: Enrich Categories (②-B)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/10 * * * *'  # 10分おき
+    - cron: '30 * * * *'  # 1時間おき（:30分）
 
 permissions:
   issues: write

@@ -215,8 +215,8 @@ function Pricing() {
                   <div className="space-y-2">
                     <p className="text-sm text-center text-muted-foreground">
                       {isEn
-                        ? 'Are you sure? You will lose Crew benefits immediately.'
-                        : '本当にキャンセルしますか？Crew特典はすぐに無効になります。'}
+                        ? 'Are you sure? You can continue using Crew benefits until the end of the current billing period.'
+                        : '本当にキャンセルしますか？現在の請求期間の終了まで引き続きCrew特典をご利用いただけます。'}
                     </p>
                     <div className="flex gap-2">
                       <Button

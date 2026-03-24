@@ -160,9 +160,9 @@ function EventDetail() {
         <meta property="og:description" content={displayDescription ?? `${displayName}の大会情報・アクセス・宿泊をまとめてチェック。`} />
         <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}`} />
         <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
-        <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname}`} />
-        <link rel="alternate" hrefLang="en" href={`https://yabai-travel.vercel.app${location.pathname}?lang=en`} />
-        <link rel="alternate" hrefLang="x-default" href={`https://yabai-travel.vercel.app${location.pathname}`} />
+        <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname.replace(/^\/(ja|en)/, '/ja')}`} />
+        <link rel="alternate" hrefLang="en" href={`https://yabai-travel.vercel.app${location.pathname.replace(/^\/(ja|en)/, '/en')}`} />
+        <link rel="alternate" hrefLang="x-default" href={`https://yabai-travel.vercel.app${location.pathname.replace(/^\/(ja|en)/, '/en')}`} />
         <script type="application/ld+json">{JSON.stringify(eventToJsonLd(event, categories))}</script>
         <div className="mx-auto max-w-4xl px-4 py-6 md:px-6">
           {/* Breadcrumb */}
