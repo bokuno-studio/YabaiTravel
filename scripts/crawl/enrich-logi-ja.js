@@ -123,15 +123,15 @@ async function fetchDomesticLogiWithLlm(anthropic, location) {
     messages: [
       {
         role: 'user',
-        content: `東京から「${location}」への経路を教えてください。
+        content: `「東京駅」から「${location}」への経路を教えてください。出発地点は必ず「東京駅」としてください。
 飛行機・電車・路線バス・フェリーのみを使った経路にしてください。タクシーは経路に含めないでください。
 日本語と英語の両方で回答してください。
 以下のJSON形式で回答してください：
 {
   "transit_accessible": "full" または "partial" または "none"（full: 公共交通のみで会場到着可能 / partial: 最寄り駅まで公共交通、そこからタクシー必要 / none: タクシーまたはレンタカー推奨）,
   "transit_detail": "full/partial/noneの判定理由を簡潔に（日本語）",
-  "route_detail": "公共交通のみの経路詳細（タクシー不使用）（日本語）。番号付きで各ステップを改行区切りで記載（例: 1. 東京駅から新幹線で…\\n2. ○○駅からバスで…）",
-  "route_detail_en": "Route details using public transit only (no taxi) (English). Numbered steps separated by newlines",
+  "route_detail": "東京駅からの公共交通のみの経路詳細（タクシー不使用）（日本語）。必ず「1. 東京駅から…」で始めること。番号付きで各ステップを改行区切りで記載",
+  "route_detail_en": "Route details from Tokyo Station using public transit only (no taxi) (English). Must start with '1. From Tokyo Station...'. Numbered steps separated by newlines",
   "total_time_estimate": "所要時間（例: 約2時間30分）",
   "cost_estimate": "費用概算（公共交通のみ。例: 約3,000円〜5,000円）",
   "shuttle_available": "大会公式シャトルバスの情報（日本語）。公式シャトルがない場合や不明な場合は必ず null を返すこと。一般的なバスやタクシー情報は含めない",
