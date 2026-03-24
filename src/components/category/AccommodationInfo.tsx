@@ -1,5 +1,5 @@
 import { Home } from 'lucide-react'
-import type { Accommodation, StayStatus } from '@/types/event'
+import type { Accommodation } from '@/types/event'
 import SectionCard from './SectionCard'
 import DLRow from './DLRow'
 
@@ -8,20 +8,17 @@ const JPY_PER_USD = 150
 interface AccommodationInfoProps {
   eventId: string
   categoryId?: string
-  stayStatus: StayStatus | null
-  stayStatusLabel: (s: StayStatus | null) => string | null
   accommodations: Accommodation[]
   isEn: boolean
 }
 
-function AccommodationInfo({ eventId, categoryId, stayStatus, stayStatusLabel, accommodations, isEn }: AccommodationInfoProps) {
+function AccommodationInfo({ eventId, categoryId, accommodations, isEn }: AccommodationInfoProps) {
   return (
     <SectionCard
       title={isEn ? 'How many days needed?' : '何日必要か'}
       icon={<Home className="h-4 w-4 text-primary" />}
     >
       <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
-        <DLRow label={isEn ? 'Pre-night stay needed?' : '前泊は必要？'} value={stayStatus ? stayStatusLabel(stayStatus) : null} eventId={eventId} categoryId={categoryId} />
         <DLRow
           label={isEn ? 'Where to stay?' : 'どこに泊まればいい？'}
           value={accommodations.some((a) => a.recommended_area)

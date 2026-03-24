@@ -514,8 +514,6 @@ function CategoryDetail() {
         <AccommodationInfo
           eventId={event.id}
           categoryId={category.id}
-          stayStatus={stayStatus}
-          stayStatusLabel={stayStatusLabel}
           accommodations={accommodations}
           isEn={isEn}
         />
