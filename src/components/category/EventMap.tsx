@@ -24,9 +24,10 @@ function EventMap({ latitude, longitude, accommodations, accessRoutes, isEn }: E
     return { lat: latitude, lng: longitude }
   }, [latitude, longitude])
 
-  // ルート線のデコード
-  const polylinePaths = useMemo(() => {
-    const paths: google.maps.LatLngLiteral[][] = []
+  // ルート線のデコード（英語版はルートごとに色分け）
+  const ROUTE_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6']
+  const polylineGroups = useMemo(() => {
+    const groups: { paths: google.maps.LatLngLiteral[][]; color: string }[] = []
     for (const ar of accessRoutes) {
       if (!ar.route_polyline) continue
       if (isEn && ar.origin_type !== 'venue_access') continue
@@ -34,13 +35,24 @@ function EventMap({ latitude, longitude, accommodations, accessRoutes, isEn }: E
       try {
         const polylines = JSON.parse(ar.route_polyline)
         const polys = Array.isArray(polylines) ? polylines : [polylines]
-        for (const encoded of polys) {
-          if (typeof encoded !== 'string') continue
-          paths.push(decodePolyline(encoded))
+        if (isEn) {
+          // 英語版: 各polylineを個別ルートとして色分け
+          for (let i = 0; i < polys.length; i++) {
+            if (typeof polys[i] !== 'string') continue
+            groups.push({ paths: [decodePolyline(polys[i])], color: ROUTE_COLORS[i % ROUTE_COLORS.length] })
+          }
+        } else {
+          // 日本語版: 全部同じ色
+          const paths: google.maps.LatLngLiteral[][] = []
+          for (const encoded of polys) {
+            if (typeof encoded !== 'string') continue
+            paths.push(decodePolyline(encoded))
+          }
+          if (paths.length > 0) groups.push({ paths, color: ROUTE_COLORS[0] })
         }
       } catch { /* ignore */ }
     }
-    return paths
+    return groups
   }, [accessRoutes, isEn])
 
   // 空港・駅マーカー（英語版のみ、構造化JSONから）
@@ -128,14 +140,16 @@ function EventMap({ latitude, longitude, accommodations, accessRoutes, isEn }: E
         />
       ))}
 
-      {/* ルート線 */}
-      {polylinePaths.map((path, i) => (
-        <Polyline
-          key={`route-${i}`}
-          path={path}
-          options={{ strokeColor: '#ef4444', strokeWeight: 5, strokeOpacity: 0.8 }}
-        />
-      ))}
+      {/* ルート線（英語版はルートごとに色分け） */}
+      {polylineGroups.map((group, gi) =>
+        group.paths.map((path, pi) => (
+          <Polyline
+            key={`route-${gi}-${pi}`}
+            path={path}
+            options={{ strokeColor: group.color, strokeWeight: 5, strokeOpacity: 0.8 }}
+          />
+        ))
+      )}
     </GoogleMap>
   )
 }

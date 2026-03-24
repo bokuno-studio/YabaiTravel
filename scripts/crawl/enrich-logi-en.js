@@ -47,7 +47,7 @@ async function searchNearbyAirports(location, apiKey) {
 
   // Text Search で空港を検索（300km圏内）
   const placesRes = await fetch(
-    `https://maps.googleapis.com/maps/api/place/textsearch/json?query=airport&location=${lat},${lng}&radius=300000&key=${apiKey}`
+    `https://maps.googleapis.com/maps/api/place/textsearch/json?query=airport&location=${lat},${lng}&radius=300000&language=en&key=${apiKey}`
   )
   const placesData = await placesRes.json()
   if (!placesData.results?.length) return []
@@ -86,19 +86,61 @@ async function searchNearbyStations(location, apiKey) {
   const { lat, lng } = geocodeData.results[0].geometry.location
 
   const placesRes = await fetch(
-    `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=30000&type=train_station&key=${apiKey}`
+    `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=30000&type=train_station&language=en&key=${apiKey}`
   )
   const placesData = await placesRes.json()
   if (!placesData.results?.length) return []
+
+  // Place Details API で英語名を取得する関数
+  async function getEnglishName(placeId) {
+    try {
+      const detailRes = await fetch(
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=name&language=en&key=${apiKey}`
+      )
+      const detailData = await detailRes.json()
+      return detailData.result?.name || null
+    } catch { return null }
+  }
 
   const stations = placesData.results
     .filter(p => p.geometry?.location)
     .map(p => {
       const dist = calcDistKm(lat, lng, p.geometry.location.lat, p.geometry.location.lng)
-      return { name: p.name, lat: p.geometry.location.lat, lng: p.geometry.location.lng, distance_km: dist }
+      return { name: p.name, placeId: p.place_id, lat: p.geometry.location.lat, lng: p.geometry.location.lng, distance_km: dist }
     })
     .sort((a, b) => a.distance_km - b.distance_km)
     .slice(0, 1)
+
+  // Nearby Search の language=en が効かない場合があるため、Place Details で英語名を取得
+  for (const s of stations) {
+    if (s.placeId) {
+      const enName = await getEnglishName(s.placeId)
+      if (enName && enName !== s.name) {
+        s.name = enName
+      } else if (/[^\x00-\x7F]/.test(s.name)) {
+        // Place Details でも非ASCII名の場合、formatted_address から英語名を生成
+        try {
+          const pdRes = await fetch(
+            `https://maps.googleapis.com/maps/api/place/details/json?place_id=${s.placeId}&fields=formatted_address&language=en&key=${apiKey}`
+          )
+          const pdData = await pdRes.json()
+          const addr = pdData.result?.formatted_address || ''
+          // formatted_address の先頭要素（通常は場所名のピンイン）または市名を取得
+          // 例: "Zhan Qian Jie, Qiao Xi Qu, Shi Jia Zhuang Shi, He Bei Sheng, China, 050001"
+          // → locality に相当する部分を抽出
+          const parts = addr.split(',').map(p => p.trim())
+          // "Shi" で終わる部分が市名（中国のピンイン表記: XxxShi = Xxx市）
+          const cityPart = parts.find(p => / Shi$/.test(p) || / City$/.test(p))
+          if (cityPart) {
+            // "Shi Jia Zhuang Shi" → "Shijiazhuang" (Shi除去＋結合)
+            const cityName = cityPart.replace(/ Shi$/, '').replace(/ City$/, '').split(' ')
+              .map((w, i) => i === 0 ? w : w.toLowerCase()).join('')
+            s.name = `${cityName} Station`
+          }
+        } catch { /* keep original */ }
+      }
+    }
+  }
 
   return stations
 }
@@ -120,9 +162,15 @@ async function fetchRoute(origin, destination, apiKey) {
         languageCode: 'en',
       }),
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.warn(`  [Routes API] HTTP ${res.status} for ${origin.name || 'origin'} → ${destination}`)
+      return null
+    }
     const data = await res.json()
-    if (!data.routes?.length) return null
+    if (!data.routes?.length) {
+      console.warn(`  [Routes API] No transit route: ${origin.name || 'origin'} → ${destination}`)
+      return null
+    }
 
     const route = data.routes[0]
     const durationSecs = parseInt(route.duration, 10)
@@ -154,24 +202,25 @@ async function fetchRoute(origin, destination, apiKey) {
     const cost = null
 
     return { time: timeStr, routeDetail, cost, polyline }
-  } catch {
+  } catch (e) {
+    console.warn(`  [Routes API] Error: ${origin.name || 'origin'} → ${destination}: ${e.message?.slice(0, 80)}`)
     return null
   }
 }
 
-/** LLM で経路の費用を推定 */
-async function estimateCostWithLlm(anthropic, fromName, toLocation, routeDetail) {
+/** LLM で経路の費用を推定（ISO通貨コード付き） */
+async function estimateCostWithLlm(anthropic, fromName, toLocation, routeDetail, country) {
   try {
     const msg = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 50,
+      max_tokens: 20,
       messages: [{
         role: 'user',
-        content: `Estimate the one-way transit cost from "${fromName}" to "${toLocation}". Route: ${routeDetail || 'unknown'}. Return ONLY the cost like "~$30" or "~€25". If unknown, return "null".`,
+        content: `Estimate one-way public transit cost: "${fromName}" → "${toLocation}" in ${country || 'unknown country'}. Route: ${routeDetail || 'unknown'}. Reply with ONLY the amount and ISO currency code like "~30 USD" or "~25 EUR" or "~3000 JPY". No symbols, no explanation. If unknown: "null"`,
       }],
     })
     const text = msg.content[0].type === 'text' ? msg.content[0].text.trim() : ''
-    if (!text || text === 'null' || text === 'unknown') return null
+    if (!text || text === 'null' || text === 'unknown' || text.length > 20) return null
     return text
   } catch {
     return null
@@ -260,8 +309,10 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
           if (airports[0]) {
             const route = await fetchRoute(airports[0], location, apiKey)
             result.airport_1_name = airports[0].name
+            result.airport_1_lat = airports[0].lat
+            result.airport_1_lng = airports[0].lng
             result.airport_1_access = route ? `${route.time}${route.routeDetail ? ' — ' + route.routeDetail : ''}` : null
-            result.airport_1_cost = await estimateCostWithLlm(anthropic, airports[0].name, location, route?.routeDetail)
+            result.airport_1_cost = await estimateCostWithLlm(anthropic, airports[0].name, location, route?.routeDetail, country)
             airport1Coords = { lat: airports[0].lat, lng: airports[0].lng }
             airport1Polyline = route?.polyline || null
           }
@@ -269,8 +320,10 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
           if (airports[1]) {
             const route = await fetchRoute(airports[1], location, apiKey)
             result.airport_2_name = airports[1].name
+            result.airport_2_lat = airports[1].lat
+            result.airport_2_lng = airports[1].lng
             result.airport_2_access = route ? `${route.time}${route.routeDetail ? ' — ' + route.routeDetail : ''}` : null
-            result.airport_2_cost = await estimateCostWithLlm(anthropic, airports[1].name, location, route?.routeDetail)
+            result.airport_2_cost = await estimateCostWithLlm(anthropic, airports[1].name, location, route?.routeDetail, country)
             airport2Coords = { lat: airports[1].lat, lng: airports[1].lng }
             airport2Polyline = route?.polyline || null
           }
@@ -278,8 +331,10 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
           if (stations[0]) {
             const route = await fetchRoute(stations[0], location, apiKey)
             result.station_name = stations[0].name
+            result.station_lat = stations[0].lat
+            result.station_lng = stations[0].lng
             result.station_access = route ? `${route.time}${route.routeDetail ? ' — ' + route.routeDetail : ''}` : null
-            result.station_cost = await estimateCostWithLlm(anthropic, stations[0].name, location, route?.routeDetail)
+            result.station_cost = await estimateCostWithLlm(anthropic, stations[0].name, location, route?.routeDetail, country)
             stationCoords = { lat: stations[0].lat, lng: stations[0].lng }
             stationPolyline = route?.polyline || null
           }
