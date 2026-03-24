@@ -1,6 +1,6 @@
 /**
  * #334 バッチ品質テストスクリプト
- * 全ての既知の問題を自動検証する
+ * 今日の全指摘を自動検証する
  */
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
@@ -25,10 +25,10 @@ const LIMIT = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : 10
 const OFFSET_IDX = args.indexOf('--offset')
 const OFFSET = OFFSET_IDX >= 0 ? parseInt(args[OFFSET_IDX + 1], 10) : 0
 
-// テスト対象イベントを取得
 const { rows: events } = await client.query(`
   SELECT e.id, e.name, e.country, e.location, e.latitude, e.longitude,
-    e.reception_place, e.start_place, e.collected_at
+    e.reception_place, e.start_place, e.collected_at,
+    e.visa_info, e.visa_info_en, e.weather_forecast, e.weather_forecast_en
   FROM ${SCHEMA}.events e
   WHERE e.location IS NOT NULL AND e.collected_at IS NOT NULL
   ORDER BY e.updated_at ASC
@@ -42,46 +42,47 @@ const issuesByType = {}
 function addIssue(eventName, type, detail) {
   totalIssues++
   issuesByType[type] = (issuesByType[type] || 0) + 1
-  console.log(`  [!] ${type}: ${detail}`)
+  console.log(`  [!] ${type}: ${detail} [${eventName?.slice(0, 30)}]`)
 }
 
 for (const ev of events) {
   totalEvents++
   const isJapan = ev.country === '日本' || !ev.country
-  const issues = []
+  const isInternational = !isJapan
 
-  // 1. イベント座標チェック
+  // === 1. イベント座標 ===
   if (!ev.latitude || !ev.longitude) {
     addIssue(ev.name, 'EVENT_NO_COORDS', '座標なし → 地図が表示されない')
-  } else if (ev.location) {
-    // 座標がlocationと大きくずれていないか検証（Geocoding APIで比較）
+  } else if (ev.location && apiKey) {
     try {
-      const geoQuery = ev.location
-      const geoRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(geoQuery)}&key=${apiKey}`)
+      const geoRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(ev.location)}&key=${apiKey}`)
       const geoData = await geoRes.json()
       if (geoData.results?.length) {
         const { lat, lng } = geoData.results[0].geometry.location
         const dist = Math.sqrt(Math.pow((ev.latitude - lat) * 111, 2) + Math.pow((ev.longitude - lng) * 111 * Math.cos(lat * Math.PI / 180), 2))
         if (dist > 100) {
-          addIssue(ev.name, 'EVENT_COORDS_MISMATCH', `座標がlocationから${Math.round(dist)}km離れている（${ev.latitude.toFixed(2)},${ev.longitude.toFixed(2)} vs ${lat.toFixed(2)},${lng.toFixed(2)}）`)
+          addIssue(ev.name, 'EVENT_COORDS_MISMATCH', `座標が${Math.round(dist)}km離れている`)
         }
       }
     } catch { /* ignore */ }
   }
 
-  // 2. カテゴリチェック
+  // === 2. VISA情報（海外イベントの日本語版に必要） ===
+  if (isInternational && !ev.visa_info) {
+    addIssue(ev.name, 'NO_VISA_INFO', '海外イベントにVISA情報なし')
+  }
+
+  // === 3. 天気の装備混入チェック: なしでOK（許容） ===
+
+  // === 4. カテゴリ ===
   const { rows: cats } = await client.query(
     `SELECT count(*) as cnt FROM ${SCHEMA}.categories WHERE event_id = $1`, [ev.id]
   )
   const hasCats = parseInt(cats[0].cnt) > 0
-  const { rows: enrichedCats } = await client.query(
-    `SELECT count(*) as cnt FROM ${SCHEMA}.categories WHERE event_id = $1 AND distance_km IS NOT NULL`, [ev.id]
-  )
-  const hasEnrichedCats = parseInt(enrichedCats[0].cnt) > 0
 
-  // 3. tokyo route チェック
+  // === 5. tokyo route ===
   const { rows: tokyoRoutes } = await client.query(
-    `SELECT direction, route_detail, shuttle_available, taxi_estimate, transit_accessible, route_polyline IS NOT NULL as has_polyline
+    `SELECT direction, route_detail, shuttle_available, shuttle_available_en, taxi_estimate, transit_accessible
      FROM ${SCHEMA}.access_routes WHERE event_id = $1 AND origin_type = 'tokyo'`, [ev.id]
   )
   const outbound = tokyoRoutes.find(r => r.direction === 'outbound')
@@ -96,25 +97,37 @@ for (const ev of events) {
     }
     // ルート構造化
     if (isJapan && outbound.route_detail && !outbound.route_detail.startsWith('1.')) {
-      addIssue(ev.name, 'ROUTE_NOT_STRUCTURED', 'ルートが番号付きでない: ' + outbound.route_detail.slice(0, 40))
+      addIssue(ev.name, 'ROUTE_NOT_STRUCTURED', 'ルートが番号付きでない')
     }
     // 東京駅始点
     if (isJapan && outbound.route_detail && !outbound.route_detail.includes('東京駅')) {
-      addIssue(ev.name, 'ROUTE_NOT_FROM_TOKYO', '東京駅が含まれない: ' + outbound.route_detail.slice(0, 40))
+      addIssue(ev.name, 'ROUTE_NOT_FROM_TOKYO', '東京駅が含まれない')
     }
-    // シャトル
+    // シャトル非公式
     if (outbound.shuttle_available) {
-      // 公式サイト由来か確認（長文 or キーワードあり = OK）
       const isOfficial = outbound.shuttle_available.includes('シャトルバス') || outbound.shuttle_available.length > 30
       if (!isOfficial) {
         addIssue(ev.name, 'SHUTTLE_NOT_OFFICIAL', 'シャトル情報が公式以外: ' + outbound.shuttle_available.slice(0, 40))
       }
     }
-    // タクシー（transit_accessible が文字列 'full' の場合のみ不要。boolean true はfull/partial両方含む）
-    // partialでタクシー情報があるのは正常
+    // シャトルあるのに英語版にない
+    if (outbound.shuttle_available && !outbound.shuttle_available_en) {
+      addIssue(ev.name, 'SHUTTLE_NO_EN', 'シャトル情報の英語版なし')
+    }
+    // costToUsd変換テスト（範囲テキストのパース）
+    if (outbound.cost_estimate) {
+      const match = outbound.cost_estimate.match(/[\d,]+/)
+      if (match) {
+        const yen = parseInt(match[0].replace(/,/g, ''), 10)
+        const usd = Math.round(yen / 150)
+        if (usd > 100000) {
+          addIssue(ev.name, 'COST_PARSE_ERROR', `コスト変換異常: ${outbound.cost_estimate} → $${usd}`)
+        }
+      }
+    }
   }
 
-  // 4. venue_access チェック（カテゴリありの場合のみ）
+  // === 6. venue_access（カテゴリありの場合） ===
   if (hasCats) {
     const { rows: vaRoutes } = await client.query(
       `SELECT route_detail_en FROM ${SCHEMA}.access_routes WHERE event_id = $1 AND origin_type = 'venue_access'`, [ev.id]
@@ -124,24 +137,20 @@ for (const ev of events) {
     } else {
       try {
         const d = JSON.parse(vaRoutes[0].route_detail_en)
-        // lat/lng
         if (d.airport_1_name && !d.airport_1_lat) {
           addIssue(ev.name, 'VA_NO_LAT', 'airport_1のlat/lngなし')
         }
-        // 通貨コード
         for (const k of ['airport_1_cost', 'airport_2_cost', 'station_cost']) {
           if (d[k] && !/[A-Z]{3}/.test(d[k])) {
             addIssue(ev.name, 'VA_NO_ISO_CURRENCY', `${k}にISO通貨コードなし: ${d[k]}`)
           }
         }
-        // 日本で全ルートがタクシー表示（1つでも公共交通あればOK）
         const allTaxi = [d.airport_1_access, d.airport_2_access, d.station_access]
           .filter(Boolean)
           .every(a => a.startsWith('Taxi') || a.startsWith('Walk'))
         if (isJapan && allTaxi) {
           addIssue(ev.name, 'VA_JAPAN_ALL_TAXI', '日本なのに全ルートがタクシー/徒歩のみ')
         }
-        // 時間だけあってルート詳細がないケース（例: "56min" のみ）
         for (const [key, label] of [['airport_1_access','ap1'],['airport_2_access','ap2'],['station_access','stn']]) {
           const val = d[key]
           if (val && !val.startsWith('Taxi') && !val.startsWith('Walk') && !val.includes('\n') && !val.includes('.')) {
@@ -154,7 +163,7 @@ for (const ev of events) {
     }
   }
 
-  // 5. 宿泊チェック
+  // === 7. 宿泊 ===
   const { rows: accoms } = await client.query(
     `SELECT recommended_area, latitude, longitude, avg_cost_3star FROM ${SCHEMA}.accommodations WHERE event_id = $1`, [ev.id]
   )
@@ -170,12 +179,6 @@ for (const ev of events) {
       }
     }
   }
-
-  // イベント結果出力
-  const eventIssueCount = totalIssues - (totalEvents > 1 ? 0 : 0) // simplified
-  if (issues.length === 0) {
-    // 問題なしの場合は1行で
-  }
 }
 
 // サマリー
@@ -188,5 +191,6 @@ if (Object.keys(issuesByType).length > 0) {
     console.log(`  ${type}: ${count}件`)
   }
 }
+console.log('')
 
 await client.end()

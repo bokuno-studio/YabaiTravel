@@ -223,7 +223,9 @@ async function fetchInternationalLogiWithLlm(anthropic, location, country, latit
     "cost_estimate": "費用概算",
     "shuttle_available": "大会公式シャトルバスの情報（日本語）。公式シャトルがない場合や不明な場合は必ず null。一般タクシーやバスの情報は含めない",
     "shuttle_available_en": "Official race shuttle bus info (English). Return null if no official shuttle or unknown"
-  }
+  },
+  "visa_info": "日本国籍の人がこの国に入国する際のビザ情報（日本語）。例: ビザ不要（90日以内の観光）/ 要ESTA / 要ビザ",
+  "visa_info_en": "Visa info for Japanese nationals visiting this country (English). e.g.: Visa-free for stays under 90 days"
 }
 JSONのみ返してください。`,
       },
@@ -439,6 +441,16 @@ export async function enrichLogi(event, opts = { dryRun: false, force: false }) 
         // LLM からのシャトル情報がある場合、公式ページ抽出の結果がなければ補完
         if (!shuttleAvailable && logiInfo.outbound?.shuttle_available) {
           shuttleAvailable = logiInfo.outbound.shuttle_available
+        }
+        // VISA情報をeventsテーブルに保存
+        if (logiInfo.visa_info || logiInfo.visa_info_en) {
+          const visaSetClause = force
+            ? 'visa_info = COALESCE($2, visa_info), visa_info_en = COALESCE($3, visa_info_en)'
+            : 'visa_info = COALESCE(visa_info, $2), visa_info_en = COALESCE(visa_info_en, $3)'
+          await client.query(
+            `UPDATE ${SCHEMA}.events SET ${visaSetClause} WHERE id = $1`,
+            [eventId, logiInfo.visa_info || null, logiInfo.visa_info_en || null]
+          )
         }
       }
     }
