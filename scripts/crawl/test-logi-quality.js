@@ -31,6 +31,7 @@ const { rows: events } = await client.query(`
     e.visa_info, e.visa_info_en, e.weather_forecast, e.weather_forecast_en
   FROM ${SCHEMA}.events e
   WHERE e.location IS NOT NULL AND e.collected_at IS NOT NULL
+    AND (e.reception_place IS NOT NULL OR e.start_place IS NOT NULL)
   ORDER BY e.updated_at ASC
   OFFSET $1 LIMIT $2
 `, [OFFSET, LIMIT])
@@ -177,6 +178,7 @@ for (const ev of events) {
       if (a.avg_cost_3star != null && a.avg_cost_3star < 1000) {
         addIssue(ev.name, 'ACCOM_COST_LOW', `宿泊費異常値: ${a.avg_cost_3star}円`)
       }
+      // 会場と宿泊が同じ座標 → 会場近くに宿泊するケースもあるので許容
     }
   }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { createStripeCheckout, cancelMembership } from '@/lib/stripe'
 import { useAuth } from '@/lib/auth'
+import { trackPricingView } from '@/lib/analytics'
 
 function Pricing() {
   const { lang } = useParams<{ lang: string }>()
@@ -13,6 +14,8 @@ function Pricing() {
   const { user, session, isSupporter, signInWithGoogle } = useAuth()
 
   const [donationAmount, setDonationAmount] = useState('5')
+
+  useEffect(() => { trackPricingView() }, [])
   const [donationLoading, setDonationLoading] = useState(false)
   const [subscriptionLoading, setSubscriptionLoading] = useState(false)
   const [cancelLoading, setCancelLoading] = useState(false)

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, Link, Navigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { eventToJsonLd } from '../lib/jsonld'
 import { supabase } from '../lib/supabaseClient'
+import { trackEventDetailView } from '../lib/analytics'
 import type { Event, Category, AccessRoute, Accommodation } from '../types/event'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -53,6 +54,15 @@ function EventDetail() {
   const [accommodations, setAccommodations] = useState<Accommodation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const trackedRef = useRef(false)
+
+  // GA4: イベント詳細閲覧
+  useEffect(() => {
+    if (event && !trackedRef.current) {
+      trackEventDetailView(event.id, event.name, event.race_type)
+      trackedRef.current = true
+    }
+  }, [event])
 
   const raceTypeLabel = (rt: string | null) => {
     if (!rt) return isEn ? 'Other' : 'その他'

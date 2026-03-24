@@ -600,10 +600,12 @@ async function runCli() {
     targets = rows
   } else if (FORCE) {
     // --force: 既存データありでも全件対象（再取得・上書き）
+    // reception_place or start_place がないイベントは対象外（会場不明でルート生成不可）
     const { rows } = await client.query(
       `SELECT e.id, e.name, e.location, e.country, e.official_url, e.latitude, e.longitude, e.reception_place, e.start_place
        FROM ${SCHEMA}.events e
        WHERE e.location IS NOT NULL AND e.collected_at IS NOT NULL
+         AND (e.reception_place IS NOT NULL OR e.start_place IS NOT NULL)
        ORDER BY e.updated_at ASC
        LIMIT $1`,
       [LIMIT === Infinity ? 10000 : LIMIT]
@@ -615,6 +617,7 @@ async function runCli() {
        FROM ${SCHEMA}.events e
        LEFT JOIN ${SCHEMA}.access_routes ar ON ar.event_id = e.id AND ar.origin_type = 'tokyo'
        WHERE e.location IS NOT NULL AND e.collected_at IS NOT NULL AND ar.id IS NULL
+         AND (e.reception_place IS NOT NULL OR e.start_place IS NOT NULL)
        ORDER BY e.updated_at ASC
        LIMIT $1`,
       [LIMIT === Infinity ? 10000 : LIMIT]

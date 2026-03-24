@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { categoryToJsonLd } from '../lib/jsonld'
 import { supabase } from '../lib/supabaseClient'
+import { trackEventDetailView } from '../lib/analytics'
 import type { Event, AccessRoute, Accommodation, Category, CourseMapFile, StayStatus } from '../types/event'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -102,6 +103,15 @@ function CategoryDetail() {
   const [pastEditions, setPastEditions] = useState<Array<{ event: Event; courseMaps: CourseMapFile[]; categories: Category[] }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const trackedRef = useRef(false)
+
+  // GA4: イベント詳細閲覧
+  useEffect(() => {
+    if (event && !trackedRef.current) {
+      trackEventDetailView(event.id, event.name, event.race_type)
+      trackedRef.current = true
+    }
+  }, [event])
 
   useEffect(() => {
     if (!eventId || !categoryId) return
