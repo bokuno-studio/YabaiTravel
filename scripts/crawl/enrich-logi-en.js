@@ -351,6 +351,10 @@ export async function enrichLogiEn(event, opts = { dryRun: false, force: false }
 
           // ルート取得のヘルパー: Google API → LLMフォールバック（日本） or タクシー（海外）
           const getRouteInfo = async (point, label) => {
+            // 徒歩圏内（1km未満）
+            if (point.distance_km < 1) {
+              return { access: `Walk ~${Math.round(point.distance_km * 1000)}m`, cost: null, polyline: null }
+            }
             const route = isJapan ? null : await fetchRoute(point, location, apiKey)
             if (route) {
               return {
