@@ -15,6 +15,7 @@ if (existsSync(envPath)) {
 }
 
 const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
+const apiKey = process.env.GOOGLE_DIRECTIONS_API_KEY
 const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
 await client.connect()
 
@@ -52,6 +53,20 @@ for (const ev of events) {
   // 1. イベント座標チェック
   if (!ev.latitude || !ev.longitude) {
     addIssue(ev.name, 'EVENT_NO_COORDS', '座標なし → 地図が表示されない')
+  } else if (ev.location) {
+    // 座標がlocationと大きくずれていないか検証（Geocoding APIで比較）
+    try {
+      const geoQuery = ev.location
+      const geoRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(geoQuery)}&key=${apiKey}`)
+      const geoData = await geoRes.json()
+      if (geoData.results?.length) {
+        const { lat, lng } = geoData.results[0].geometry.location
+        const dist = Math.sqrt(Math.pow((ev.latitude - lat) * 111, 2) + Math.pow((ev.longitude - lng) * 111 * Math.cos(lat * Math.PI / 180), 2))
+        if (dist > 100) {
+          addIssue(ev.name, 'EVENT_COORDS_MISMATCH', `座標がlocationから${Math.round(dist)}km離れている（${ev.latitude.toFixed(2)},${ev.longitude.toFixed(2)} vs ${lat.toFixed(2)},${lng.toFixed(2)}）`)
+        }
+      }
+    } catch { /* ignore */ }
   }
 
   // 2. カテゴリチェック
@@ -119,9 +134,12 @@ for (const ev of events) {
             addIssue(ev.name, 'VA_NO_ISO_CURRENCY', `${k}にISO通貨コードなし: ${d[k]}`)
           }
         }
-        // 日本でタクシー表示
-        if (isJapan && d.airport_1_access?.startsWith('Taxi')) {
-          addIssue(ev.name, 'VA_JAPAN_TAXI', '日本なのにタクシー表示（LLMフォールバック未適用）')
+        // 日本で全ルートがタクシー表示（1つでも公共交通あればOK）
+        const allTaxi = [d.airport_1_access, d.airport_2_access, d.station_access]
+          .filter(Boolean)
+          .every(a => a.startsWith('Taxi') || a.startsWith('Walk'))
+        if (isJapan && allTaxi) {
+          addIssue(ev.name, 'VA_JAPAN_ALL_TAXI', '日本なのに全ルートがタクシー/徒歩のみ')
         }
       } catch {
         addIssue(ev.name, 'VA_PARSE_ERROR', 'route_detail_en がJSON解析不可')
