@@ -8,6 +8,19 @@
   color: #1f2937;
 }
 
+.event-list-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 3rem;
+  color: #1f2937;
+}
+
+@media (max-width: 640px) {
+  .event-list-page {
+    padding: 1rem 1rem 2rem;
+  }
+}
+
 .app-header {
   text-align: left;
 }

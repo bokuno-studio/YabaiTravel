@@ -24,6 +24,7 @@ interface AccessInfoProps {
   displayOutboundRoute: string | null | undefined
   displayReturnRoute: string | null | undefined
   displayOutboundShuttle: string | null | undefined
+  visaInfo?: string | null
 }
 
 /** Check if displaying venue_access (English mode with venue access data) */
@@ -69,6 +70,7 @@ function AccessInfo({
   displayOutboundRoute,
   displayReturnRoute,
   displayOutboundShuttle,
+  visaInfo,
 }: AccessInfoProps) {
   return (
     <>
@@ -149,6 +151,11 @@ function AccessInfo({
               </>
             )}
           </>
+        )}
+        {visaInfo && (
+          <dl className="mt-3 grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 border-t border-border pt-3 text-sm">
+            <DLRow label={isEn ? 'Visa?' : 'ビザは必要？'} value={visaInfo} eventId={eventId} categoryId={categoryId} />
+          </dl>
         )}
       </SectionCard>
     </>

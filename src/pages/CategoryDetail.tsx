@@ -495,6 +495,7 @@ function CategoryDetail() {
           displayOutboundRoute={displayOutboundRoute}
           displayReturnRoute={displayReturnRoute}
           displayOutboundShuttle={displayOutboundShuttle}
+          visaInfo={displayVisaInfo}
         />
 
         {/* 地図 */}
@@ -547,7 +548,9 @@ function CategoryDetail() {
         {/* 天候 */}
         {displayWeatherForecast && (
           <SectionCard title={isEn ? 'Weather forecast' : '当日の天候は？'}>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{displayWeatherForecast}</p>
+            <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">
+              <DLRow label={isEn ? 'Expected weather?' : '天気は？'} value={displayWeatherForecast} eventId={event.id} categoryId={category.id} />
+            </dl>
           </SectionCard>
         )}
 
@@ -561,12 +564,7 @@ function CategoryDetail() {
           </SectionCard>
         )}
 
-        {/* ビザ */}
-        {displayVisaInfo && (
-          <SectionCard title={isEn ? 'Visa info' : 'ビザは必要？'}>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{displayVisaInfo}</p>
-          </SectionCard>
-        )}
+        {/* ビザ: AccessInfo 内に移動済み */}
 
         {/* その他 */}
         {(displayEventProhibitedItems || event.furusato_nozei_url) && (

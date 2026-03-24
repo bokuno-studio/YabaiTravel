@@ -135,7 +135,7 @@ function GuideSection({ title, content, sectionKey, id }: { title: string; conte
   return (
     <section id={id} style={{ marginBottom: '2rem', padding: '1.25rem', background: '#fff', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
       <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '0.75rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        {icon && <span style={{ fontSize: '1.2rem' }}>{icon}</span>}
+        {icon && <span style={{ fontSize: '1.2rem' }} aria-hidden="true">{icon}</span>}
         {title}
       </h3>
       {paragraphs.map((p, i) => (
@@ -163,15 +163,15 @@ function GuideTOC({ labels, content, isEn }: { labels: typeof SECTION_LABELS.ja;
   if (sections.length < 3) return null
 
   return (
-    <nav style={{ marginBottom: '2rem', padding: '1rem 1.25rem', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+    <nav aria-label={isEn ? 'Table of contents' : '目次'} style={{ marginBottom: '2rem', padding: '1rem 1.25rem', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
       <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600, fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
         {isEn ? 'Contents' : '目次'}
       </p>
       <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: '0.4rem 1rem' }}>
         {sections.map(s => (
           <li key={s.key}>
-            <a href={`#section-${s.key}`} style={{ color: '#3b82f6', textDecoration: 'none', fontSize: '0.9rem' }}>
-              {SECTION_ICONS[s.key] || ''} {s.label}
+            <a href={`#section-${s.key}`} style={{ color: '#2563eb', textDecoration: 'none', fontSize: '0.9rem' }}>
+              <span aria-hidden="true">{SECTION_ICONS[s.key] || ''}</span> {s.label}
             </a>
           </li>
         ))}
@@ -269,7 +269,7 @@ function SportGuide() {
           {dbContent.gear && (
             <section id="section-gear" style={{ marginBottom: '2rem', padding: '1.25rem', background: '#fff', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '0.75rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '1.2rem' }}>🎒</span>
+                <span style={{ fontSize: '1.2rem' }} aria-hidden="true">🎒</span>
                 {labels.gear}
               </h3>
 
