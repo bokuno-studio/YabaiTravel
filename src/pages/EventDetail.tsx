@@ -248,8 +248,7 @@ function EventDetail() {
           </Card>
 
           {/* アクセス */}
-          {(outbound || returnRoute) && (
-            <Card className="mb-4">
+          <Card className="mb-4">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Train className="h-4 w-4 text-primary" />
@@ -282,12 +281,10 @@ function EventDetail() {
                   </div>
                 </div>
               </CardContent>
-            </Card>
-          )}
+          </Card>
 
           {/* 宿泊 */}
-          {accommodations.length > 0 && (
-            <Card className="mb-4">
+          <Card className="mb-4">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Home className="h-4 w-4 text-primary" />
@@ -310,8 +307,7 @@ function EventDetail() {
                   </dd>
                 </dl>
               </CardContent>
-            </Card>
-          )}
+          </Card>
 
           {/* レースレポート・口コミ */}
 

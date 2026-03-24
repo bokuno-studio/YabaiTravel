@@ -409,6 +409,8 @@ async function runCli() {
        FROM ${SCHEMA}.events e
        LEFT JOIN ${SCHEMA}.access_routes ar ON ar.event_id = e.id AND ar.origin_type = 'venue_access'
        WHERE e.location IS NOT NULL AND e.collected_at IS NOT NULL AND ar.id IS NULL
+         AND e.latitude IS NOT NULL
+         AND EXISTS (SELECT 1 FROM ${SCHEMA}.categories c WHERE c.event_id = e.id)
        ORDER BY e.updated_at ASC
        LIMIT $1`,
       [LIMIT === Infinity ? 10000 : LIMIT]
