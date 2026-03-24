@@ -227,6 +227,25 @@ async function estimateCostWithLlm(anthropic, fromName, toLocation, routeDetail,
   }
 }
 
+/** LLM でタクシーコストを推定（公共交通なしの場合） */
+async function estimateTaxiCostWithLlm(anthropic, fromName, toLocation, distanceKm, country) {
+  try {
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 20,
+      messages: [{
+        role: 'user',
+        content: `Estimate one-way taxi cost: "${fromName}" → "${toLocation}" in ${country || 'unknown country'} (approx ${Math.round(distanceKm)}km). Reply with ONLY the amount and ISO currency code like "~50 USD" or "~40 EUR". No symbols, no explanation. If unknown: "null"`,
+      }],
+    })
+    const text = msg.content[0].type === 'text' ? msg.content[0].text.trim() : ''
+    if (!text || text === 'null' || text === 'unknown' || text.length > 20) return null
+    return text
+  } catch {
+    return null
+  }
+}
+
 // --- LLM フォールバック ---
 
 /** LLM で空港・駅情報を取得（Google API 失敗時のフォールバック） */
@@ -311,8 +330,13 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
             result.airport_1_name = airports[0].name
             result.airport_1_lat = airports[0].lat
             result.airport_1_lng = airports[0].lng
-            result.airport_1_access = route ? `${route.time}${route.routeDetail ? '\n' + route.routeDetail : ''}` : null
-            result.airport_1_cost = route ? await estimateCostWithLlm(anthropic, airports[0].name, location, route.routeDetail, country) : null
+            if (route) {
+              result.airport_1_access = `${route.time}${route.routeDetail ? '\n' + route.routeDetail : ''}`
+              result.airport_1_cost = await estimateCostWithLlm(anthropic, airports[0].name, location, route.routeDetail, country)
+            } else {
+              result.airport_1_access = `Taxi ~${Math.round(airports[0].distance_km)}km`
+              result.airport_1_cost = await estimateTaxiCostWithLlm(anthropic, airports[0].name, location, airports[0].distance_km, country)
+            }
             airport1Coords = { lat: airports[0].lat, lng: airports[0].lng }
             airport1Polyline = route?.polyline || null
           }
@@ -322,8 +346,13 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
             result.airport_2_name = airports[1].name
             result.airport_2_lat = airports[1].lat
             result.airport_2_lng = airports[1].lng
-            result.airport_2_access = route ? `${route.time}${route.routeDetail ? '\n' + route.routeDetail : ''}` : null
-            result.airport_2_cost = route ? await estimateCostWithLlm(anthropic, airports[1].name, location, route.routeDetail, country) : null
+            if (route) {
+              result.airport_2_access = `${route.time}${route.routeDetail ? '\n' + route.routeDetail : ''}`
+              result.airport_2_cost = await estimateCostWithLlm(anthropic, airports[1].name, location, route.routeDetail, country)
+            } else {
+              result.airport_2_access = `Taxi ~${Math.round(airports[1].distance_km)}km`
+              result.airport_2_cost = await estimateTaxiCostWithLlm(anthropic, airports[1].name, location, airports[1].distance_km, country)
+            }
             airport2Coords = { lat: airports[1].lat, lng: airports[1].lng }
             airport2Polyline = route?.polyline || null
           }
@@ -333,8 +362,13 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
             result.station_name = stations[0].name
             result.station_lat = stations[0].lat
             result.station_lng = stations[0].lng
-            result.station_access = route ? `${route.time}${route.routeDetail ? '\n' + route.routeDetail : ''}` : null
-            result.station_cost = route ? await estimateCostWithLlm(anthropic, stations[0].name, location, route.routeDetail, country) : null
+            if (route) {
+              result.station_access = `${route.time}${route.routeDetail ? '\n' + route.routeDetail : ''}`
+              result.station_cost = await estimateCostWithLlm(anthropic, stations[0].name, location, route.routeDetail, country)
+            } else {
+              result.station_access = `Taxi ~${Math.round(stations[0].distance_km)}km`
+              result.station_cost = await estimateTaxiCostWithLlm(anthropic, stations[0].name, location, stations[0].distance_km, country)
+            }
             stationCoords = { lat: stations[0].lat, lng: stations[0].lng }
             stationPolyline = route?.polyline || null
           }
