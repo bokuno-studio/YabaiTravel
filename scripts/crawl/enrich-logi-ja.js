@@ -78,9 +78,12 @@ function parseGoogleDirections(data) {
 
   const totalTime = formatDuration(route.duration)
   const steps = (leg.steps || [])
-    .map((s) => s.navigationInstruction?.instructions || '')
+    .map((s, i) => {
+      const instr = s.navigationInstruction?.instructions || ''
+      return instr ? `${i + 1}. ${instr}` : ''
+    })
     .filter(Boolean)
-    .join(' → ')
+    .join('\n')
   const polyline = route.polyline?.encodedPolyline || null
 
   return {
@@ -125,14 +128,14 @@ async function fetchDomesticLogiWithLlm(anthropic, location) {
 {
   "transit_accessible": "full" または "partial" または "none"（full: 公共交通のみで会場到着可能 / partial: 最寄り駅まで公共交通、そこからタクシー必要 / none: タクシーまたはレンタカー推奨）,
   "transit_detail": "full/partial/noneの判定理由を簡潔に（日本語）",
-  "route_detail": "公共交通のみの経路詳細（タクシー不使用）（日本語）",
-  "route_detail_en": "Route details using public transit only (no taxi) (English)",
+  "route_detail": "公共交通のみの経路詳細（タクシー不使用）（日本語）。番号付きで各ステップを改行区切りで記載（例: 1. 東京駅から新幹線で…\\n2. ○○駅からバスで…）",
+  "route_detail_en": "Route details using public transit only (no taxi) (English). Numbered steps separated by newlines",
   "total_time_estimate": "所要時間（例: 約2時間30分）",
   "cost_estimate": "費用概算（公共交通のみ。例: 約3,000円〜5,000円）",
-  "shuttle_available": "シャトルバス情報（日本語。不明なら null）",
-  "shuttle_available_en": "Shuttle bus info (English. null if unknown)",
-  "taxi_required_segment": "partial の場合のみ: タクシー必要区間（例: ○○駅 → 会場（約10km））。full/none なら null",
-  "taxi_estimate": "partial/none の場合: タクシー費用概算（例: 約3,000円）。full なら null"
+  "shuttle_available": "大会公式シャトルバスの情報（日本語）。公式シャトルがない場合や不明な場合は必ず null を返すこと。一般的なバスやタクシー情報は含めない",
+  "shuttle_available_en": "Official race shuttle bus info (English). Return null if no official shuttle or unknown. Do not include general bus/taxi info",
+  "taxi_required_segment": "partial の場合のみ: タクシー必要区間（例: ○○駅 → 会場（約10km））。full/none なら必ず null",
+  "taxi_estimate": "partial の場合のみ: タクシー費用概算（例: 約3,000円）。full/none なら必ず null"
 }
 JSONのみ返してください。`,
       },
@@ -142,7 +145,20 @@ JSONのみ返してください。`,
   const text = msg.content[0].type === 'text' ? msg.content[0].text : ''
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) return null
-  return JSON.parse(jsonMatch[0])
+  const parsed = JSON.parse(jsonMatch[0])
+  // LLMが "不明"/"情報なし"/"null" 等を返した場合にnullに正規化
+  const nullify = (v) => {
+    if (v == null) return null
+    if (typeof v !== 'string') return v
+    const s = v.trim().toLowerCase()
+    if (!s || s === 'null' || s === '不明' || s === '情報なし' || s === 'なし' || s === 'n/a' || s === 'unknown' || s === 'none') return null
+    return v
+  }
+  parsed.shuttle_available = nullify(parsed.shuttle_available)
+  parsed.shuttle_available_en = nullify(parsed.shuttle_available_en)
+  parsed.taxi_required_segment = nullify(parsed.taxi_required_segment)
+  parsed.taxi_estimate = nullify(parsed.taxi_estimate)
+  return parsed
 }
 
 /** 公式ページからシャトルバス情報を抽出（大会公式情報のみ） */
@@ -326,7 +342,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
           outboundRoute = parseGoogleDirections(outboundData)
           // スタート=ゴール同一（大半のレース）: 復路は往路と同じ。API呼び出しを省略
           if (outboundRoute) {
-            returnRoute = { ...outboundRoute, route_detail: outboundRoute.route_detail ? `${outboundRoute.route_detail}（逆順）` : null }
+            returnRoute = { ...outboundRoute }
             transitAccessible = true
           }
         } catch (e) {
@@ -346,8 +362,8 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
             shuttle_available_en: logiInfo.shuttle_available_en || null,
           }
           returnRoute = {
-            route_detail: logiInfo.route_detail ? `${logiInfo.route_detail}（逆順）` : null,
-            route_detail_en: logiInfo.route_detail_en ? `${logiInfo.route_detail_en} (reverse)` : null,
+            route_detail: logiInfo.route_detail || null,
+            route_detail_en: logiInfo.route_detail_en || null,
             total_time_estimate: logiInfo.total_time_estimate,
             cost_estimate: logiInfo.cost_estimate,
             shuttle_available_en: logiInfo.shuttle_available_en || null,
@@ -362,8 +378,21 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
         }
       }
     } else {
-      // 海外: LLM のみ
+      // 海外: LLM + 最寄り空港→会場のpolyline取得
       const logiInfo = await fetchInternationalLogiWithLlm(anthropic, location, country || '不明')
+      let intlPolyline = null
+      // 最寄り空港→会場のpolylineを取得（enrich-logi-en.jsのvenue_accessデータから）
+      if (apiKey) {
+        try {
+          const { rows: vaRoutes } = await client.query(
+            `SELECT route_polyline FROM ${SCHEMA}.access_routes WHERE event_id = $1 AND origin_type = 'venue_access' AND route_polyline IS NOT NULL`,
+            [eventId]
+          )
+          if (vaRoutes.length > 0) {
+            intlPolyline = vaRoutes[0].route_polyline
+          }
+        } catch { /* ignore */ }
+      }
       if (logiInfo) {
         outboundRoute = {
           route_detail: logiInfo.outbound?.route_detail ? logiInfo.outbound.route_detail + DISCLAIMER : null,
@@ -371,13 +400,15 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
           total_time_estimate: logiInfo.outbound?.total_time_estimate || null,
           cost_estimate: logiInfo.outbound?.cost_estimate || null,
           shuttle_available_en: logiInfo.outbound?.shuttle_available_en || null,
+          route_polyline: intlPolyline,
         }
         returnRoute = {
-          route_detail: logiInfo.return?.route_detail ? logiInfo.return.route_detail + DISCLAIMER : null,
-          route_detail_en: logiInfo.return?.route_detail_en ? logiInfo.return.route_detail_en + DISCLAIMER_EN : null,
-          total_time_estimate: logiInfo.return?.total_time_estimate || null,
-          cost_estimate: logiInfo.return?.cost_estimate || null,
-          shuttle_available_en: logiInfo.return?.shuttle_available_en || null,
+          route_detail: logiInfo.outbound?.route_detail ? logiInfo.outbound.route_detail + DISCLAIMER : null,
+          route_detail_en: logiInfo.outbound?.route_detail_en ? logiInfo.outbound.route_detail_en + DISCLAIMER_EN : null,
+          total_time_estimate: logiInfo.outbound?.total_time_estimate || null,
+          cost_estimate: logiInfo.outbound?.cost_estimate || null,
+          shuttle_available_en: logiInfo.outbound?.shuttle_available_en || null,
+          route_polyline: intlPolyline,
         }
         // LLM からのシャトル情報がある場合、公式ページ抽出の結果がなければ補完
         if (!shuttleAvailable && logiInfo.outbound?.shuttle_available) {
