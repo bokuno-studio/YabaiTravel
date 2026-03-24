@@ -315,7 +315,10 @@ function CategoryDetail() {
   const displayRequiredQualification = isEn ? (event.required_qualification_en ?? event.required_qualification) : event.required_qualification
   const displayOutboundRoute = isEn ? (outbound?.route_detail_en ?? outbound?.route_detail) : outbound?.route_detail
   const displayReturnRoute = isEn ? (returnRoute?.route_detail_en ?? returnRoute?.route_detail) : returnRoute?.route_detail
-  const displayOutboundShuttle = isEn ? (outbound?.shuttle_available_en ?? outbound?.shuttle_available) : outbound?.shuttle_available
+  // シャトル情報は常にtokyo routeから取得（venue_accessには入らないため）
+  const displayOutboundShuttle = isEn
+    ? (tokyoOutbound?.shuttle_available_en ?? tokyoOutbound?.shuttle_available)
+    : tokyoOutbound?.shuttle_available
   const displayWeatherForecast = isEn ? (event.weather_forecast_en ?? event.weather_forecast) : event.weather_forecast
   const displayRecoveryFacilities = isEn ? (event.recovery_facilities_en ?? event.recovery_facilities) : event.recovery_facilities
   const displayPhotoSpots = isEn ? (event.photo_spots_en ?? event.photo_spots) : event.photo_spots
