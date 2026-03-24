@@ -152,7 +152,7 @@ function AccessInfo({
             )}
           </>
         )}
-        {visaInfo && (
+        {visaInfo && !isEn && (
           <dl className="mt-3 grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 border-t border-border pt-3 text-sm">
             <DLRow label={isEn ? 'Visa?' : 'ビザは必要？'} value={visaInfo} eventId={eventId} categoryId={categoryId} />
           </dl>

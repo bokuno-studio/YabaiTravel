@@ -329,7 +329,10 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
   try {
     await client.connect()
 
-    const { id: eventId, name, location, country, official_url: officialUrl, latitude, longitude } = event
+    const { id: eventId, name, location, country, official_url: officialUrl, latitude, longitude, reception_place, start_place } = event
+    // 具体的な会場名を優先（locationは「足立区」等の広域名になりがち）
+    const specificVenue = reception_place || start_place || null
+    const destinationForLlm = specificVenue ? `${specificVenue}（${location}）` : location
 
     if (!location) {
       return { success: false, eventId, error: 'no location' }
@@ -375,7 +378,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
 
       // LLM fallback（APIキーなし or API失敗時）
       if (!outboundRoute) {
-        const logiInfo = await fetchDomesticLogiWithLlm(anthropic, location)
+        const logiInfo = await fetchDomesticLogiWithLlm(anthropic, destinationForLlm)
         if (logiInfo) {
           outboundRoute = {
             route_detail: logiInfo.route_detail,
@@ -402,7 +405,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
       }
     } else {
       // 海外: LLM + 最寄り空港→会場のpolyline取得
-      const logiInfo = await fetchInternationalLogiWithLlm(anthropic, location, country || '不明', latitude, longitude)
+      const logiInfo = await fetchInternationalLogiWithLlm(anthropic, destinationForLlm, country || '不明', latitude, longitude)
       let intlPolyline = null
       // 最寄り空港→会場のpolylineを取得（enrich-logi-en.jsのvenue_accessデータから）
       if (apiKey) {
@@ -488,7 +491,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
     await upsertRoute('return', returnRoute)
 
     // accommodations: なければ INSERT、あれば空フィールド補完
-    const accomInfo = await fetchAccommodationWithLlm(anthropic, location, latitude, longitude)
+    const accomInfo = await fetchAccommodationWithLlm(anthropic, destinationForLlm, latitude, longitude)
     if (accomInfo) {
       const existingAccom = await client.query(
         `SELECT id FROM ${SCHEMA}.accommodations WHERE event_id = $1`,
@@ -542,13 +545,13 @@ async function runCli() {
 
   if (EVENT_ID) {
     const { rows } = await client.query(
-      `SELECT id, name, location, country, official_url, latitude, longitude FROM ${SCHEMA}.events WHERE id = $1`,
+      `SELECT id, name, location, country, official_url, latitude, longitude, reception_place, start_place FROM ${SCHEMA}.events WHERE id = $1`,
       [EVENT_ID]
     )
     targets = rows
   } else {
     const { rows } = await client.query(
-      `SELECT e.id, e.name, e.location, e.country, e.official_url, e.latitude, e.longitude
+      `SELECT e.id, e.name, e.location, e.country, e.official_url, e.latitude, e.longitude, e.reception_place, e.start_place
        FROM ${SCHEMA}.events e
        LEFT JOIN ${SCHEMA}.access_routes ar ON ar.event_id = e.id AND ar.origin_type = 'tokyo'
        WHERE e.location IS NOT NULL AND e.collected_at IS NOT NULL AND ar.id IS NULL
