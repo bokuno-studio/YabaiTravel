@@ -141,6 +141,13 @@ for (const ev of events) {
         if (isJapan && allTaxi) {
           addIssue(ev.name, 'VA_JAPAN_ALL_TAXI', '日本なのに全ルートがタクシー/徒歩のみ')
         }
+        // 時間だけあってルート詳細がないケース（例: "56min" のみ）
+        for (const [key, label] of [['airport_1_access','ap1'],['airport_2_access','ap2'],['station_access','stn']]) {
+          const val = d[key]
+          if (val && !val.startsWith('Taxi') && !val.startsWith('Walk') && !val.includes('\n') && !val.includes('.')) {
+            addIssue(ev.name, 'VA_ACCESS_NO_DETAIL', `${label}に時間のみでルート詳細なし: ${val}`)
+          }
+        }
       } catch {
         addIssue(ev.name, 'VA_PARSE_ERROR', 'route_detail_en がJSON解析不可')
       }

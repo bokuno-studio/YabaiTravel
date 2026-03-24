@@ -356,15 +356,15 @@ export async function enrichLogiEn(event, opts = { dryRun: false, force: false }
               return { access: `Walk ~${Math.round(point.distance_km * 1000)}m`, cost: null, polyline: null }
             }
             const route = isJapan ? null : await fetchRoute(point, location, apiKey)
-            if (route) {
+            if (route && route.routeDetail) {
               return {
-                access: `${route.time}${route.routeDetail ? '\n' + route.routeDetail : ''}`,
+                access: `${route.time}\n${route.routeDetail}`,
                 cost: await estimateCostWithLlm(anthropic, point.name, location, route.routeDetail, country),
                 polyline: route.polyline || null,
               }
             }
-            // Google API失敗 or 日本（Transit API未対応）
-            if (isJapan) {
+            // Google APIでルート詳細が取れなかった or 日本（Transit API未対応）→ LLMフォールバック
+            {
               const llm = await estimateTransitWithLlm(anthropic, point.name, location, country)
               if (llm?.route) {
                 return { access: `${llm.time || ''}\n${llm.route}`, cost: llm.cost || null, polyline: null }
