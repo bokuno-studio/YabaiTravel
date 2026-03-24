@@ -181,20 +181,20 @@ async function fetchRoute(origin, destination, apiKey) {
 
     // 経路詳細を抽出（Transit steps）
     const leg = route.legs?.[0]
+    // Transit stepsのみ抽出（道順の細かい指示は除外）
     const steps = (leg?.steps || [])
-      .filter(s => s.transitDetails || s.navigationInstruction?.instructions)
-      .map(s => {
-        if (s.transitDetails) {
-          const td = s.transitDetails
-          const line = td.transitLine?.nameShort || td.transitLine?.name || ''
-          const vehicle = td.transitLine?.vehicle?.type || s.travelMode || ''
-          const stops = [td.stopDetails?.departureStop?.name, td.stopDetails?.arrivalStop?.name].filter(Boolean).join(' → ')
-          return [vehicle, line, stops].filter(Boolean).join(' ')
-        }
-        return s.navigationInstruction?.instructions || ''
+      .filter(s => s.transitDetails)
+      .map((s, i) => {
+        const td = s.transitDetails
+        const line = td.transitLine?.nameShort || td.transitLine?.name || ''
+        const vehicle = td.transitLine?.vehicle?.type || s.travelMode || ''
+        const from = td.stopDetails?.departureStop?.name || ''
+        const to = td.stopDetails?.arrivalStop?.name || ''
+        const segment = from && to ? `${from} → ${to}` : from || to
+        return `${i + 1}. ${[vehicle, line, segment].filter(Boolean).join(' ')}`
       })
       .filter(Boolean)
-    const routeDetail = steps.join(' → ') || null
+    const routeDetail = steps.join('\n') || null
 
     // 費用（transit fare）
     // Routes API v2 doesn't return fare info directly; we'll estimate based on transit type
@@ -311,8 +311,8 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
             result.airport_1_name = airports[0].name
             result.airport_1_lat = airports[0].lat
             result.airport_1_lng = airports[0].lng
-            result.airport_1_access = route ? `${route.time}${route.routeDetail ? ' — ' + route.routeDetail : ''}` : null
-            result.airport_1_cost = await estimateCostWithLlm(anthropic, airports[0].name, location, route?.routeDetail, country)
+            result.airport_1_access = route ? `${route.time}${route.routeDetail ? '\n' + route.routeDetail : ''}` : null
+            result.airport_1_cost = route ? await estimateCostWithLlm(anthropic, airports[0].name, location, route.routeDetail, country) : null
             airport1Coords = { lat: airports[0].lat, lng: airports[0].lng }
             airport1Polyline = route?.polyline || null
           }
@@ -322,8 +322,8 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
             result.airport_2_name = airports[1].name
             result.airport_2_lat = airports[1].lat
             result.airport_2_lng = airports[1].lng
-            result.airport_2_access = route ? `${route.time}${route.routeDetail ? ' — ' + route.routeDetail : ''}` : null
-            result.airport_2_cost = await estimateCostWithLlm(anthropic, airports[1].name, location, route?.routeDetail, country)
+            result.airport_2_access = route ? `${route.time}${route.routeDetail ? '\n' + route.routeDetail : ''}` : null
+            result.airport_2_cost = route ? await estimateCostWithLlm(anthropic, airports[1].name, location, route.routeDetail, country) : null
             airport2Coords = { lat: airports[1].lat, lng: airports[1].lng }
             airport2Polyline = route?.polyline || null
           }
@@ -333,8 +333,8 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
             result.station_name = stations[0].name
             result.station_lat = stations[0].lat
             result.station_lng = stations[0].lng
-            result.station_access = route ? `${route.time}${route.routeDetail ? ' — ' + route.routeDetail : ''}` : null
-            result.station_cost = await estimateCostWithLlm(anthropic, stations[0].name, location, route?.routeDetail, country)
+            result.station_access = route ? `${route.time}${route.routeDetail ? '\n' + route.routeDetail : ''}` : null
+            result.station_cost = route ? await estimateCostWithLlm(anthropic, stations[0].name, location, route.routeDetail, country) : null
             stationCoords = { lat: stations[0].lat, lng: stations[0].lng }
             stationPolyline = route?.polyline || null
           }
