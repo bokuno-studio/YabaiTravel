@@ -72,6 +72,14 @@ function Legal() {
             value="flexplore"
           />
           <LegalRow
+            label={isEn ? 'Products & Services' : '商品・サービスの内容'}
+            value={
+              isEn
+                ? 'yabai.travel — A search and trip planning service for endurance races (trail running, obstacle course racing, etc.) in Japan. The paid "Crew Membership" plan provides additional features such as favorites, comments, and more.'
+                : 'yabai.travel — エンデュランスレース（トレイルランニング、障害物レース等）の検索・旅行計画サービス。有料プラン「Crew メンバーシップ」では、お気に入り保存・コメント投稿等の追加機能をご利用いただけます。'
+            }
+          />
+          <LegalRow
             label={isEn ? 'Representative' : '代表者'}
             value={
               isEn
@@ -91,8 +99,8 @@ function Legal() {
             label={isEn ? 'Contact' : '連絡先'}
             value={
               isEn
-                ? 'Please use the contact form below.'
-                : '下記のお問い合わせフォームよりご連絡ください'
+                ? 'support@yabai.travel (You may also use the contact form below.)'
+                : 'support@yabai.travel（お問い合わせフォームもご利用いただけます）'
             }
           />
           <LegalRow
@@ -111,14 +119,14 @@ function Legal() {
             value={
               isEn ? (
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Crew Membership: $10/month</li>
-                  <li>Comment: $1 per comment</li>
+                  <li>Crew Membership: $10/month (tax included)</li>
+                  <li>Comment: $1 per comment (tax included)</li>
                   <li>One-time Donation: Any amount (USD)</li>
                 </ul>
               ) : (
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Crew メンバーシップ: $10/月</li>
-                  <li>コメント: $1/件</li>
+                  <li>Crew メンバーシップ: $10/月（税込）</li>
+                  <li>コメント: $1/件（税込）</li>
                   <li>単発寄付: 任意の金額（USD）</li>
                 </ul>
               )
@@ -128,16 +136,16 @@ function Legal() {
             label={isEn ? 'Payment Method' : '支払方法'}
             value={
               isEn
-                ? 'Credit card'
-                : 'クレジットカード決済'
+                ? 'Credit card (via Stripe)'
+                : 'クレジットカード決済（Stripe 経由）'
             }
           />
           <LegalRow
             label={isEn ? 'Payment Timing' : '支払時期'}
             value={
               isEn
-                ? 'Charged immediately upon completing the purchase.'
-                : '購入手続き完了時に即時決済'
+                ? 'Charged immediately upon completing the purchase. Subscriptions are charged automatically upon each monthly renewal.'
+                : '購入手続き完了時に即時決済。サブスクリプションは毎月自動更新時に決済されます。'
             }
           />
           <LegalRow
@@ -153,7 +161,7 @@ function Legal() {
             value={
               isEn ? (
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>No returns are accepted as this is a digital service.</li>
+                  <li>No returns or refunds are accepted as this is a digital service.</li>
                   <li>
                     Crew Membership can be cancelled at any time from the{' '}
                     <Link to={`${langPrefix}/pricing`} className="text-primary underline">
@@ -164,7 +172,7 @@ function Legal() {
                 </ul>
               ) : (
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>デジタルサービスのため、返品はお受けしておりません。</li>
+                  <li>デジタルサービスのため、返品・返金はお受けしておりません。</li>
                   <li>
                     Crew メンバーシップは、
                     <Link to={`${langPrefix}/pricing`} className="text-primary underline">
@@ -175,6 +183,14 @@ function Legal() {
                   <li>キャンセル後、残りの期間は引き続きサービスをご利用いただけます。</li>
                 </ul>
               )
+            }
+          />
+          <LegalRow
+            label={isEn ? 'Special Conditions' : '特別な販売条件'}
+            value={
+              isEn
+                ? 'Crew Membership is a monthly subscription that renews and charges automatically each month unless cancelled. Prices are in USD; the amount charged in your local currency may vary depending on the exchange rate.'
+                : 'Crew メンバーシップは月額サブスクリプションです。キャンセルしない限り毎月自動的に更新・決済されます。価格は USD 建てであり、為替レートにより日本円での請求額が変動する場合があります。'
             }
           />
         </div>
