@@ -496,7 +496,9 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
       )
       const accomArea = accomInfo.recommended_area || null
       const accomAreaEn = accomInfo.recommended_area_en || null
-      const accomCost = accomInfo.avg_cost_3star != null ? parseInt(accomInfo.avg_cost_3star, 10) : null
+      let accomCost = accomInfo.avg_cost_3star != null ? parseInt(accomInfo.avg_cost_3star, 10) : null
+      // LLMが異常値を返した場合はnullに（1泊1000円未満はありえない）
+      if (accomCost != null && (accomCost < 1000 || isNaN(accomCost))) accomCost = null
       if (existingAccom.rows.length > 0) {
         await client.query(
           `UPDATE ${SCHEMA}.accommodations SET

@@ -3,12 +3,13 @@ import type { AccessRoute } from '@/types/event'
 import SectionCard from './SectionCard'
 import DLRow from './DLRow'
 
-/** Extract numeric yen value from a cost string like "¥15,000" or "約15,000円" and convert to USD display */
+/** Extract numeric yen value from a cost string like "¥15,000" or "約15,000円～200,000円" and convert to USD display */
 function costToUsd(cost: string | null | undefined): string | null {
   if (!cost) return null
-  const digits = cost.replace(/[^0-9]/g, '')
-  if (!digits) return cost // non-numeric → return as-is
-  const yen = parseInt(digits, 10)
+  // 最初の数値（カンマ区切り対応）だけ抽出。「～」「〜」「-」で区切られた範囲の最初の値を使う
+  const match = cost.match(/[\d,]+/)
+  if (!match) return cost // non-numeric → return as-is
+  const yen = parseInt(match[0].replace(/,/g, ''), 10)
   if (isNaN(yen) || yen === 0) return cost
   return `$${Math.round(yen / 150).toLocaleString()}`
 }

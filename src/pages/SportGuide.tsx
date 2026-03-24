@@ -114,17 +114,69 @@ const SECTION_LABELS = {
   },
 }
 
-// --- Sub-component: Section with title and pre-wrapped text ---
+// --- Section icons ---
 
-function GuideSection({ title, content }: { title: string; content: string }) {
+const SECTION_ICONS: Record<string, string> = {
+  overview: '📖',
+  rules: '📋',
+  getting_started: '🚀',
+  recommended_races: '🏆',
+  common_mistakes: '⚠️',
+  gear: '🎒',
+  community: '👥',
+}
+
+// --- Sub-component: Section with title, icon, and paragraph-split text ---
+
+function GuideSection({ title, content, sectionKey, id }: { title: string; content: string; sectionKey?: string; id?: string }) {
   if (!content) return null
+  const icon = sectionKey ? SECTION_ICONS[sectionKey] || '' : ''
+  const paragraphs = content.split(/\n\n+/).filter(Boolean)
   return (
-    <div style={{ marginBottom: '1.5rem' }}>
-      <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem', color: '#1e293b' }}>{title}</h3>
-      <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.8', color: '#334155', fontSize: '0.95rem', margin: 0 }}>
-        {content}
+    <section id={id} style={{ marginBottom: '2rem', padding: '1.25rem', background: '#fff', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+      <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '0.75rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        {icon && <span style={{ fontSize: '1.2rem' }}>{icon}</span>}
+        {title}
+      </h3>
+      {paragraphs.map((p, i) => (
+        <p key={i} style={{ whiteSpace: 'pre-wrap', lineHeight: '1.8', color: '#334155', fontSize: '0.95rem', margin: i < paragraphs.length - 1 ? '0 0 0.8rem 0' : 0 }}>
+          {p}
+        </p>
+      ))}
+    </section>
+  )
+}
+
+// --- Sub-component: Table of Contents ---
+
+function GuideTOC({ labels, content, isEn }: { labels: typeof SECTION_LABELS.ja; content: GuideContent; isEn: boolean }) {
+  const sections = [
+    { key: 'overview', label: labels.overview, has: !!content.overview },
+    { key: 'rules', label: labels.rules, has: !!content.rules },
+    { key: 'getting_started', label: labels.getting_started, has: !!content.getting_started },
+    { key: 'recommended_races', label: labels.recommended_races, has: !!content.recommended_races },
+    { key: 'common_mistakes', label: labels.common_mistakes, has: !!content.common_mistakes },
+    { key: 'gear', label: labels.gear, has: !!content.gear },
+    { key: 'community', label: labels.community, has: !!content.community },
+  ].filter(s => s.has)
+
+  if (sections.length < 3) return null
+
+  return (
+    <nav style={{ marginBottom: '2rem', padding: '1rem 1.25rem', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+      <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600, fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {isEn ? 'Contents' : '目次'}
       </p>
-    </div>
+      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: '0.4rem 1rem' }}>
+        {sections.map(s => (
+          <li key={s.key}>
+            <a href={`#section-${s.key}`} style={{ color: '#3b82f6', textDecoration: 'none', fontSize: '0.9rem' }}>
+              {SECTION_ICONS[s.key] || ''} {s.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
   )
 }
 
@@ -205,16 +257,21 @@ function SportGuide() {
         <article style={{ maxWidth: '720px' }}>
           <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>{sportTitle}</h2>
 
-          <GuideSection title={labels.overview} content={dbContent.overview} />
-          <GuideSection title={labels.rules} content={dbContent.rules} />
-          <GuideSection title={labels.getting_started} content={dbContent.getting_started} />
-          <GuideSection title={labels.recommended_races} content={dbContent.recommended_races} />
-          <GuideSection title={labels.common_mistakes} content={dbContent.common_mistakes} />
+          <GuideTOC labels={labels} content={dbContent} isEn={isEn} />
+
+          <GuideSection title={labels.overview} content={dbContent.overview} sectionKey="overview" id="section-overview" />
+          <GuideSection title={labels.rules} content={dbContent.rules} sectionKey="rules" id="section-rules" />
+          <GuideSection title={labels.getting_started} content={dbContent.getting_started} sectionKey="getting_started" id="section-getting_started" />
+          <GuideSection title={labels.recommended_races} content={dbContent.recommended_races} sectionKey="recommended_races" id="section-recommended_races" />
+          <GuideSection title={labels.common_mistakes} content={dbContent.common_mistakes} sectionKey="common_mistakes" id="section-common_mistakes" />
 
           {/* Gear section */}
           {dbContent.gear && (
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem', color: '#1e293b' }}>{labels.gear}</h3>
+            <section id="section-gear" style={{ marginBottom: '2rem', padding: '1.25rem', background: '#fff', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '0.75rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '1.2rem' }}>🎒</span>
+                {labels.gear}
+              </h3>
 
               {dbContent.gear.essential?.length > 0 && (
                 <div style={{ marginBottom: '0.75rem' }}>
@@ -239,10 +296,10 @@ function SportGuide() {
                   <strong>{labels.gear_budget}:</strong> {dbContent.gear.budget}
                 </p>
               )}
-            </div>
+            </section>
           )}
 
-          <GuideSection title={labels.community} content={dbContent.community} />
+          <GuideSection title={labels.community} content={dbContent.community} sectionKey="community" id="section-community" />
 
           {/* Link to events */}
           <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
