@@ -116,14 +116,14 @@ async function callLlmWithRetry(anthropic, params) {
  * LLM で国内アクセス情報を取得（#329 改善: 3段階タクシー判定）
  * transit_accessible: "full" | "partial" | "none"
  */
-async function fetchDomesticLogiWithLlm(anthropic, location) {
+async function fetchDomesticLogiWithLlm(anthropic, location, latitude, longitude) {
   const msg = await callLlmWithRetry(anthropic, {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1500,
     messages: [
       {
         role: 'user',
-        content: `「東京駅」から「${location}」への経路を教えてください。出発地点は必ず「東京駅」としてください。
+        content: `「東京駅」から「${location}」${latitude ? `（座標: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}）` : ''}への経路を教えてください。座標から正確な目的地を特定して回答してください。出発地点は必ず「東京駅」としてください。
 飛行機・電車・路線バス・フェリーのみを使った経路にしてください。タクシーは経路に含めないでください。
 日本語と英語の両方で回答してください。
 以下のJSON形式で回答してください：
@@ -332,9 +332,12 @@ export async function enrichLogi(event, opts = { dryRun: false, force: false }) 
     await client.connect()
 
     const { id: eventId, name, location, country, official_url: officialUrl, latitude, longitude, reception_place, start_place } = event
-    // 具体的な会場名を優先（locationは「足立区」等の広域名になりがち）
+    // 具体的な会場名を優先（locationは「千葉県」等の広域名になりがち）
     const specificVenue = reception_place || start_place || null
-    const destinationForLlm = specificVenue ? `${specificVenue}（${location}）` : location
+    // 会場名がなくてlocationが広域の場合、イベント名をヒントに使う
+    const destinationForLlm = specificVenue
+      ? `${specificVenue}（${location}）`
+      : `${name}の会場（${location}）`
 
     if (!location) {
       return { success: false, eventId, error: 'no location' }
@@ -380,7 +383,7 @@ export async function enrichLogi(event, opts = { dryRun: false, force: false }) 
 
       // LLM fallback（APIキーなし or API失敗時）
       if (!outboundRoute) {
-        const logiInfo = await fetchDomesticLogiWithLlm(anthropic, destinationForLlm)
+        const logiInfo = await fetchDomesticLogiWithLlm(anthropic, destinationForLlm, latitude, longitude)
         if (logiInfo) {
           outboundRoute = {
             route_detail: logiInfo.route_detail,
