@@ -165,9 +165,9 @@ async function batchTranslateNames(names) {
       const msg = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 4096,
-        system: `You are a translator specializing in endurance sports event names (trail running, marathon, spartan race, hyrox, triathlon, etc.).
+        system: [{ type: 'text', text: `You are a translator specializing in endurance sports event names (trail running, marathon, spartan race, hyrox, triathlon, etc.).
 Translate the given Japanese race names to English. Keep proper nouns and place names in their romanized form.
-Return ONLY a valid JSON object mapping each original name to its English translation. No markdown, no explanation.`,
+Return ONLY a valid JSON object mapping each original name to its English translation. No markdown, no explanation.`, cache_control: { type: 'ephemeral' } }],
         messages: [
           { role: 'user', content: `Translate these race names to English:\n${nameList}` },
         ],

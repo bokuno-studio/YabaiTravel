@@ -130,7 +130,7 @@ async function callLlm(anthropic, content, label) {
   const msg = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 2048,
-    system: SYSTEM_PROMPT,
+    system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: `ページ内容:\n\n${content}` }],
   })
   const text = msg.content[0].type === 'text' ? msg.content[0].text : ''

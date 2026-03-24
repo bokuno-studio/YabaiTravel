@@ -153,7 +153,7 @@ export async function translateEvent(event, opts = { dryRun: false }) {
     const msg = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
-      system: translatePrompt,
+      system: [{ type: 'text', text: translatePrompt, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: JSON.stringify(toTranslate, null, 2) }],
     })
 

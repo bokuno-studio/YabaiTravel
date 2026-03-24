@@ -182,7 +182,7 @@ export async function callLlm(anthropic, systemPrompt, userContent, { maxTokens 
       const msg = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: maxTokens,
-        system: systemPrompt,
+        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
         messages: [{ role: 'user', content: userContent }],
       })
       const text = msg.content[0].type === 'text' ? msg.content[0].text : ''
@@ -247,7 +247,7 @@ export async function reclassifyRaceType(anthropic, eventName) {
     const msg = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 32,
-      system: RACE_TYPE_CLASSIFY_PROMPT,
+      system: [{ type: 'text', text: RACE_TYPE_CLASSIFY_PROMPT, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: eventName }],
     })
     const text = (msg.content[0].type === 'text' ? msg.content[0].text : '').trim().toLowerCase()

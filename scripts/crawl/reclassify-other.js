@@ -65,7 +65,7 @@ async function run() {
       const msg = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 32,
-        system: CLASSIFY_PROMPT,
+        system: [{ type: 'text', text: CLASSIFY_PROMPT, cache_control: { type: 'ephemeral' } }],
         messages: [{ role: 'user', content: name }],
       })
       const text = (msg.content[0].type === 'text' ? msg.content[0].text : '').trim().toLowerCase()
