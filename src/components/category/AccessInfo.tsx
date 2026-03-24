@@ -104,6 +104,9 @@ function AccessInfo({
                       <DLRow label="Cost" value={venueData.station_cost} eventId={eventId} categoryId={categoryId} />
                     </>
                   )}
+                  {displayOutboundShuttle && (
+                    <DLRow label="Shuttle bus?" value={displayOutboundShuttle} eventId={eventId} categoryId={categoryId} />
+                  )}
                 </dl>
               )
             }
