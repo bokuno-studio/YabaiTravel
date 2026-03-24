@@ -197,14 +197,14 @@ async function extractOfficialShuttle(officialUrl) {
 }
 
 /** LLM で国際アクセス情報を取得 */
-async function fetchInternationalLogiWithLlm(anthropic, location, country) {
+async function fetchInternationalLogiWithLlm(anthropic, location, country, latitude, longitude) {
   const msg = await callLlmWithRetry(anthropic, {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1500,
     messages: [
       {
         role: 'user',
-        content: `日本（羽田・成田）から「${location}」（${country}）への一般的なアクセス方法を教えてください。
+        content: `日本（羽田・成田）から「${location}」（${country}${latitude ? `、座標: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}` : ''}）への一般的なアクセス方法を教えてください。座標から正確な場所を特定して回答してください。
 日本語と英語の両方で回答してください。
 以下のJSON形式で回答してください：
 {
@@ -256,14 +256,14 @@ JSONのみ返してください。`,
 }
 
 /** LLM で宿泊情報を取得 */
-async function fetchAccommodationWithLlm(anthropic, location) {
+async function fetchAccommodationWithLlm(anthropic, location, latitude, longitude) {
   const msg = await callLlmWithRetry(anthropic, {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 768,
     messages: [
       {
         role: 'user',
-        content: `「${location}」大会参加者向けの前泊推奨エリアと星3相当の宿泊費用目安を教えてください。
+        content: `「${location}」${latitude ? `（座標: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}）` : ''}大会参加者向けの前泊推奨エリアと星3相当の宿泊費用目安を教えてください。座標から正確な場所を特定して回答してください。宿泊費は日本円換算の数値のみで返してください。
 日本語と英語の両方で回答してください。
 以下のJSON形式で回答してください：
 {
@@ -402,7 +402,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
       }
     } else {
       // 海外: LLM + 最寄り空港→会場のpolyline取得
-      const logiInfo = await fetchInternationalLogiWithLlm(anthropic, location, country || '不明')
+      const logiInfo = await fetchInternationalLogiWithLlm(anthropic, location, country || '不明', latitude, longitude)
       let intlPolyline = null
       // 最寄り空港→会場のpolylineを取得（enrich-logi-en.jsのvenue_accessデータから）
       if (apiKey) {
@@ -488,7 +488,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
     await upsertRoute('return', returnRoute)
 
     // accommodations: なければ INSERT、あれば空フィールド補完
-    const accomInfo = await fetchAccommodationWithLlm(anthropic, location)
+    const accomInfo = await fetchAccommodationWithLlm(anthropic, location, latitude, longitude)
     if (accomInfo) {
       const existingAccom = await client.query(
         `SELECT id FROM ${SCHEMA}.accommodations WHERE event_id = $1`,
