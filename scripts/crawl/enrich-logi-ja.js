@@ -409,15 +409,34 @@ export async function enrichLogi(event, opts = { dryRun: false, force: false }) 
       // 海外: LLM + 最寄り空港→会場のpolyline取得
       const logiInfo = await fetchInternationalLogiWithLlm(anthropic, destinationForLlm, country || '不明', latitude, longitude)
       let intlPolyline = null
-      // 最寄り空港→会場のpolylineを取得（enrich-logi-en.jsのvenue_accessデータから）
+      // 日本からのルートで到着する空港→会場のpolylineを取得
       if (apiKey) {
         try {
           const { rows: vaRoutes } = await client.query(
-            `SELECT route_polyline FROM ${SCHEMA}.access_routes WHERE event_id = $1 AND origin_type = 'venue_access' AND route_polyline IS NOT NULL`,
+            `SELECT route_detail_en, route_polyline FROM ${SCHEMA}.access_routes WHERE event_id = $1 AND origin_type = 'venue_access' AND route_polyline IS NOT NULL`,
             [eventId]
           )
-          if (vaRoutes.length > 0) {
-            intlPolyline = vaRoutes[0].route_polyline
+          if (vaRoutes.length > 0 && vaRoutes[0].route_polyline) {
+            try {
+              const vaData = JSON.parse(vaRoutes[0].route_detail_en)
+              const polylines = JSON.parse(vaRoutes[0].route_polyline)
+              if (Array.isArray(polylines)) {
+                // LLMルートから到着空港名を特定して、該当するpolylineを選択
+                const routeText = outboundRoute?.route_detail || ''
+                let matchIdx = 0 // デフォルトは最初の空港
+                if (vaData.airport_2_name && routeText.includes(vaData.airport_2_name.split(' ')[0])) {
+                  matchIdx = 1 // ルートに2番目の空港名が含まれていたらそちらを使う
+                }
+                if (vaData.airport_1_name && routeText.includes(vaData.airport_1_name.split(' ')[0])) {
+                  matchIdx = 0 // 1番目の空港名が含まれていたらそちら優先
+                }
+                intlPolyline = matchIdx < polylines.length ? JSON.stringify([polylines[matchIdx]]) : null
+              }
+            } catch {
+              // パース失敗時は最初の1つ
+              const polylines = JSON.parse(vaRoutes[0].route_polyline)
+              intlPolyline = Array.isArray(polylines) && polylines.length > 0 ? JSON.stringify([polylines[0]]) : null
+            }
           }
         } catch { /* ignore */ }
       }
