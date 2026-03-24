@@ -41,7 +41,9 @@ async function fetchGoogleDirections(origin, destination, apiKey) {
       },
       body: JSON.stringify({
         origin: { address: origin },
-        destination: { address: destination },
+        destination: typeof destination === 'object' && destination.lat
+          ? { location: { latLng: { latitude: destination.lat, longitude: destination.lng } } }
+          : { address: destination },
         travelMode: 'TRANSIT',
         languageCode: 'ja',
       }),
@@ -152,6 +154,7 @@ JSONのみ返してください。`,
     if (typeof v !== 'string') return v
     const s = v.trim().toLowerCase()
     if (!s || s === 'null' || s === '不明' || s === '情報なし' || s === 'なし' || s === 'n/a' || s === 'unknown' || s === 'none') return null
+    if (/なし|ない|不要|no shuttle|not available|限定的|通常なし|不明/.test(v)) return null
     return v
   }
   parsed.shuttle_available = nullify(parsed.shuttle_available)
@@ -210,16 +213,16 @@ async function fetchInternationalLogiWithLlm(anthropic, location, country) {
     "route_detail_en": "Outbound route details (English)",
     "total_time_estimate": "所要時間",
     "cost_estimate": "費用概算",
-    "shuttle_available": "シャトルバス情報（日本語。不明なら null）",
-    "shuttle_available_en": "Shuttle bus info (English. null if unknown)"
+    "shuttle_available": "大会公式シャトルバスの情報（日本語）。公式シャトルがない場合や不明な場合は必ず null。一般タクシーやバスの情報は含めない",
+    "shuttle_available_en": "Official race shuttle bus info (English). Return null if no official shuttle or unknown"
   },
   "return": {
     "route_detail": "復路の経路詳細（日本語）",
     "route_detail_en": "Return route details (English)",
     "total_time_estimate": "所要時間",
     "cost_estimate": "費用概算",
-    "shuttle_available": "シャトルバス情報（日本語。不明なら null）",
-    "shuttle_available_en": "Shuttle bus info (English. null if unknown)"
+    "shuttle_available": "大会公式シャトルバスの情報（日本語）。公式シャトルがない場合や不明な場合は必ず null。一般タクシーやバスの情報は含めない",
+    "shuttle_available_en": "Official race shuttle bus info (English). Return null if no official shuttle or unknown"
   }
 }
 JSONのみ返してください。`,
@@ -230,7 +233,26 @@ JSONのみ返してください。`,
   const text = msg.content[0].type === 'text' ? msg.content[0].text : ''
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) return null
-  return JSON.parse(jsonMatch[0])
+  const parsed = JSON.parse(jsonMatch[0])
+  // シャトル情報をnull正規化
+  const nullifyShuttle = (v) => {
+    if (v == null) return null
+    if (typeof v !== 'string') return v
+    const s = v.trim().toLowerCase()
+    if (!s || s === 'null' || s === '不明' || s === '情報なし' || s === 'なし' || s === 'n/a' || s === 'unknown' || s === 'none') return null
+    // 「なし」「ない」「限定的」「通常なし」等を含む場合もnull
+    if (/なし|ない|no shuttle|not available|限定的|通常なし/.test(v)) return null
+    return v
+  }
+  if (parsed.outbound) {
+    parsed.outbound.shuttle_available = nullifyShuttle(parsed.outbound.shuttle_available)
+    parsed.outbound.shuttle_available_en = nullifyShuttle(parsed.outbound.shuttle_available_en)
+  }
+  if (parsed.return) {
+    parsed.return.shuttle_available = nullifyShuttle(parsed.return.shuttle_available)
+    parsed.return.shuttle_available_en = nullifyShuttle(parsed.return.shuttle_available_en)
+  }
+  return parsed
 }
 
 /** LLM で宿泊情報を取得 */
@@ -308,7 +330,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
   try {
     await client.connect()
 
-    const { id: eventId, name, location, country, official_url: officialUrl } = event
+    const { id: eventId, name, location, country, official_url: officialUrl, latitude, longitude } = event
 
     if (!location) {
       return { success: false, eventId, error: 'no location' }
@@ -338,7 +360,9 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
       // 国内: Google Directions API or LLM fallback
       if (apiKey) {
         try {
-          const outboundData = await fetchGoogleDirections('東京駅', location, apiKey)
+          // 座標がある場合は座標を使う（locationが広域名だとルートが取れないため）
+          const destination = latitude && longitude ? { lat: latitude, lng: longitude } : location
+          const outboundData = await fetchGoogleDirections('東京駅', destination, apiKey)
           outboundRoute = parseGoogleDirections(outboundData)
           // スタート=ゴール同一（大半のレース）: 復路は往路と同じ。API呼び出しを省略
           if (outboundRoute) {
@@ -517,13 +541,13 @@ async function runCli() {
 
   if (EVENT_ID) {
     const { rows } = await client.query(
-      `SELECT id, name, location, country, official_url FROM ${SCHEMA}.events WHERE id = $1`,
+      `SELECT id, name, location, country, official_url, latitude, longitude FROM ${SCHEMA}.events WHERE id = $1`,
       [EVENT_ID]
     )
     targets = rows
   } else {
     const { rows } = await client.query(
-      `SELECT e.id, e.name, e.location, e.country, e.official_url
+      `SELECT e.id, e.name, e.location, e.country, e.official_url, e.latitude, e.longitude
        FROM ${SCHEMA}.events e
        LEFT JOIN ${SCHEMA}.access_routes ar ON ar.event_id = e.id AND ar.origin_type = 'tokyo'
        WHERE e.location IS NOT NULL AND ar.id IS NULL
