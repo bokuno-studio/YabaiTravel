@@ -144,13 +144,23 @@ function EventList() {
   useEffect(() => {
     async function fetchEvents() {
       try {
-        const { data, error: err } = await supabase
-          .from('events')
-          .select('*, categories(*)')
-          .order('event_date', { ascending: true, nullsFirst: false })
-
-        if (err) throw err
-        setEvents(data ?? [])
+        // Supabaseのデフォルト1000件制限を回避して全件取得
+        const allEvents: typeof data = []
+        let from = 0
+        const PAGE_SIZE = 1000
+        while (true) {
+          const { data: page, error: err } = await supabase
+            .from('events')
+            .select('*, categories(*)')
+            .order('event_date', { ascending: true, nullsFirst: false })
+            .range(from, from + PAGE_SIZE - 1)
+          if (err) throw err
+          if (!page || page.length === 0) break
+          allEvents.push(...page)
+          if (page.length < PAGE_SIZE) break
+          from += PAGE_SIZE
+        }
+        setEvents(allEvents)
       } catch (e) {
         const msg =
           e instanceof Error
