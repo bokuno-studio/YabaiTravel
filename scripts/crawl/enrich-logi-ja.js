@@ -549,7 +549,7 @@ async function runCli() {
       `SELECT e.id, e.name, e.location, e.country, e.official_url, e.latitude, e.longitude
        FROM ${SCHEMA}.events e
        LEFT JOIN ${SCHEMA}.access_routes ar ON ar.event_id = e.id AND ar.origin_type = 'tokyo'
-       WHERE e.location IS NOT NULL AND ar.id IS NULL
+       WHERE e.location IS NOT NULL AND e.collected_at IS NOT NULL AND ar.id IS NULL
        ORDER BY e.updated_at ASC
        LIMIT $1`,
       [LIMIT === Infinity ? 10000 : LIMIT]
