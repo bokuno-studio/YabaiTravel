@@ -1,5 +1,4 @@
 import { Train } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import type { AccessRoute } from '@/types/event'
 import SectionCard from './SectionCard'
 import DLRow from './DLRow'
@@ -72,39 +71,6 @@ function AccessInfo({
 }: AccessInfoProps) {
   return (
     <>
-      {/* 公共交通機関で行けるか (tokyo origin routes only) */}
-      {!isVenueAccess(outbound) && (
-        <SectionCard
-          title={isEn ? 'Public transit access' : '公共交通機関で行けるか'}
-          icon={<Train className="h-4 w-4 text-primary" />}
-        >
-          {outbound?.transit_accessible != null && (
-            <p className={cn(
-              'mb-3 rounded-lg px-3 py-2 text-sm font-medium',
-              outbound.transit_accessible
-                ? 'bg-emerald-50 text-emerald-700'
-                : 'bg-red-50 text-red-700',
-            )}>
-              {outbound.transit_accessible
-                ? (isEn ? 'Accessible by public transit' : '公共交通機関で行ける')
-                : (isEn ? 'Not easily accessible by public transit (car/shuttle needed)' : '公共交通機関では行きにくい（要車・要シャトル）')}
-            </p>
-          )}
-          <div className="flex flex-wrap gap-4">
-            <div className="flex items-baseline gap-2 text-sm">
-              <span className="min-w-[2.5em] font-semibold text-muted-foreground">{isEn ? 'To' : '往路'}</span>
-              <span className={outbound?.total_time_estimate ? '' : 'italic text-muted-foreground/60'}>{outbound?.total_time_estimate ?? '\u2014'}</span>
-              {outbound?.cost_estimate && <span className="font-medium text-primary">{isEn ? costToUsd(outbound.cost_estimate) : outbound.cost_estimate}</span>}
-            </div>
-            <div className="flex items-baseline gap-2 text-sm">
-              <span className="min-w-[2.5em] font-semibold text-muted-foreground">{isEn ? 'From' : '復路'}</span>
-              <span className={returnRoute?.total_time_estimate ? '' : 'italic text-muted-foreground/60'}>{returnRoute?.total_time_estimate ?? '\u2014'}</span>
-              {returnRoute?.cost_estimate && <span className="font-medium text-primary">{isEn ? costToUsd(returnRoute.cost_estimate) : returnRoute.cost_estimate}</span>}
-            </div>
-          </div>
-        </SectionCard>
-      )}
-
       {/* どうやって行く？ / Venue Access */}
       <SectionCard title={isVenueAccess(outbound) ? 'Venue Access' : (isEn ? 'How to get there?' : 'どうやって行く？')} icon={<Train className="h-4 w-4 text-primary" />}>
         {isVenueAccess(outbound) ? (

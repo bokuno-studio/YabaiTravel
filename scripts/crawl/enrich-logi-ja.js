@@ -204,15 +204,15 @@ async function fetchInternationalLogiWithLlm(anthropic, location, country) {
     messages: [
       {
         role: 'user',
-        content: `日本（羽田・成田）から「${location}」（${country}）への一般的なアクセス方法を教えてください。往路・復路の概略経路、フライト所要時間、費用感を含めてください。
+        content: `日本（羽田・成田）から「${location}」（${country}）への一般的なアクセス方法を教えてください。
 日本語と英語の両方で回答してください。
 以下のJSON形式で回答してください：
 {
   "outbound": {
-    "route_detail": "往路の経路詳細（日本語）",
-    "route_detail_en": "Outbound route details (English)",
-    "total_time_estimate": "所要時間",
-    "cost_estimate": "費用概算",
+    "route_detail": "往路の経路詳細（日本語）。番号付きで各ステップを改行区切りで記載（例: 1. 羽田空港から○○空港へ（約X時間）\\n2. ○○空港から市内へ電車で移動\\n3. ○○駅からバスで会場へ）",
+    "route_detail_en": "Outbound route details (English). Numbered steps separated by newlines",
+    "total_time_estimate": "所要時間（例: 約15時間）。「時期による変動」等の注釈は不要",
+    "cost_estimate": "費用概算（例: 約150,000円）。「変動あり」等の注釈は不要",
     "shuttle_available": "大会公式シャトルバスの情報（日本語）。公式シャトルがない場合や不明な場合は必ず null。一般タクシーやバスの情報は含めない",
     "shuttle_available_en": "Official race shuttle bus info (English). Return null if no official shuttle or unknown"
   },
@@ -313,8 +313,7 @@ function buildTaxiEstimate(logiInfo) {
   return parts.length > 0 ? parts.join(' / ') : null
 }
 
-const DISCLAIMER = '\n※ この情報は目安です。実際のフライト・交通手段は出発前にご確認ください。'
-const DISCLAIMER_EN = '\n* This information is approximate. Please verify actual flights and transportation before departure.'
+// DISCLAIMER は廃止（自明のため）
 
 /**
  * 単一イベントのロジ情報をエンリッチする（日本語版・東京起点）
@@ -419,16 +418,16 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
       }
       if (logiInfo) {
         outboundRoute = {
-          route_detail: logiInfo.outbound?.route_detail ? logiInfo.outbound.route_detail + DISCLAIMER : null,
-          route_detail_en: logiInfo.outbound?.route_detail_en ? logiInfo.outbound.route_detail_en + DISCLAIMER_EN : null,
+          route_detail: logiInfo.outbound?.route_detail ? logiInfo.outbound.route_detail : null,
+          route_detail_en: logiInfo.outbound?.route_detail_en ? logiInfo.outbound.route_detail_en : null,
           total_time_estimate: logiInfo.outbound?.total_time_estimate || null,
           cost_estimate: logiInfo.outbound?.cost_estimate || null,
           shuttle_available_en: logiInfo.outbound?.shuttle_available_en || null,
           route_polyline: intlPolyline,
         }
         returnRoute = {
-          route_detail: logiInfo.outbound?.route_detail ? logiInfo.outbound.route_detail + DISCLAIMER : null,
-          route_detail_en: logiInfo.outbound?.route_detail_en ? logiInfo.outbound.route_detail_en + DISCLAIMER_EN : null,
+          route_detail: logiInfo.outbound?.route_detail ? logiInfo.outbound.route_detail : null,
+          route_detail_en: logiInfo.outbound?.route_detail_en ? logiInfo.outbound.route_detail_en : null,
           total_time_estimate: logiInfo.outbound?.total_time_estimate || null,
           cost_estimate: logiInfo.outbound?.cost_estimate || null,
           shuttle_available_en: logiInfo.outbound?.shuttle_available_en || null,

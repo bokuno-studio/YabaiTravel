@@ -15,7 +15,7 @@ interface AccommodationInfoProps {
 function AccommodationInfo({ eventId, categoryId, accommodations, isEn }: AccommodationInfoProps) {
   return (
     <SectionCard
-      title={isEn ? 'How many days needed?' : '何日必要か'}
+      title={isEn ? 'Accommodation' : '宿泊'}
       icon={<Home className="h-4 w-4 text-primary" />}
     >
       <dl className="grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm">

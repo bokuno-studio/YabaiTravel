@@ -15,7 +15,6 @@ import {
   ArrowLeft,
   ExternalLink,
   FileEdit,
-  Train,
   Home,
   ChevronRight,
 } from 'lucide-react'
@@ -50,7 +49,7 @@ function EventDetail() {
   const isEn = lang === 'en'
   const [event, setEvent] = useState<Event | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
-  const [accessRoutes, setAccessRoutes] = useState<AccessRoute[]>([])
+  const [, setAccessRoutes] = useState<AccessRoute[]>([])
   const [accommodations, setAccommodations] = useState<Accommodation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -131,9 +130,6 @@ function EventDetail() {
   if (categories.length === 1 && eventId) {
     return <Navigate to={`${langPrefix}/events/${eventId}/categories/${categories[0].id}`} replace />
   }
-
-  const outbound = accessRoutes.find((r) => r.direction === 'outbound')
-  const returnRoute = accessRoutes.find((r) => r.direction === 'return')
 
   const dateDisplay = event.event_date_end && event.event_date_end !== event.event_date
     ? `${event.event_date}〜${event.event_date_end}`
@@ -247,48 +243,12 @@ function EventDetail() {
             </CardContent>
           </Card>
 
-          {/* アクセス */}
-          <Card className="mb-4">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Train className="h-4 w-4 text-primary" />
-                  {isEn ? 'Public transit access' : '公共交通機関で行けるか'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {outbound?.transit_accessible != null && (
-                  <p className={cn(
-                    'mb-3 rounded-lg px-3 py-2 text-sm font-medium',
-                    outbound.transit_accessible
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : 'bg-red-50 text-red-700',
-                  )}>
-                    {outbound.transit_accessible
-                      ? (isEn ? 'Accessible by public transit' : '公共交通機関で行ける')
-                      : (isEn ? 'Not easily accessible by public transit (car/shuttle needed)' : '公共交通機関では行きにくい（要車・要シャトル）')}
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-4">
-                  <div className="flex items-baseline gap-2 text-sm">
-                    <span className="min-w-[2.5em] font-semibold text-muted-foreground">{isEn ? 'To' : '往路'}</span>
-                    <span className={outbound?.total_time_estimate ? '' : 'italic text-muted-foreground/60'}>{outbound?.total_time_estimate ?? '—'}</span>
-                    {outbound?.cost_estimate && <span className="font-medium text-primary">{outbound.cost_estimate}</span>}
-                  </div>
-                  <div className="flex items-baseline gap-2 text-sm">
-                    <span className="min-w-[2.5em] font-semibold text-muted-foreground">{isEn ? 'From' : '復路'}</span>
-                    <span className={returnRoute?.total_time_estimate ? '' : 'italic text-muted-foreground/60'}>{returnRoute?.total_time_estimate ?? '—'}</span>
-                    {returnRoute?.cost_estimate && <span className="font-medium text-primary">{returnRoute.cost_estimate}</span>}
-                  </div>
-                </div>
-              </CardContent>
-          </Card>
-
           {/* 宿泊 */}
           <Card className="mb-4">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Home className="h-4 w-4 text-primary" />
-                  {isEn ? 'How many days needed?' : '何日必要か'}
+                  {isEn ? 'Accommodation' : '宿泊'}
                 </CardTitle>
               </CardHeader>
               <CardContent>
