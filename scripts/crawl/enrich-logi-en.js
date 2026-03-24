@@ -302,8 +302,8 @@ JSON only.`,
 /**
  * 単一イベントの英語版ロジ情報をエンリッチする
  */
-export async function enrichLogiEn(event, opts = { dryRun: false }) {
-  const { dryRun = false } = opts
+export async function enrichLogiEn(event, opts = { dryRun: false, force: false }) {
+  const { dryRun = false, force = false } = opts
   const apiKey = process.env.GOOGLE_DIRECTIONS_API_KEY
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
 
@@ -321,8 +321,12 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
       `SELECT id FROM ${SCHEMA}.access_routes WHERE event_id = $1 AND origin_type = 'venue_access'`,
       [eventId]
     )
-    if (existing.rows.length > 0) {
-      return { success: true, eventId } // 既にあればスキップ
+    if (existing.rows.length > 0 && !force) {
+      return { success: true, eventId } // 既にあればスキップ（forceでない場合）
+    }
+    // force時は既存データを削除して再取得
+    if (existing.rows.length > 0 && force) {
+      await client.query(`DELETE FROM ${SCHEMA}.access_routes WHERE event_id = $1 AND origin_type = 'venue_access'`, [eventId])
     }
 
     let result = null
@@ -452,6 +456,7 @@ export async function enrichLogiEn(event, opts = { dryRun: false }) {
 async function runCli() {
   const args = process.argv.slice(2)
   const DRY_RUN = args.includes('--dry-run')
+  const FORCE = args.includes('--force')
   const limitIdx = args.indexOf('--limit')
   const LIMIT = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : Infinity
   const eventIdIdx = args.indexOf('--event-id')
@@ -466,6 +471,19 @@ async function runCli() {
     const { rows } = await client.query(
       `SELECT id, name, location, country FROM ${SCHEMA}.events WHERE id = $1`,
       [EVENT_ID]
+    )
+    targets = rows
+  } else if (FORCE) {
+    // --force: 既存データありでも全件対象
+    const { rows } = await client.query(
+      `SELECT e.id, e.name, e.location, e.country
+       FROM ${SCHEMA}.events e
+       WHERE e.location IS NOT NULL AND e.collected_at IS NOT NULL
+         AND e.latitude IS NOT NULL
+         AND EXISTS (SELECT 1 FROM ${SCHEMA}.categories c WHERE c.event_id = e.id)
+       ORDER BY e.updated_at ASC
+       LIMIT $1`,
+      [LIMIT === Infinity ? 10000 : LIMIT]
     )
     targets = rows
   } else {
@@ -493,7 +511,7 @@ async function runCli() {
     const event = targets[i]
     const label = `[${i + 1}/${targets.length}]`
 
-    const result = await enrichLogiEn(event, { dryRun: DRY_RUN })
+    const result = await enrichLogiEn(event, { dryRun: DRY_RUN, force: FORCE })
     if (result.success) {
       ok++
       console.log(`${label} OK  ${event.name?.slice(0, 40)}`)

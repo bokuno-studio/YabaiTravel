@@ -321,8 +321,8 @@ function buildTaxiEstimate(logiInfo) {
  * @param {object} opts - {dryRun: boolean}
  * @returns {Promise<{success: boolean, eventId: string, error?: string}>}
  */
-export async function enrichLogi(event, opts = { dryRun: false }) {
-  const { dryRun = false } = opts
+export async function enrichLogi(event, opts = { dryRun: false, force: false }) {
+  const { dryRun = false, force = false } = opts
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
 
@@ -463,18 +463,17 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
         route.route_polyline || null,
       ]
       if (existingDirections.has(direction)) {
+        const setClause = force
+          ? `route_detail = $2, total_time_estimate = $3, cost_estimate = $4,
+             shuttle_available = $5, taxi_estimate = $6, transit_accessible = $7,
+             route_detail_en = $8, shuttle_available_en = $9, route_polyline = $10`
+          : `route_detail = COALESCE(route_detail, $2), total_time_estimate = COALESCE(total_time_estimate, $3),
+             cost_estimate = COALESCE(cost_estimate, $4), shuttle_available = COALESCE(shuttle_available, $5),
+             taxi_estimate = COALESCE(taxi_estimate, $6), transit_accessible = COALESCE(transit_accessible, $7),
+             route_detail_en = COALESCE(route_detail_en, $8), shuttle_available_en = COALESCE(shuttle_available_en, $9),
+             route_polyline = COALESCE(route_polyline, $10)`
         await client.query(
-          `UPDATE ${SCHEMA}.access_routes SET
-            route_detail        = COALESCE(route_detail, $2),
-            total_time_estimate = COALESCE(total_time_estimate, $3),
-            cost_estimate       = COALESCE(cost_estimate, $4),
-            shuttle_available   = COALESCE(shuttle_available, $5),
-            taxi_estimate       = COALESCE(taxi_estimate, $6),
-            transit_accessible  = COALESCE(transit_accessible, $7),
-            route_detail_en     = COALESCE(route_detail_en, $8),
-            shuttle_available_en = COALESCE(shuttle_available_en, $9),
-            route_polyline      = COALESCE(route_polyline, $10)
-           WHERE id = $1`,
+          `UPDATE ${SCHEMA}.access_routes SET ${setClause} WHERE id = $1`,
           [existingIds[direction], ...params]
         )
       } else {
@@ -503,12 +502,11 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
       // LLMが異常値を返した場合はnullに（1泊1000円未満はありえない）
       if (accomCost != null && (accomCost < 1000 || isNaN(accomCost))) accomCost = null
       if (existingAccom.rows.length > 0) {
+        const accomSetClause = force
+          ? 'recommended_area = $2, avg_cost_3star = $3, recommended_area_en = $4'
+          : 'recommended_area = COALESCE(recommended_area, $2), avg_cost_3star = COALESCE(avg_cost_3star, $3), recommended_area_en = COALESCE(recommended_area_en, $4)'
         await client.query(
-          `UPDATE ${SCHEMA}.accommodations SET
-            recommended_area    = COALESCE(recommended_area, $2),
-            avg_cost_3star      = COALESCE(avg_cost_3star, $3),
-            recommended_area_en = COALESCE(recommended_area_en, $4)
-           WHERE id = $1`,
+          `UPDATE ${SCHEMA}.accommodations SET ${accomSetClause} WHERE id = $1`,
           [existingAccom.rows[0].id, accomArea, accomCost, accomAreaEn]
         )
       } else {
@@ -533,6 +531,7 @@ export async function enrichLogi(event, opts = { dryRun: false }) {
 async function runCli() {
   const args = process.argv.slice(2)
   const DRY_RUN = args.includes('--dry-run')
+  const FORCE = args.includes('--force')
   const limitIdx = args.indexOf('--limit')
   const LIMIT = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : Infinity
   const eventIdIdx = args.indexOf('--event-id')
@@ -547,6 +546,17 @@ async function runCli() {
     const { rows } = await client.query(
       `SELECT id, name, location, country, official_url, latitude, longitude, reception_place, start_place FROM ${SCHEMA}.events WHERE id = $1`,
       [EVENT_ID]
+    )
+    targets = rows
+  } else if (FORCE) {
+    // --force: 既存データありでも全件対象（再取得・上書き）
+    const { rows } = await client.query(
+      `SELECT e.id, e.name, e.location, e.country, e.official_url, e.latitude, e.longitude, e.reception_place, e.start_place
+       FROM ${SCHEMA}.events e
+       WHERE e.location IS NOT NULL AND e.collected_at IS NOT NULL
+       ORDER BY e.updated_at ASC
+       LIMIT $1`,
+      [LIMIT === Infinity ? 10000 : LIMIT]
     )
     targets = rows
   } else {
@@ -572,7 +582,7 @@ async function runCli() {
     const event = targets[i]
     const label = `[${i + 1}/${targets.length}]`
 
-    const result = await enrichLogi(event, { dryRun: DRY_RUN })
+    const result = await enrichLogi(event, { dryRun: DRY_RUN, force: FORCE })
     if (result.success) {
       ok++
       console.log(`${label} OK  ${event.name?.slice(0, 40)}`)
