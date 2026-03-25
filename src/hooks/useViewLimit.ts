@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useAuth } from '@/lib/auth'
 
-const VIEW_LIMIT = 10
+const VIEW_LIMIT = 50
 const STORAGE_KEY = 'yabai_view_count'
 
 interface ViewCount {

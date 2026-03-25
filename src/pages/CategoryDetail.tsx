@@ -109,15 +109,15 @@ function CategoryDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { isFavorite, toggle: toggleFavorite } = useFavorites()
-  const trackedRef = useRef(false)
+  const trackedEventRef = useRef<string | null>(null)
   const { remaining, isLimited, increment, isSupporter } = useViewLimit()
 
-  // GA4: イベント詳細閲覧 + view count increment
+  // GA4: イベント詳細閲覧 + view count increment（同一イベント内のカテゴリ切り替えではカウントしない）
   useEffect(() => {
-    if (event && !trackedRef.current) {
+    if (event && trackedEventRef.current !== event.id) {
       trackEventDetailView(event.id, event.name, event.race_type)
       increment()
-      trackedRef.current = true
+      trackedEventRef.current = event.id
     }
   }, [event])
 

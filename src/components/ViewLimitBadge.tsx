@@ -1,4 +1,4 @@
-const VIEW_LIMIT = 10
+const VIEW_LIMIT = 50
 
 interface Props { remaining: number; isEn: boolean }
 

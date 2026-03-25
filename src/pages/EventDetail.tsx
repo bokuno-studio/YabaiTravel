@@ -10,9 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
-import { useViewLimit } from '@/hooks/useViewLimit'
-import ViewLimitBadge from '@/components/ViewLimitBadge'
-import ViewLimitWall from '@/components/ViewLimitWall'
+// ViewLimit はCategoryDetailのみで管理
 import {
   Calendar,
   MapPin,
@@ -59,7 +57,6 @@ function EventDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const trackedRef = useRef(false)
-  const { remaining, isLimited, isSupporter } = useViewLimit()
 
   // GA4: イベント詳細閲覧 + view count increment
   useEffect(() => {
@@ -206,11 +203,6 @@ function EventDetail() {
                 </span>
               )}
             </div>
-            {!isSupporter && (
-              <div className="mt-3">
-                <ViewLimitBadge remaining={remaining} isEn={isEn} />
-              </div>
-            )}
             <div className="mt-3 flex flex-wrap gap-2">
               {event.race_type && (
                 <Badge
@@ -243,9 +235,6 @@ function EventDetail() {
             )}
           </div>
 
-          {isLimited && !isSupporter ? (
-            <ViewLimitWall isEn={isEn} langPrefix={langPrefix} />
-          ) : (
           <>
           {/* 申込み */}
           <Card className="mb-4">
@@ -305,7 +294,6 @@ function EventDetail() {
             </p>
           )}
           </>
-          )}
         </div>
       </>
     )
@@ -342,7 +330,6 @@ function EventDetail() {
             <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
               {displayName}
             </h1>
-            <SaveButton eventId={event.id} isFavorite={isFavorite(event.id)} onToggle={toggle} isEn={isEn} />
           </div>
           {displayDescription && (
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
@@ -361,16 +348,8 @@ function EventDetail() {
               </span>
             )}
           </div>
-          {!isSupporter && (
-            <div className="mt-3">
-              <ViewLimitBadge remaining={remaining} isEn={isEn} />
-            </div>
-          )}
         </div>
 
-        {isLimited && !isSupporter ? (
-          <ViewLimitWall isEn={isEn} langPrefix={langPrefix} />
-        ) : (
         <>
         {/* カテゴリ選択 */}
         <div className="space-y-3">
@@ -420,7 +399,6 @@ function EventDetail() {
           </p>
         )}
         </>
-        )}
       </div>
     </>
   )
