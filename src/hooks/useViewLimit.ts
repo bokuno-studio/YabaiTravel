@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useAuth } from '@/lib/auth'
 
-const VIEW_LIMIT = 50
+const GUEST_VIEW_LIMIT = 10
+const FREE_VIEW_LIMIT = 30
 const STORAGE_KEY = 'yabai_view_count'
 
 interface ViewCount {
@@ -23,11 +24,12 @@ function getStoredCount(): number {
 }
 
 export function useViewLimit() {
-  const { isSupporter } = useAuth()
+  const { user, isSupporter } = useAuth()
   const [count, setCount] = useState(getStoredCount)
 
-  const remaining = useMemo(() => isSupporter ? Infinity : Math.max(0, VIEW_LIMIT - count), [isSupporter, count])
-  const isLimited = useMemo(() => !isSupporter && count >= VIEW_LIMIT, [isSupporter, count])
+  const viewLimit = isSupporter ? Infinity : user ? FREE_VIEW_LIMIT : GUEST_VIEW_LIMIT
+  const remaining = useMemo(() => Math.max(0, viewLimit - count), [viewLimit, count])
+  const isLimited = useMemo(() => !isSupporter && count >= viewLimit, [isSupporter, viewLimit, count])
 
   const increment = useCallback(() => {
     if (isSupporter) return
@@ -37,5 +39,5 @@ export function useViewLimit() {
     setCount(newCount)
   }, [isSupporter])
 
-  return { remaining, isLimited, increment, isSupporter }
+  return { remaining, isLimited, increment, isSupporter, viewLimit }
 }

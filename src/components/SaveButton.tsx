@@ -1,5 +1,4 @@
 import { Heart } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 
@@ -11,15 +10,18 @@ interface SaveButtonProps {
 }
 
 function SaveButton({ categoryId, isFavorite, onToggle, isEn }: SaveButtonProps) {
-  const { user, isSupporter } = useAuth()
+  const { user, signInWithGoogle } = useAuth()
 
-  if (!user || !isSupporter) {
+  if (!user) {
     return (
-      <Button variant="ghost" size="sm" asChild>
-        <Link to={`/${isEn ? 'en' : 'ja'}/pricing`} className="text-muted-foreground">
-          <Heart className="mr-1 h-4 w-4" />
-          {isEn ? 'Become Crew' : 'Crewになる'}
-        </Link>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => signInWithGoogle()}
+        className="text-muted-foreground"
+      >
+        <Heart className="mr-1 h-4 w-4" />
+        {isEn ? 'Sign in to save' : 'ログインして保存'}
       </Button>
     )
   }

@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/lib/auth'
 
 const MAX_FAVORITES = 50
+const MAX_FAVORITES_FREE = 10
 
 export function useFavorites() {
   const { user, isSupporter } = useAuth()
@@ -43,7 +44,7 @@ export function useFavorites() {
 
   const toggle = useCallback(
     async (categoryId: string) => {
-      if (!userId || !isSupporter) return
+      if (!userId) return
 
       if (favoriteIds.has(categoryId)) {
         setFavoriteIds((prev) => {
@@ -61,7 +62,8 @@ export function useFavorites() {
           setFavoriteIds((prev) => new Set(prev).add(categoryId))
         }
       } else {
-        if (favoriteIds.size >= MAX_FAVORITES) return
+        const limit = isSupporter ? MAX_FAVORITES : MAX_FAVORITES_FREE
+        if (favoriteIds.size >= limit) return
         setFavoriteIds((prev) => new Set(prev).add(categoryId))
         const { error } = await supabase
           .from('user_favorites')

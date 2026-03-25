@@ -139,8 +139,8 @@ function EventDetail() {
   const hasEnrichedCategories = categories.length === 0 || categories.some(c => c.distance_km != null || c.elevation_gain != null)
   if (event.location == null || !hasEnrichedCategories) return <Navigate to={langPrefix} replace />
 
-  // カテゴリが1つのみの場合はその詳細へリダイレクト
-  if (categories.length === 1 && eventId) {
+  // カテゴリがある場合は最初のカテゴリ詳細へリダイレクト (#384)
+  if (categories.length >= 1 && eventId) {
     return <Navigate to={`${langPrefix}/events/${eventId}/categories/${categories[0].id}`} replace />
   }
 

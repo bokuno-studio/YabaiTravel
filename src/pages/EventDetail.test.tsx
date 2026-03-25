@@ -102,11 +102,8 @@ describe('EventDetail', () => {
       event_date: '2025-04-01',
       location: '東京',
     }
-    // カテゴリが2つ以上ある場合のみ一覧表示（1つの場合は詳細へリダイレクト）
-    const mockCategories = [
-      { id: 'cat-1', name: '100km', event_id: 'ev-123', distance_km: 100 },
-      { id: 'cat-2', name: '50km', event_id: 'ev-123', distance_km: 50 },
-    ]
+    // カテゴリ0件: イベント情報が直接表示される（#384: カテゴリありはリダイレクト）
+    const mockCategories: Record<string, unknown>[] = []
 
     vi.mocked(supabase.from).mockImplementation((table: string) => {
       if (table === 'events') return createEventsChain({ data: mockEvent, error: null }) as never

@@ -110,7 +110,7 @@ function CategoryDetail() {
   const [error, setError] = useState<string | null>(null)
   const { isFavorite, toggle: toggleFavorite } = useFavorites()
   const trackedEventRef = useRef<string | null>(null)
-  const { remaining, isLimited, increment, isSupporter } = useViewLimit()
+  const { remaining, isLimited, increment, isSupporter, viewLimit } = useViewLimit()
 
   // GA4: イベント詳細閲覧 + view count increment（同一イベント内のカテゴリ切り替えではカウントしない）
   useEffect(() => {
@@ -422,7 +422,7 @@ function CategoryDetail() {
           {/* Save + View limit */}
           <div className="mt-3 flex items-center gap-3">
             {categoryId && <SaveButton categoryId={categoryId} isFavorite={isFavorite(categoryId)} onToggle={toggleFavorite} isEn={isEn} />}
-            {!isSupporter && <ViewLimitBadge remaining={remaining} isEn={isEn} />}
+            {!isSupporter && <ViewLimitBadge remaining={remaining} isEn={isEn} viewLimit={viewLimit} />}
           </div>
 
           {/* External links */}
