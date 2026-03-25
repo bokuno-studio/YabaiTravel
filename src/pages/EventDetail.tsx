@@ -59,13 +59,13 @@ function EventDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const trackedRef = useRef(false)
-  const { remaining, isLimited, increment, isSupporter } = useViewLimit()
+  const { remaining, isLimited, isSupporter } = useViewLimit()
 
   // GA4: イベント詳細閲覧 + view count increment
   useEffect(() => {
     if (event && !trackedRef.current) {
       trackEventDetailView(event.id, event.name, event.race_type)
-      increment()
+      // increment()はCategoryDetailのみで実行（2重カウント防止）
       trackedRef.current = true
     }
   }, [event])
