@@ -53,7 +53,7 @@ function AccommodationAffiliate({ lat, lng, isEn, eventId }: AccommodationAffili
               className="flex items-center gap-3 rounded-lg border p-2 text-sm hover:bg-muted/50 transition-colors"
             >
               {hotel.imageUrl && (
-                <img src={hotel.imageUrl} alt="" className="h-12 w-16 rounded object-cover shrink-0" />
+                <img src={hotel.imageUrl} alt="" className="h-12 w-16 rounded object-cover shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
               )}
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-foreground truncate">{hotel.name}</p>
