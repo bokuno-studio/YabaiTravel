@@ -19,14 +19,14 @@ export function useFavorites() {
       setLoading(true)
       const { data, error } = await supabase
         .from('user_favorites')
-        .select('event_id')
-        .eq('user_id', user!.id)
+        .select('category_id')
+        .eq('user_id', userId!)
 
       if (!cancelled) {
         if (error) {
           console.error('Failed to fetch favorites:', error.message)
         } else {
-          setFavoriteIds(new Set((data ?? []).map((d) => d.event_id)))
+          setFavoriteIds(new Set((data ?? []).map((d) => d.category_id)))
         }
         setLoading(false)
       }
@@ -34,55 +34,49 @@ export function useFavorites() {
 
     fetchFavorites()
     return () => { cancelled = true }
-  }, [user])
+  }, [userId])
 
   const isFavorite = useCallback(
-    (eventId: string) => favoriteIds.has(eventId),
+    (categoryId: string) => favoriteIds.has(categoryId),
     [favoriteIds],
   )
 
   const toggle = useCallback(
-    async (eventId: string) => {
-      if (!user || !isSupporter) return
+    async (categoryId: string) => {
+      if (!userId || !isSupporter) return
 
-      if (favoriteIds.has(eventId)) {
-        // Remove
+      if (favoriteIds.has(categoryId)) {
         setFavoriteIds((prev) => {
           const next = new Set(prev)
-          next.delete(eventId)
+          next.delete(categoryId)
           return next
         })
         const { error } = await supabase
           .from('user_favorites')
           .delete()
-          .eq('user_id', user.id)
-          .eq('event_id', eventId)
+          .eq('user_id', userId)
+          .eq('category_id', categoryId)
         if (error) {
           console.error('Failed to remove favorite:', error.message)
-          // Revert on error
-          setFavoriteIds((prev) => new Set(prev).add(eventId))
+          setFavoriteIds((prev) => new Set(prev).add(categoryId))
         }
       } else {
-        // Check limit
         if (favoriteIds.size >= MAX_FAVORITES) return
-
-        // Add
-        setFavoriteIds((prev) => new Set(prev).add(eventId))
+        setFavoriteIds((prev) => new Set(prev).add(categoryId))
         const { error } = await supabase
           .from('user_favorites')
-          .insert({ user_id: user.id, event_id: eventId })
+          .insert({ user_id: userId, category_id: categoryId })
         if (error) {
           console.error('Failed to add favorite:', error.message)
-          // Revert on error
           setFavoriteIds((prev) => {
             const next = new Set(prev)
-            next.delete(eventId)
+            next.delete(categoryId)
             return next
           })
         }
       }
     },
-    [user, isSupporter, favoriteIds],
+    [userId, isSupporter, favoriteIds],
   )
 
   return { favoriteIds, isFavorite, toggle, loading, isSupporter }

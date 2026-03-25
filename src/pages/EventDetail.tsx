@@ -22,8 +22,7 @@ import {
   Home,
   ChevronRight,
 } from 'lucide-react'
-import SaveButton from '@/components/SaveButton'
-import { useFavorites } from '@/hooks/useFavorites'
+// SaveButton moved to CategoryDetail (#375: カテゴリ単位のお気に入り)
 
 const raceTypeColors: Record<string, string> = {
   trail: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -53,7 +52,6 @@ function EventDetail() {
   const { t } = useTranslation()
   const langPrefix = `/${lang || 'ja'}`
   const isEn = lang === 'en'
-  const { isFavorite, toggle } = useFavorites()
   const [event, setEvent] = useState<Event | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [, setAccessRoutes] = useState<AccessRoute[]>([])
@@ -190,7 +188,6 @@ function EventDetail() {
               <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
                 {displayName}
               </h1>
-              <SaveButton eventId={event.id} isFavorite={isFavorite(event.id)} onToggle={toggle} isEn={isEn} />
             </div>
             {displayDescription && (
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">

@@ -10,8 +10,10 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useViewLimit } from '@/hooks/useViewLimit'
+import { useFavorites } from '@/hooks/useFavorites'
 import ViewLimitBadge from '@/components/ViewLimitBadge'
 import ViewLimitWall from '@/components/ViewLimitWall'
+import SaveButton from '@/components/SaveButton'
 import {
   ExternalLink,
   FileEdit,
@@ -106,6 +108,7 @@ function CategoryDetail() {
   const [pastEditions, setPastEditions] = useState<Array<{ event: Event; courseMaps: CourseMapFile[]; categories: Category[] }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { isFavorite, toggle: toggleFavorite } = useFavorites()
   const trackedRef = useRef(false)
   const { remaining, isLimited, increment, isSupporter } = useViewLimit()
 
@@ -416,12 +419,11 @@ function CategoryDetail() {
             )}
           </div>
 
-          {/* View limit badge */}
-          {!isSupporter && (
-            <div className="mt-3">
-              <ViewLimitBadge remaining={remaining} isEn={isEn} />
-            </div>
-          )}
+          {/* Save + View limit */}
+          <div className="mt-3 flex items-center gap-3">
+            {categoryId && <SaveButton categoryId={categoryId} isFavorite={isFavorite(categoryId)} onToggle={toggleFavorite} isEn={isEn} />}
+            {!isSupporter && <ViewLimitBadge remaining={remaining} isEn={isEn} />}
+          </div>
 
           {/* External links */}
           {(event.official_url || event.entry_url) && (

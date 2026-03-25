@@ -1,13 +1,13 @@
 CREATE TABLE IF NOT EXISTS yabai_travel.user_favorites (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  event_id UUID NOT NULL REFERENCES yabai_travel.events(id) ON DELETE CASCADE,
+  category_id UUID NOT NULL REFERENCES yabai_travel.categories(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(user_id, event_id)
+  UNIQUE(user_id, category_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_favorites_user ON yabai_travel.user_favorites(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_favorites_event ON yabai_travel.user_favorites(event_id);
+CREATE INDEX IF NOT EXISTS idx_user_favorites_category ON yabai_travel.user_favorites(category_id);
 
 ALTER TABLE yabai_travel.user_favorites ENABLE ROW LEVEL SECURITY;
 
@@ -25,7 +25,7 @@ END $$;
 
 GRANT SELECT, INSERT, DELETE ON yabai_travel.user_favorites TO authenticated;
 
--- Entry reminders (DB design only, no implementation)
+-- Entry reminders (DB design only)
 CREATE TABLE IF NOT EXISTS yabai_travel.entry_reminders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
