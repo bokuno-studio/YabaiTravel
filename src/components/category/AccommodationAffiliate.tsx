@@ -9,11 +9,13 @@ interface AccommodationAffiliateProps {
   eventId: string
 }
 
-function AccommodationAffiliate({ lat, lng, isEn, eventId }: AccommodationAffiliateProps) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function AccommodationAffiliate({ lat: _lat, lng: _lng, isEn, eventId }: AccommodationAffiliateProps) {
   const affiliateId = import.meta.env.VITE_RAKUTEN_AFFILIATE_ID
   if (!affiliateId) return null
 
-  const url = `https://hb.afl.rakuten.co.jp/hgc/${affiliateId}/?pc=${encodeURIComponent(`https://travel.rakuten.co.jp/yado/map.html?lat=${lat}&lng=${lng}`)}`
+  const searchUrl = `https://travel.rakuten.co.jp/`
+  const url = `https://hb.afl.rakuten.co.jp/hgc/${affiliateId}/?pc=${encodeURIComponent(searchUrl)}`
 
   const handleClick = () => {
     trackAffiliateClick('rakuten_travel', eventId)
