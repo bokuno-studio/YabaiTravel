@@ -145,7 +145,7 @@ function EventList() {
     async function fetchEvents() {
       try {
         // Supabaseのデフォルト1000件制限を回避して全件取得
-        const allEvents: typeof data = []
+        const allEvents: NonNullable<Awaited<ReturnType<typeof supabase.from<'events'>>>['data']> = []
         let from = 0
         const PAGE_SIZE = 1000
         while (true) {
