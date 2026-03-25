@@ -10,8 +10,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const affiliateId = process.env.RAKUTEN_AFFILIATE_ID || ''
 
   try {
-    const url = `https://app.rakuten.co.jp/services/api/Travel/SimpleHotelSearch/20170426?applicationId=${appId}&affiliateId=${affiliateId}&latitude=${lat}&longitude=${lng}&searchRadius=3&datumType=1&hits=5&format=json`
-    const response = await fetch(url)
+    const accessKey = process.env.RAKUTEN_ACCESS_KEY || ''
+    const url = `https://openapi.rakuten.co.jp/engine/api/Travel/SimpleHotelSearch/20170426?applicationId=${appId}&accessKey=${accessKey}&affiliateId=${affiliateId}&latitude=${lat}&longitude=${lng}&searchRadius=3&datumType=1&hits=5&format=json`
+    const response = await fetch(url, {
+      headers: {
+        'Referer': 'https://yabai.travel/',
+        'Origin': 'https://yabai.travel',
+      },
+    })
     const data = await response.json()
 
     if (data.error) {
