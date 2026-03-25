@@ -2,6 +2,7 @@ import { Home } from 'lucide-react'
 import type { Accommodation } from '@/types/event'
 import SectionCard from './SectionCard'
 import DLRow from './DLRow'
+import AccommodationAffiliate from './AccommodationAffiliate'
 
 const JPY_PER_USD = 150
 
@@ -10,9 +11,11 @@ interface AccommodationInfoProps {
   categoryId?: string
   accommodations: Accommodation[]
   isEn: boolean
+  lat?: number | null
+  lng?: number | null
 }
 
-function AccommodationInfo({ eventId, categoryId, accommodations, isEn }: AccommodationInfoProps) {
+function AccommodationInfo({ eventId, categoryId, accommodations, isEn, lat, lng }: AccommodationInfoProps) {
   return (
     <SectionCard
       title={isEn ? 'Accommodation' : '宿泊'}
@@ -36,6 +39,9 @@ function AccommodationInfo({ eventId, categoryId, accommodations, isEn }: Accomm
           eventId={eventId} categoryId={categoryId}
         />
       </dl>
+      {lat != null && lng != null && (
+        <AccommodationAffiliate lat={lat} lng={lng} isEn={isEn} eventId={eventId} />
+      )}
     </SectionCard>
   )
 }

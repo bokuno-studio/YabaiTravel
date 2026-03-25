@@ -9,6 +9,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { useViewLimit } from '@/hooks/useViewLimit'
+import ViewLimitBadge from '@/components/ViewLimitBadge'
+import ViewLimitWall from '@/components/ViewLimitWall'
 import {
   ExternalLink,
   FileEdit,
@@ -104,11 +107,13 @@ function CategoryDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const trackedRef = useRef(false)
+  const { remaining, isLimited, increment, isSupporter } = useViewLimit()
 
-  // GA4: イベント詳細閲覧
+  // GA4: イベント詳細閲覧 + view count increment
   useEffect(() => {
     if (event && !trackedRef.current) {
       trackEventDetailView(event.id, event.name, event.race_type)
+      increment()
       trackedRef.current = true
     }
   }, [event])
@@ -411,6 +416,13 @@ function CategoryDetail() {
             )}
           </div>
 
+          {/* View limit badge */}
+          {!isSupporter && (
+            <div className="mt-3">
+              <ViewLimitBadge remaining={remaining} isEn={isEn} />
+            </div>
+          )}
+
           {/* External links */}
           {(event.official_url || event.entry_url) && (
             <div className="mt-3 flex gap-3">
@@ -434,6 +446,10 @@ function CategoryDetail() {
           )}
         </div>
 
+        {isLimited && !isSupporter ? (
+          <ViewLimitWall isEn={isEn} langPrefix={langPrefix} />
+        ) : (
+        <>
         {/* カテゴリナビ */}
         {categories.length > 1 && (
           <div className="mb-6 flex flex-wrap gap-2">
@@ -530,6 +546,8 @@ function CategoryDetail() {
           categoryId={category.id}
           accommodations={accommodations}
           isEn={isEn}
+          lat={event.latitude}
+          lng={event.longitude}
         />
 
         {/* トータルコスト */}
@@ -605,6 +623,8 @@ function CategoryDetail() {
           <p className="mt-6 border-t border-border pt-4 text-right text-xs text-muted-foreground/70">
             {isEn ? 'Last updated' : '最終更新'}: <time dateTime={(category.updated_at ?? event.updated_at)!}>{(category.updated_at ?? event.updated_at)!.slice(0, 10)}</time>
           </p>
+        )}
+        </>
         )}
       </div>
     </>

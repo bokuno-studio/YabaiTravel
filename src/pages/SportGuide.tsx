@@ -304,7 +304,7 @@ function SportGuide() {
           {/* Link to events */}
           <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
             <p style={{ margin: 0, fontSize: '0.9rem' }}>
-              <Link to={`${langPrefix}?type=${sport}`} style={{ color: '#3b82f6', textDecoration: 'none' }}>
+              <Link to={`${langPrefix}?type=${sport}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
                 {isEn ? `View ${sportTitle} events` : `${sportTitle}のレース一覧を見る`}
               </Link>
             </p>
@@ -318,7 +318,7 @@ function SportGuide() {
         )}
 
         <p style={{ marginTop: '2rem' }}>
-          <Link to={langPrefix} style={{ color: '#3b82f6', textDecoration: 'none', fontSize: '0.9rem' }}>
+          <Link to={langPrefix} style={{ color: '#2563eb', textDecoration: 'none', fontSize: '0.9rem' }}>
             {isEn ? 'Back to list' : '一覧に戻る'}
           </Link>
         </p>
@@ -354,7 +354,7 @@ function SportGuide() {
 
         <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
           <p style={{ margin: 0, fontSize: '0.9rem' }}>
-            <Link to={`${langPrefix}?type=${sport}`} style={{ color: '#3b82f6', textDecoration: 'none' }}>
+            <Link to={`${langPrefix}?type=${sport}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
               {isEn ? `View ${fallbackContent.title} events` : `${fallbackContent.title}のレース一覧を見る`}
             </Link>
           </p>
@@ -368,7 +368,7 @@ function SportGuide() {
       )}
 
       <p style={{ marginTop: '2rem' }}>
-        <Link to={langPrefix} style={{ color: '#3b82f6', textDecoration: 'none', fontSize: '0.9rem' }}>
+        <Link to={langPrefix} style={{ color: '#2563eb', textDecoration: 'none', fontSize: '0.9rem' }}>
           {isEn ? 'Back to list' : '一覧に戻る'}
         </Link>
       </p>

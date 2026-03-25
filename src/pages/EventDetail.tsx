@@ -10,6 +10,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { useViewLimit } from '@/hooks/useViewLimit'
+import ViewLimitBadge from '@/components/ViewLimitBadge'
+import ViewLimitWall from '@/components/ViewLimitWall'
 import {
   Calendar,
   MapPin,
@@ -19,6 +22,8 @@ import {
   Home,
   ChevronRight,
 } from 'lucide-react'
+import SaveButton from '@/components/SaveButton'
+import { useFavorites } from '@/hooks/useFavorites'
 
 const raceTypeColors: Record<string, string> = {
   trail: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -48,6 +53,7 @@ function EventDetail() {
   const { t } = useTranslation()
   const langPrefix = `/${lang || 'ja'}`
   const isEn = lang === 'en'
+  const { isFavorite, toggle } = useFavorites()
   const [event, setEvent] = useState<Event | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [, setAccessRoutes] = useState<AccessRoute[]>([])
@@ -55,11 +61,13 @@ function EventDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const trackedRef = useRef(false)
+  const { remaining, isLimited, increment, isSupporter } = useViewLimit()
 
-  // GA4: イベント詳細閲覧
+  // GA4: イベント詳細閲覧 + view count increment
   useEffect(() => {
     if (event && !trackedRef.current) {
       trackEventDetailView(event.id, event.name, event.race_type)
+      increment()
       trackedRef.current = true
     }
   }, [event])
@@ -178,9 +186,12 @@ function EventDetail() {
 
           {/* Hero */}
           <div className="mb-8">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-              {displayName}
-            </h1>
+            <div className="flex items-start justify-between gap-2">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+                {displayName}
+              </h1>
+              <SaveButton eventId={event.id} isFavorite={isFavorite(event.id)} onToggle={toggle} isEn={isEn} />
+            </div>
             {displayDescription && (
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {displayDescription}
@@ -198,6 +209,11 @@ function EventDetail() {
                 </span>
               )}
             </div>
+            {!isSupporter && (
+              <div className="mt-3">
+                <ViewLimitBadge remaining={remaining} isEn={isEn} />
+              </div>
+            )}
             <div className="mt-3 flex flex-wrap gap-2">
               {event.race_type && (
                 <Badge
@@ -230,6 +246,10 @@ function EventDetail() {
             )}
           </div>
 
+          {isLimited && !isSupporter ? (
+            <ViewLimitWall isEn={isEn} langPrefix={langPrefix} />
+          ) : (
+          <>
           {/* 申込み */}
           <Card className="mb-4">
             <CardHeader>
@@ -287,6 +307,8 @@ function EventDetail() {
               {isEn ? 'Last updated' : '最終更新'}: <time dateTime={event.updated_at}>{event.updated_at.slice(0, 10)}</time>
             </p>
           )}
+          </>
+          )}
         </div>
       </>
     )
@@ -319,9 +341,12 @@ function EventDetail() {
 
         {/* Hero */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-            {displayName}
-          </h1>
+          <div className="flex items-start justify-between gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+              {displayName}
+            </h1>
+            <SaveButton eventId={event.id} isFavorite={isFavorite(event.id)} onToggle={toggle} isEn={isEn} />
+          </div>
           {displayDescription && (
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               {displayDescription}
@@ -339,8 +364,17 @@ function EventDetail() {
               </span>
             )}
           </div>
+          {!isSupporter && (
+            <div className="mt-3">
+              <ViewLimitBadge remaining={remaining} isEn={isEn} />
+            </div>
+          )}
         </div>
 
+        {isLimited && !isSupporter ? (
+          <ViewLimitWall isEn={isEn} langPrefix={langPrefix} />
+        ) : (
+        <>
         {/* カテゴリ選択 */}
         <div className="space-y-3">
           <div className="mb-2">
@@ -387,6 +421,8 @@ function EventDetail() {
           <p className="mt-6 border-t border-border pt-4 text-right text-xs text-muted-foreground/70">
             {isEn ? 'Last updated' : '最終更新'}: <time dateTime={event.updated_at}>{event.updated_at.slice(0, 10)}</time>
           </p>
+        )}
+        </>
         )}
       </div>
     </>

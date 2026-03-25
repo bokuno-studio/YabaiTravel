@@ -2,6 +2,8 @@
  * GA4 カスタムイベントヘルパー (#345)
  */
 
+import { getUtmParams } from './utm'
+
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void
@@ -10,7 +12,7 @@ declare global {
 
 function sendEvent(eventName: string, params?: Record<string, unknown>) {
   if (typeof window !== 'undefined' && window.gtag) {
-    window.gtag('event', eventName, params)
+    window.gtag('event', eventName, { ...getUtmParams(), ...params })
   }
 }
 
