@@ -1,6 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { created, badRequest, serverError, ok } from './lib/response'
+
+function ok(res: VercelResponse, data: unknown) { return res.status(200).json({ data }) }
+function created(res: VercelResponse, data: unknown) { return res.status(201).json({ data }) }
+function badRequest(res: VercelResponse, message: string) { return res.status(400).json({ error: message }) }
+function serverError(res: VercelResponse) { return res.status(500).json({ error: 'Internal server error' }) }
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL!,
