@@ -8,6 +8,7 @@ export function initSentry() {
       tracesSampleRate: 0.1,
       integrations: [
         Sentry.browserTracingIntegration(),
+        Sentry.captureConsoleIntegration({ levels: ['error'] }),
       ],
     })
   }
