@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams } from 'react-router-dom'
 import { Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -96,7 +97,7 @@ function ChangeRequestModal({
   isEn: boolean
   onClose: () => void
 }) {
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
@@ -111,7 +112,8 @@ function ChangeRequestModal({
           onClose={onClose}
         />
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

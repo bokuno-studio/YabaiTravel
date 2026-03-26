@@ -25,7 +25,7 @@ function getStoredCount(): number {
 
 export function useViewLimit() {
   const { user, isSupporter } = useAuth()
-  const [count, setCount] = useState(getStoredCount)
+  const [count, setCount] = useState(() => getStoredCount())
 
   const viewLimit = isSupporter ? Infinity : user ? FREE_VIEW_LIMIT : GUEST_VIEW_LIMIT
   const remaining = useMemo(() => Math.max(0, viewLimit - count), [viewLimit, count])

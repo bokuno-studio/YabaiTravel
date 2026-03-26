@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useViewLimit } from '@/hooks/useViewLimit'
+import { useAuth } from '@/lib/auth'
 import { useFavorites } from '@/hooks/useFavorites'
 import ViewLimitBadge from '@/components/ViewLimitBadge'
 import ViewLimitWall from '@/components/ViewLimitWall'
@@ -109,6 +110,7 @@ function CategoryDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { isFavorite, toggle: toggleFavorite } = useFavorites()
+  const { user, signInWithGoogle } = useAuth()
   const trackedEventRef = useRef<string | null>(null)
   const { remaining, isLimited, increment, isSupporter, viewLimit } = useViewLimit()
 
@@ -449,7 +451,7 @@ function CategoryDetail() {
         </div>
 
         {isLimited && !isSupporter ? (
-          <ViewLimitWall isEn={isEn} langPrefix={langPrefix} />
+          <ViewLimitWall isEn={isEn} langPrefix={langPrefix} user={user} isSupporter={isSupporter} signInWithGoogle={signInWithGoogle} />
         ) : (
         <>
         {/* カテゴリナビ */}
