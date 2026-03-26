@@ -140,9 +140,12 @@ function ChangeRequestInlineForm({
     if (!suggestedValue.trim()) return
     setStatus('submitting')
     try {
+      const { data: { session } } = await (await import('@/lib/supabaseClient')).supabase.auth.getSession()
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
       const res = await fetch('/api/change-request', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           event_id: eventId,
           category_id: categoryId || undefined,

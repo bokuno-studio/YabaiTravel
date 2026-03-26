@@ -23,6 +23,8 @@ function AccommodationAffiliate({ lat, lng, isEn, eventId }: AccommodationAffili
   const [hotels, setHotels] = useState<Hotel[]>([])
 
   useEffect(() => {
+    // 楽天トラベルは日本国内のみ対応
+    if (lat < 24 || lat > 46 || lng < 122 || lng > 154) return
     async function fetchHotels() {
       try {
         const res = await fetch(`/api/rakuten-hotels?lat=${lat}&lng=${lng}`)
