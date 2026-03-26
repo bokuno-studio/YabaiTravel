@@ -12,7 +12,15 @@ GRANT INSERT, UPDATE ON yabai_travel.sport_guides TO service_role;
 
 ALTER TABLE yabai_travel.sport_guides ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Anyone can read sport guides"
-  ON yabai_travel.sport_guides
-  FOR SELECT
-  USING (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'yabai_travel' AND tablename = 'sport_guides' AND policyname = 'Anyone can read sport guides'
+  ) THEN
+    CREATE POLICY "Anyone can read sport guides"
+      ON yabai_travel.sport_guides
+      FOR SELECT
+      USING (true);
+  END IF;
+END $$;

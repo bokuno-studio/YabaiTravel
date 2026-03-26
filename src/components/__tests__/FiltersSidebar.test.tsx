@@ -28,6 +28,8 @@ function makeDefaultProps(overrides: Partial<FiltersSidebarProps> = {}): Filters
     costMax: Infinity,
     costGlobalMax: 100000,
     onCostRangeChange: vi.fn(),
+    poleFilter: '',
+    onPoleFilterChange: vi.fn(),
     entryStatus: 'active',
     onEntryStatusChange: vi.fn(),
     showPastEvents: false,
