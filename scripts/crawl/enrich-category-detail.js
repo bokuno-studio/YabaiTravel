@@ -40,6 +40,74 @@ function isRequiredFieldsFilled(extracted, requiredFields) {
   return requiredFields.every(field => extracted[field] != null)
 }
 
+// --- #339: 国→通貨マッピング ---
+const COUNTRY_TO_CURRENCY = {
+  'Japan': 'JPY', 'United States': 'USD', 'USA': 'USD', 'UK': 'GBP', 'United Kingdom': 'GBP',
+  'Australia': 'AUD', 'New Zealand': 'NZD', 'Canada': 'CAD', 'Singapore': 'SGD',
+  'Thailand': 'THB', 'Philippines': 'PHP', 'Malaysia': 'MYR', 'Indonesia': 'IDR',
+  'South Korea': 'KRW', 'China': 'CNY', 'Taiwan': 'TWD', 'Hong Kong': 'HKD',
+  'India': 'INR', 'Vietnam': 'VND', 'Cambodia': 'KHR', 'Nepal': 'NPR',
+  'France': 'EUR', 'Germany': 'EUR', 'Italy': 'EUR', 'Spain': 'EUR', 'Portugal': 'EUR',
+  'Netherlands': 'EUR', 'Belgium': 'EUR', 'Austria': 'EUR', 'Greece': 'EUR', 'Ireland': 'EUR',
+  'Finland': 'EUR', 'Estonia': 'EUR', 'Latvia': 'EUR', 'Lithuania': 'EUR', 'Slovakia': 'EUR',
+  'Slovenia': 'EUR', 'Luxembourg': 'EUR', 'Malta': 'EUR', 'Cyprus': 'EUR',
+  'Switzerland': 'CHF', 'Sweden': 'SEK', 'Norway': 'NOK', 'Denmark': 'DKK',
+  'Czech Republic': 'CZK', 'Poland': 'PLN', 'Hungary': 'HUF', 'Romania': 'RON',
+  'Croatia': 'EUR', 'Bulgaria': 'BGN', 'Turkey': 'TRY',
+  'Mexico': 'MXN', 'Brazil': 'BRL', 'Argentina': 'ARS', 'Chile': 'CLP', 'Colombia': 'COP',
+  'South Africa': 'ZAR', 'Kenya': 'KES', 'UAE': 'AED', 'Israel': 'ILS',
+}
+
+function getCurrencyForCountry(countryEn) {
+  if (!countryEn) return null
+  // Exact match
+  if (COUNTRY_TO_CURRENCY[countryEn]) return COUNTRY_TO_CURRENCY[countryEn]
+  // Case-insensitive
+  const lower = countryEn.toLowerCase()
+  for (const [k, v] of Object.entries(COUNTRY_TO_CURRENCY)) {
+    if (k.toLowerCase() === lower) return v
+  }
+  // Partial match
+  for (const [k, v] of Object.entries(COUNTRY_TO_CURRENCY)) {
+    if (lower.includes(k.toLowerCase()) || k.toLowerCase().includes(lower)) return v
+  }
+  return null
+}
+
+// --- #382: カテゴリ名正規化 + distance_km パース ---
+const KNOWN_DISTANCE_MAP = {
+  'フルマラソン': 42.195, 'full marathon': 42.195, 'marathon': 42.195,
+  'ハーフマラソン': 21.0975, 'half marathon': 21.0975, 'ハーフ': 21.0975,
+  '10km': 10, '10k': 10, '5km': 5, '5k': 5, '3km': 3, '3k': 3,
+}
+
+function parseDistanceFromName(name) {
+  if (!name) return null
+  const lower = name.toLowerCase()
+  // Known mappings
+  for (const [pattern, dist] of Object.entries(KNOWN_DISTANCE_MAP)) {
+    if (lower.includes(pattern.toLowerCase())) return dist
+  }
+  // NNkm pattern
+  const kmMatch = lower.match(/([\d.]+)\s*k(?:m|ilo)/i)
+  if (kmMatch) return parseFloat(kmMatch[1])
+  // NNmi/mile pattern
+  const miMatch = lower.match(/([\d.]+)\s*(?:mi(?:le)?s?|マイル)/i)
+  if (miMatch) return Math.round(parseFloat(miMatch[1]) * 1.60934 * 10) / 10
+  return null
+}
+
+function normalizeCategoryName(name) {
+  if (!name) return name
+  // "100 Miles" → "100mi", "42.195km" → keep as-is
+  return name
+    .replace(/\s*(kilo)?met(er|re)s?\b/gi, 'km')
+    .replace(/\s*miles?\b/gi, 'mi')
+    .replace(/\s*マイル/g, 'mi')
+    .replace(/\s*キロ\b/g, 'km')
+    .trim()
+}
+
 // --- LLM プロンプト（統一バイリンガル） ---
 
 const CATEGORY_DETAIL_PROMPT = `You are an expert at extracting race event information.
@@ -133,13 +201,13 @@ function sanitizeTimeLimit(val) {
  * @param {object} opts - {dryRun, html, _batchResult} _batchResult は Batch API の結果を注入（内部用）
  */
 export async function enrichCategoryDetail(event, category, opts = { dryRun: false }) {
-  const { dryRun = false, _batchResult = null } = opts
+  const { dryRun = false, force = false, _batchResult = null } = opts
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
 
   try {
     await client.connect()
-    const { id: eventId, name: eventName, official_url: officialUrl, race_type: raceType } = event
+    const { id: eventId, name: eventName, official_url: officialUrl, race_type: raceType, country_en: countryEn } = event
     const { id: categoryId, name: catName, distance_km: distKm } = category
 
     const catLabel = `${catName}${distKm ? `(${distKm}km)` : ''}`
@@ -192,7 +260,7 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
     // --- ステップ2: 関連ページ補完（必須フィールドが未取得の場合） ---
     const needsMore = !isRequiredFieldsFilled(extracted, requiredFields)
     if (needsMore && html && fetchedUrl && !isPortalUrl(fetchedUrl)) {
-      const relatedLinks = extractRelevantLinks(html, fetchedUrl).slice(0, 3)
+      const relatedLinks = extractRelevantLinks(html, fetchedUrl).slice(0, 1)
       for (const link of relatedLinks) {
         try {
           const linkHtml = await fetchHtml(link)
@@ -234,13 +302,39 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       } catch { /* ignore Tavily search failure entirely */ }
     }
 
+    // #339: 国→通貨マッピングで entry_fee_currency を検証・補正
+    const expectedCurrency = getCurrencyForCountry(countryEn)
+    if (expectedCurrency && extracted.entry_fee_currency && extracted.entry_fee_currency !== expectedCurrency) {
+      console.log(`  [currency] ${eventName?.slice(0, 30)} | ${extracted.entry_fee_currency} → ${expectedCurrency} (country: ${countryEn})`)
+      extracted.entry_fee_currency = expectedCurrency
+    } else if (expectedCurrency && !extracted.entry_fee_currency) {
+      extracted.entry_fee_currency = expectedCurrency
+    }
+
     if (dryRun) {
-      console.log(`  DRY catDetail: ${eventName?.slice(0, 25)} / ${catLabel} | fee:${extracted.entry_fee ?? '?'} limit:${extracted.time_limit ?? '?'} tokens:${totalTokens}`)
+      console.log(`  DRY catDetail: ${eventName?.slice(0, 25)} / ${catLabel} | fee:${extracted.entry_fee ?? '?'} cur:${extracted.entry_fee_currency ?? '?'} limit:${extracted.time_limit ?? '?'} tokens:${totalTokens}`)
       return { success: true, categoryId }
     }
 
     // --- ステップ3: 成功判定 + DB 書き込み ---
     const allRequiredFilled = isRequiredFieldsFilled(extracted, requiredFields)
+
+    // #382: distance_km フォールバック（LLMが取れなかった場合、名前からパース）
+    if (extracted.distance_km == null && distKm == null) {
+      const parsed = parseDistanceFromName(catName)
+      if (parsed) {
+        extracted.distance_km = parsed
+        console.log(`  [dist-parse] ${catName} → ${parsed}km`)
+      }
+    }
+    // #382: カテゴリ名正規化（DBにも反映）
+    const normalizedName = normalizeCategoryName(catName)
+    if (normalizedName && normalizedName !== catName) {
+      await client.query(
+        `UPDATE ${SCHEMA}.categories SET name = $2 WHERE id = $1 AND name = $3`,
+        [categoryId, normalizedName, catName]
+      )
+    }
 
     const sanitizedTimeLimit = sanitizeTimeLimit(extracted.time_limit)
     const params = [
@@ -277,29 +371,31 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       errorType = hasAnyData ? 'partial' : 'empty_response'
     }
 
+    // force モードでは COALESCE を外して上書き
+    const c = force ? (col, param) => `${col} = ${param}` : (col, param) => `${col} = COALESCE(${col}, ${param})`
     try {
       await client.query(
         `UPDATE ${SCHEMA}.categories SET
-          entry_fee          = COALESCE(entry_fee, $2),
-          entry_fee_currency = COALESCE(entry_fee_currency, $3),
-          start_time         = COALESCE(start_time, $4),
-          reception_end      = COALESCE(reception_end, $5),
-          time_limit         = COALESCE(time_limit, $6),
-          cutoff_times       = CASE WHEN cutoff_times IS NULL OR cutoff_times = '[]'::jsonb THEN $7 ELSE cutoff_times END,
-          elevation_gain     = COALESCE(elevation_gain, $8),
-          mandatory_gear     = COALESCE(mandatory_gear, $9),
-          mandatory_gear_en  = COALESCE(mandatory_gear_en, $10),
-          poles_allowed      = COALESCE(poles_allowed, $11),
-          itra_points        = COALESCE(itra_points, $12),
-          recommended_gear   = COALESCE(recommended_gear, $13),
-          recommended_gear_en = COALESCE(recommended_gear_en, $14),
-          prohibited_items   = COALESCE(prohibited_items, $15),
-          prohibited_items_en = COALESCE(prohibited_items_en, $16),
-          reception_place    = COALESCE(reception_place, $17),
-          reception_place_en = COALESCE(reception_place_en, $18),
-          start_place        = COALESCE(start_place, $19),
-          start_place_en     = COALESCE(start_place_en, $20),
-          finish_rate        = COALESCE(finish_rate, $21),
+          ${c('entry_fee', '$2')},
+          ${c('entry_fee_currency', '$3')},
+          ${c('start_time', '$4')},
+          ${c('reception_end', '$5')},
+          ${c('time_limit', '$6')},
+          cutoff_times       = ${force ? '$7' : "CASE WHEN cutoff_times IS NULL OR cutoff_times = '[]'::jsonb THEN $7 ELSE cutoff_times END"},
+          ${c('elevation_gain', '$8')},
+          ${c('mandatory_gear', '$9')},
+          ${c('mandatory_gear_en', '$10')},
+          ${c('poles_allowed', '$11')},
+          ${c('itra_points', '$12')},
+          ${c('recommended_gear', '$13')},
+          ${c('recommended_gear_en', '$14')},
+          ${c('prohibited_items', '$15')},
+          ${c('prohibited_items_en', '$16')},
+          ${c('reception_place', '$17')},
+          ${c('reception_place_en', '$18')},
+          ${c('start_place', '$19')},
+          ${c('start_place_en', '$20')},
+          ${c('finish_rate', '$21')},
           collected_at       = CASE WHEN ${allRequiredFilled} THEN NOW() ELSE collected_at END,
           attempt_count      = CASE WHEN ${allRequiredFilled} THEN attempt_count ELSE attempt_count + 1 END,
           last_error_type    = CASE WHEN ${allRequiredFilled} THEN NULL ELSE $22 END,
@@ -380,24 +476,25 @@ async function fetchTargets(args) {
 
   if (CAT_ID) {
     const { rows } = await client.query(
-      `SELECT c.id, c.name, c.distance_km, e.id as event_id, e.name as event_name, e.official_url, e.race_type
+      `SELECT c.id, c.name, c.distance_km, e.id as event_id, e.name as event_name, e.official_url, e.race_type, e.country_en
        FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id
        WHERE c.id = $1`,
       [CAT_ID]
     )
     targets = rows.map((r) => ({
-      event: { id: r.event_id, name: r.event_name, official_url: r.official_url, race_type: r.race_type },
+      event: { id: r.event_id, name: r.event_name, official_url: r.official_url, race_type: r.race_type, country_en: r.country_en },
       category: { id: r.id, name: r.name, distance_km: r.distance_km },
     }))
   } else if (EVENT_ID) {
     const { rows: [ev] } = await client.query(
-      `SELECT id, name, official_url, race_type FROM ${SCHEMA}.events WHERE id = $1`,
+      `SELECT id, name, official_url, race_type, country_en FROM ${SCHEMA}.events WHERE id = $1`,
       [EVENT_ID]
     )
     if (!ev) { console.log('イベントが見つかりません'); process.exit(1) }
+    const FORCE = process.argv.includes('--force')
     const { rows: cats } = await client.query(
       `SELECT id, name, distance_km FROM ${SCHEMA}.categories
-       WHERE event_id = $1 AND collected_at IS NULL AND attempt_count < 3`,
+       WHERE event_id = $1 ${FORCE ? '' : 'AND collected_at IS NULL AND attempt_count < 3'}`,
       [EVENT_ID]
     )
     targets = cats.map((c) => ({ event: ev, category: c }))
@@ -410,12 +507,13 @@ async function fetchTargets(args) {
 async function runCli() {
   const args = process.argv.slice(2)
   const DRY_RUN = args.includes('--dry-run')
+  const FORCE = args.includes('--force')
   const targets = await fetchTargets(args)
 
-  console.log(`対象: ${targets.length} カテゴリ (DRY_RUN: ${DRY_RUN})\n`)
+  console.log(`対象: ${targets.length} カテゴリ (DRY_RUN: ${DRY_RUN}, FORCE: ${FORCE})\n`)
   let ok = 0, err = 0
   for (const { event, category } of targets) {
-    const result = await enrichCategoryDetail(event, category, { dryRun: DRY_RUN })
+    const result = await enrichCategoryDetail(event, category, { dryRun: DRY_RUN, force: FORCE })
     if (result.success) { ok++; console.log(`  OK  ${event.name?.slice(0, 30)} / ${category.name}`) }
     else { err++; console.log(`  ERR ${event.name?.slice(0, 30)} / ${category.name} | ${result.error?.slice(0, 50)}`) }
   }

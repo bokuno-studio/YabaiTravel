@@ -301,7 +301,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
     if (!fetchFailed && html && fetchedUrl) {
       const relatedLinks = extractRelevantLinks(html, fetchedUrl)
       const externalLinks = extractExternalOfficialLinks(html, fetchedUrl)
-      const allLinks = [...relatedLinks, ...externalLinks].slice(0, 5)
+      const allLinks = [...relatedLinks, ...externalLinks].slice(0, 2)
 
       for (const link of allLinks) {
         try {
@@ -361,6 +361,16 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
     }
 
     // --- ステップ4: DB 書き込み（バイリンガル統合: ja + en を同時に書き込み） ---
+    // #371: 座標・会場変更検知のため、更新前の値をスナップショット
+    const { rows: [oldRow] } = await client.query(
+      `SELECT latitude, longitude, reception_place, start_place FROM ${SCHEMA}.events WHERE id = $1`,
+      [eventId]
+    )
+    const oldLat = oldRow?.latitude != null ? parseFloat(oldRow.latitude) : null
+    const oldLng = oldRow?.longitude != null ? parseFloat(oldRow.longitude) : null
+    const oldReception = oldRow?.reception_place || null
+    const oldStart = oldRow?.start_place || null
+
     const e = ev
     const newOfficialUrl = e.official_url && !isPortalUrl(e.official_url) ? e.official_url : null
     const isPortalReplace = isPortalUrl(officialUrl)
@@ -436,6 +446,34 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
         }
       } catch (geoErr) {
         console.log(`  [geocode] WARN ${name?.slice(0, 40)} | ${geoErr.message?.slice(0, 60)}`)
+      }
+    }
+
+    // --- #371: 座標・会場変更検知 → logi再実行トリガー ---
+    {
+      const { rows: [newRow] } = await client.query(
+        `SELECT latitude, longitude, reception_place, start_place FROM ${SCHEMA}.events WHERE id = $1`,
+        [eventId]
+      )
+      const newLat = newRow?.latitude != null ? parseFloat(newRow.latitude) : null
+      const newLng = newRow?.longitude != null ? parseFloat(newRow.longitude) : null
+      const newReception = newRow?.reception_place || null
+      const newStart = newRow?.start_place || null
+
+      const coordChanged = oldLat != null && newLat != null && oldLng != null && newLng != null &&
+        (Math.abs(newLat - oldLat) > 0.01 || Math.abs(newLng - oldLng) > 0.01)
+      const venueChanged = (oldReception !== newReception && newReception != null) ||
+        (oldStart !== newStart && newStart != null)
+
+      if (coordChanged || venueChanged) {
+        const reason = coordChanged ? 'coordinates changed' : 'venue changed'
+        const { rowCount: arDel } = await client.query(
+          `DELETE FROM ${SCHEMA}.access_routes WHERE event_id = $1`, [eventId]
+        )
+        const { rowCount: acDel } = await client.query(
+          `DELETE FROM ${SCHEMA}.accommodations WHERE event_id = $1`, [eventId]
+        )
+        console.log(`  [logi-trigger] ${name?.slice(0, 40)} | ${reason} → access_routes:${arDel} accommodations:${acDel} deleted`)
       }
     }
 

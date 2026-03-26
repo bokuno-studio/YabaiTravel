@@ -53,7 +53,7 @@ async function run() {
 
   // ②-A 未処理イベント（統一リトライ: collected_at IS NULL AND attempt_count < 3）
   const { rows: needsEventEnrich } = await client.query(
-    `SELECT id, name, official_url, location, country, race_type, FALSE as event_done
+    `SELECT id, name, official_url, location, country, country_en, race_type, FALSE as event_done
      FROM ${SCHEMA}.events
      WHERE collected_at IS NULL
        AND attempt_count < 3
@@ -64,7 +64,7 @@ async function run() {
 
   // ②-B のみ必要（②-A 完了だがカテゴリ詳細未収集）
   const { rows: needsCatDetail } = await client.query(
-    `SELECT e.id, e.name, e.official_url, e.location, e.country, e.race_type, TRUE as event_done
+    `SELECT e.id, e.name, e.official_url, e.location, e.country, e.country_en, e.race_type, TRUE as event_done
      FROM ${SCHEMA}.events e
      WHERE e.collected_at IS NOT NULL
        AND EXISTS (
@@ -164,7 +164,7 @@ async function run() {
 
             for (const cat of pendingCats) {
               const catResult = await enrichCategoryDetail(
-                { id: event.id, name: event.name, official_url: event.official_url, race_type: event.race_type },
+                { id: event.id, name: event.name, official_url: event.official_url, race_type: event.race_type, country_en: event.country_en },
                 cat,
                 { dryRun: DRY_RUN }
               ).catch((e) => {
