@@ -21,7 +21,11 @@
     "entryOpen": "受付中のみ",
     "entryUpcoming": "受付前のみ",
     "entryClosed": "締切済",
-    "entryAll": "すべて"
+    "entryAll": "すべて",
+    "poleFilter": "ポール使用",
+    "poleAll": "指定なし",
+    "poleAllowed": "使用可",
+    "poleProhibited": "使用不可"
   },
   "raceType": {
     "marathon": "マラソン",

@@ -90,6 +90,7 @@ function countActiveFilters(props: FiltersSidebarProps): number {
   if (props.distanceRanges.size > 0) count++
   if (props.timeLimitMin) count++
   if (props.costMin > 0 || props.costMax < Infinity) count++
+  if (props.poleFilter) count++
   if (props.entryStatus !== 'active') count++
   if (props.showPastEvents) count++
   return count
@@ -108,6 +109,7 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
     for (const idx of props.distanceRanges) props.onDistanceRangeToggle(idx)
     if (props.timeLimitMin) props.onTimeLimitChange('')
     if (props.costMin > 0 || props.costMax < Infinity) props.onCostRangeChange(0, Infinity)
+    if (props.poleFilter) props.onPoleFilterChange('')
     if (props.entryStatus !== 'active') props.onEntryStatusChange('active')
     if (props.showPastEvents) props.onShowPastEventsChange(false)
   }
@@ -265,6 +267,19 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
           currency={isEn ? '$' : '¥'}
           lang={props.lang}
         />
+      </FilterSection>
+
+      {/* Pole Filter */}
+      <FilterSection title={props.t('filter.poleFilter')}>
+        <select
+          value={props.poleFilter}
+          onChange={(e) => props.onPoleFilterChange(e.target.value)}
+          className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
+        >
+          <option value="">{props.t('filter.poleAll')}</option>
+          <option value="allowed">{props.t('filter.poleAllowed')}</option>
+          <option value="prohibited">{props.t('filter.poleProhibited')}</option>
+        </select>
       </FilterSection>
 
       {/* Entry Status */}

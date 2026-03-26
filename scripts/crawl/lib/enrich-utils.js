@@ -104,13 +104,26 @@ export async function fetchHtml(url, timeoutMs = 15000) {
   }
 }
 
-export function extractRelevantContent(html, maxChars = 10000) {
+export function extractRelevantContent(html, maxChars = 6000) {
   const $ = cheerio.load(html)
+  // Remove non-content elements
   $('script, style, svg, iframe, noscript').remove()
+  $('nav, footer, header').remove()
   $('[class*="cookie"], [class*="banner"], [class*="popup"], [class*="modal"]').remove()
   $('[class*="newsletter"], [class*="subscribe"]').remove()
+  $('[class*="sidebar"], [class*="widget"], [class*="breadcrumb"], [class*="pagination"]').remove()
+  $('[class*="ad-"], [class*="ads-"], [id*="ad-"], [id*="ads-"]').remove()
+  // Remove HTML comments
+  $('*').contents().filter(function() { return this.type === 'comment' }).remove()
+  // Remove inline styles and class attributes to reduce noise
+  $('[style]').removeAttr('style')
+  $('[class]').removeAttr('class')
 
-  $('table').each((_, table) => {
+  // Prefer <main> or <article> content if available
+  let $content = $('main').length ? $('main') : $('article').length ? $('article') : $('body')
+
+  // Convert tables to readable text
+  $content.find('table').each((_, table) => {
     const rows = []
     $(table).find('tr').each((_, tr) => {
       const cells = []
@@ -122,7 +135,15 @@ export function extractRelevantContent(html, maxChars = 10000) {
     $(table).replaceWith(rows.join('\n'))
   })
 
-  const text = $('body').text().replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+  // Preserve headings and list structure
+  $content.find('h1, h2, h3, h4, h5, h6').each((_, el) => {
+    $(el).prepend('\n## ')
+  })
+  $content.find('li').each((_, el) => {
+    $(el).prepend('- ')
+  })
+
+  const text = $content.text().replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
   return text.length <= maxChars ? text : text.slice(0, maxChars) + '\n[...truncated]'
 }
 

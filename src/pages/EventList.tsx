@@ -16,6 +16,7 @@ import { MapIcon, MapPinOff, SlidersHorizontal, X, RotateCcw } from 'lucide-reac
 import { useSidebarFilter } from '@/contexts/SidebarFilterContext'
 import { useSidebarStats } from '@/contexts/SidebarStatsContext'
 import { getFilterState, saveFilterState, resetFilterState } from '@/lib/filterStore'
+import { useScrollDepth } from '@/hooks/useScrollDepth'
 
 /** interval 文字列から時間数を取得（フィルタ用） */
 function parseIntervalHours(v: string | null): number | null {
@@ -71,6 +72,7 @@ function EventList() {
   const location = useLocation()
   const langPrefix = `/${lang || 'ja'}`
   const DISTANCE_RANGES = useMemo(() => getDistanceRanges(isEn), [isEn])
+  useScrollDepth('event_list')
 
   const [events, setEvents] = useState<EventWithCategories[]>([])
   const [searchParams, setSearchParams] = useSearchParams()
@@ -108,6 +110,7 @@ function EventList() {
     const v = searchParams.get('costMax')
     return v ? Number(v) : saved.costMax
   })
+  const [poleFilter, setPoleFilter] = useState<string>(() => searchParams.get('poleFilter') ?? saved.poleFilter)
   const [entryStatus, setEntryStatus] = useState<string>(() => searchParams.get('entryStatus') ?? saved.entryStatus)
   const [showPastEvents, setShowPastEvents] = useState(() => searchParams.get('showPast') === '1' || saved.showPastEvents)
   const [showMap, setShowMap] = useState(true)
@@ -125,6 +128,7 @@ function EventList() {
       timeLimitMin,
       costMin,
       costMax,
+      poleFilter,
       entryStatus,
       showPastEvents,
     })
@@ -136,10 +140,11 @@ function EventList() {
     if (timeLimitMin) params.set('timeLimitMin', timeLimitMin)
     if (costMin > 0) params.set('costMin', String(costMin))
     if (costMax < Infinity) params.set('costMax', String(costMax))
+    if (poleFilter) params.set('poleFilter', poleFilter)
     if (entryStatus !== 'active') params.set('entryStatus', entryStatus)
     if (showPastEvents) params.set('showPast', '1')
     setSearchParams(params, { replace: true })
-  }, [raceTypes, selectedMonths, selectedCategories, distanceRanges, timeLimitMin, costMin, costMax, entryStatus, showPastEvents, setSearchParams])
+  }, [raceTypes, selectedMonths, selectedCategories, distanceRanges, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents, setSearchParams])
 
   useEffect(() => {
     async function fetchEvents() {
@@ -323,7 +328,7 @@ function EventList() {
     })
   }
 
-  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || selectedMonths.size > 0 || distanceRanges.size > 0 || !!timeLimitMin || costMin > 0 || costMax < Infinity || entryStatus !== 'active' || showPastEvents
+  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || selectedMonths.size > 0 || distanceRanges.size > 0 || !!timeLimitMin || costMin > 0 || costMax < Infinity || !!poleFilter || entryStatus !== 'active' || showPastEvents
 
   // #2: Reset all filters
   const resetAllFilters = useCallback(() => {
@@ -334,6 +339,7 @@ function EventList() {
     setTimeLimitMin('')
     setCostMin(0)
     setCostMax(Infinity)
+    setPoleFilter('')
     setEntryStatus('active')
     setShowPastEvents(false)
     resetFilterState()
@@ -373,6 +379,11 @@ function EventList() {
       if (isNaN(cost) || cost < costMin || cost > costMax) return false
     }
     const categories = event.categories ?? []
+    if (poleFilter) {
+      if (categories.length === 0) return false
+      if (poleFilter === 'allowed' && !categories.some(c => c.poles_allowed === true)) return false
+      if (poleFilter === 'prohibited' && !categories.some(c => c.poles_allowed === false)) return false
+    }
     const hasCategoryFilter = distanceRanges.size > 0 || timeLimitMin
     if (hasCategoryFilter && categories.length > 0) {
       const hasMatch = categories.some(categoryMatchesFilter)
@@ -412,6 +423,8 @@ function EventList() {
     costMax,
     costGlobalMax,
     onCostRangeChange: handleCostRangeChange,
+    poleFilter,
+    onPoleFilterChange: setPoleFilter,
     entryStatus,
     onEntryStatusChange: setEntryStatus,
     showPastEvents,
@@ -424,7 +437,7 @@ function EventList() {
   const { setFilterNode } = useSidebarFilter()
   const filterDepsKey = JSON.stringify([
     [...raceTypes], [...selectedMonths], [...selectedCategories],
-    [...distanceRanges], timeLimitMin, costMin, costMax, entryStatus, showPastEvents,
+    [...distanceRanges], timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents,
     raceTypes.size, loading,
   ])
   useEffect(() => {

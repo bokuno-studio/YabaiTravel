@@ -21,7 +21,11 @@
     "entryOpen": "Open only",
     "entryUpcoming": "Upcoming only",
     "entryClosed": "Closed",
-    "entryAll": "All"
+    "entryAll": "All",
+    "poleFilter": "Pole Usage",
+    "poleAll": "Any",
+    "poleAllowed": "Pole OK",
+    "poleProhibited": "No Pole"
   },
   "raceType": {
     "marathon": "Marathon",

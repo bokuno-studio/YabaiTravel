@@ -13,6 +13,7 @@ interface FilterState {
   timeLimitMin: string
   costMin: number
   costMax: number
+  poleFilter: string
   entryStatus: string
   showPastEvents: boolean
 }
@@ -25,6 +26,7 @@ const DEFAULT: FilterState = {
   timeLimitMin: '',
   costMin: 0,
   costMax: Infinity,
+  poleFilter: '',
   entryStatus: 'active',
   showPastEvents: false,
 }
@@ -46,6 +48,7 @@ function loadFromSession(): FilterState {
       timeLimitMin: parsed.timeLimitMin ?? '',
       costMin: parsed.costMin ?? 0,
       costMax: parsed.costMax ?? Infinity,
+      poleFilter: parsed.poleFilter ?? '',
       entryStatus: parsed.entryStatus ?? 'active',
       showPastEvents: parsed.showPastEvents ?? false,
     }

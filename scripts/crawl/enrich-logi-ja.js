@@ -11,11 +11,13 @@
  *   node scripts/crawl/enrich-logi-ja.js --event-id <uuid> # 特定イベントのみ
  *   node scripts/crawl/enrich-logi-ja.js --dry-run          # DB更新なし
  *   node scripts/crawl/enrich-logi-ja.js --limit 5          # 最初の5件のみ
+ *   node scripts/crawl/enrich-logi-ja.js --batch            # Batch API 使用（50%コスト削減）
  */
 import pg from 'pg'
 import Anthropic from '@anthropic-ai/sdk'
 import { existsSync, readFileSync } from 'fs'
 import { resolve } from 'path'
+import { runBatch } from './lib/batch-utils.js'
 
 const envPath = resolve(process.cwd(), '.env.local')
 if (existsSync(envPath)) {
@@ -649,9 +651,414 @@ async function runCli() {
   console.log(`OK: ${ok}, Errors: ${errors}`)
 }
 
+/**
+ * バッチモード CLI
+ * LLM 呼び出しを Batch API に一括送信して 50% コスト削減
+ *
+ * 国内: fetchDomesticLogiWithLlm + fetchAccommodationWithLlm → 2リクエスト/イベント
+ * 海外: fetchInternationalLogiWithLlm + fetchAccommodationWithLlm → 2リクエスト/イベント
+ * Google Directions API で成功した場合はアクセス LLM をスキップ
+ */
+async function runBatchCli() {
+  const args = process.argv.slice(2)
+  const DRY_RUN = args.includes('--dry-run')
+  const FORCE = args.includes('--force')
+  const limitIdx = args.indexOf('--limit')
+  const LIMIT = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : Infinity
+  const eventIdIdx = args.indexOf('--event-id')
+  const EVENT_ID = eventIdIdx >= 0 ? args[eventIdIdx + 1] : null
+
+  const dbClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
+  await dbClient.connect()
+
+  let targets
+  if (EVENT_ID) {
+    const { rows } = await dbClient.query(
+      `SELECT id, name, location, country, official_url, latitude, longitude, reception_place, start_place FROM ${SCHEMA}.events WHERE id = $1`,
+      [EVENT_ID]
+    )
+    targets = rows
+  } else if (FORCE) {
+    const { rows } = await dbClient.query(
+      `SELECT e.id, e.name, e.location, e.country, e.official_url, e.latitude, e.longitude, e.reception_place, e.start_place
+       FROM ${SCHEMA}.events e
+       WHERE e.location IS NOT NULL AND e.collected_at IS NOT NULL
+         AND (e.reception_place IS NOT NULL OR e.start_place IS NOT NULL)
+       ORDER BY e.updated_at ASC
+       LIMIT $1`,
+      [LIMIT === Infinity ? 10000 : LIMIT]
+    )
+    targets = rows
+  } else {
+    const { rows } = await dbClient.query(
+      `SELECT e.id, e.name, e.location, e.country, e.official_url, e.latitude, e.longitude, e.reception_place, e.start_place
+       FROM ${SCHEMA}.events e
+       LEFT JOIN ${SCHEMA}.access_routes ar ON ar.event_id = e.id AND ar.origin_type = 'tokyo'
+       WHERE e.location IS NOT NULL AND e.collected_at IS NOT NULL AND ar.id IS NULL
+         AND (e.reception_place IS NOT NULL OR e.start_place IS NOT NULL)
+       ORDER BY e.updated_at ASC
+       LIMIT $1`,
+      [LIMIT === Infinity ? 10000 : LIMIT]
+    )
+    targets = rows
+  }
+  await dbClient.end()
+
+  if (targets.length === 0) {
+    console.log('対象イベントなし')
+    return
+  }
+
+  console.log(`[batch] 対象: ${targets.length} 件 (DRY_RUN: ${DRY_RUN})\n`)
+
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const apiKey = process.env.GOOGLE_DIRECTIONS_API_KEY
+
+  // --- パス1: Google API 試行 + バッチリクエスト構築 ---
+  const batchRequests = []
+  const eventContext = new Map()  // eventId → context info
+
+  for (const event of targets) {
+    const { id: eventId, name, location, country, latitude, longitude, reception_place, start_place } = event
+    if (!location) continue
+
+    const isJapan = !country || country === '日本' || country.toLowerCase() === 'japan'
+    const specificVenue = reception_place || start_place || null
+    const destinationForLlm = specificVenue
+      ? `${specificVenue}（${location}）`
+      : `${name}の会場（${location}）`
+
+    const ctx = { event, isJapan, destinationForLlm, googleRouteSuccess: false }
+    eventContext.set(eventId, ctx)
+
+    // Google Directions API を先に試行（国内のみ）
+    if (isJapan && apiKey) {
+      try {
+        const destination = latitude && longitude ? { lat: latitude, lng: longitude } : location
+        const outboundData = await fetchGoogleDirections('東京駅', destination, apiKey)
+        const route = parseGoogleDirections(outboundData)
+        if (route) {
+          ctx.googleRouteSuccess = true
+          ctx.googleRoute = route
+        }
+      } catch {
+        // Google API 失敗 → LLM バッチに含める
+      }
+    }
+
+    // Google API 成功時はアクセス LLM をスキップ
+    if (!ctx.googleRouteSuccess) {
+      if (isJapan) {
+        batchRequests.push({
+          custom_id: `access_${eventId}`,
+          systemPrompt: 'You are a Japanese transportation expert. Respond in JSON only.',
+          userContent: `「東京駅」から「${destinationForLlm}」${latitude ? `（座標: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}）` : ''}への経路を教えてください。座標から正確な目的地を特定して回答してください。出発地点は必ず「東京駅」としてください。
+飛行機・電車・路線バス・フェリーのみを使った経路にしてください。タクシーは経路に含めないでください。
+日本語と英語の両方で回答してください。
+以下のJSON形式で回答してください：
+{
+  "transit_accessible": "full" または "partial" または "none"（full: 公共交通のみで会場到着可能 / partial: 最寄り駅まで公共交通、そこからタクシー必要 / none: タクシーまたはレンタカー推奨）,
+  "transit_detail": "full/partial/noneの判定理由を簡潔に（日本語）",
+  "route_detail": "東京駅からの公共交通のみの経路詳細（タクシー不使用）（日本語）。必ず「1. 東京駅から…」で始めること。番号付きで各ステップを改行区切りで記載",
+  "route_detail_en": "Route details from Tokyo Station using public transit only (no taxi) (English). Must start with '1. From Tokyo Station...'. Numbered steps separated by newlines",
+  "total_time_estimate": "所要時間（例: 約2時間30分）",
+  "cost_estimate": "費用概算（公共交通のみ。例: 約3,000円〜5,000円）",
+  "shuttle_available": "大会公式シャトルバスの情報（日本語）。公式シャトルがない場合や不明な場合は必ず null を返すこと。一般的なバスやタクシー情報は含めない",
+  "shuttle_available_en": "Official race shuttle bus info (English). Return null if no official shuttle or unknown. Do not include general bus/taxi info",
+  "taxi_required_segment": "partial の場合のみ: タクシー必要区間（例: ○○駅 → 会場（約10km））。full/none なら必ず null",
+  "taxi_estimate": "partial の場合のみ: タクシー費用概算（例: 約3,000円）。full/none なら必ず null"
+}
+JSONのみ返してください。`,
+          maxTokens: 1500,
+        })
+      } else {
+        batchRequests.push({
+          custom_id: `access_${eventId}`,
+          systemPrompt: 'You are an international travel expert. Respond in JSON only.',
+          userContent: `日本（羽田・成田）から「${destinationForLlm}」（${country || '不明'}${latitude ? `、座標: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}` : ''}）への一般的なアクセス方法を教えてください。座標から正確な場所を特定して回答してください。
+日本語と英語の両方で回答してください。
+以下のJSON形式で回答してください：
+{
+  "outbound": {
+    "route_detail": "往路の経路詳細（日本語）。番号付きで各ステップを改行区切りで記載",
+    "route_detail_en": "Outbound route details (English). Numbered steps separated by newlines",
+    "total_time_estimate": "所要時間（例: 約15時間）",
+    "cost_estimate": "費用概算（例: 約150,000円）",
+    "shuttle_available": "大会公式シャトルバスの情報（日本語）。公式シャトルがない場合や不明な場合は必ず null。一般タクシーやバスの情報は含めない",
+    "shuttle_available_en": "Official race shuttle bus info (English). Return null if no official shuttle or unknown"
+  },
+  "return": {
+    "route_detail": "復路の経路詳細（日本語）",
+    "route_detail_en": "Return route details (English)",
+    "total_time_estimate": "所要時間",
+    "cost_estimate": "費用概算",
+    "shuttle_available": null,
+    "shuttle_available_en": null
+  },
+  "visa_info": "日本国籍の人がこの国に入国する際のビザ情報（日本語）",
+  "visa_info_en": "Visa info for Japanese nationals visiting this country (English)"
+}
+JSONのみ返してください。`,
+          maxTokens: 1500,
+        })
+      }
+    }
+
+    // 宿泊情報 LLM
+    batchRequests.push({
+      custom_id: `accom_${eventId}`,
+      systemPrompt: 'You are an accommodation expert. Respond in JSON only.',
+      userContent: `「${destinationForLlm}」${latitude ? `（座標: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}）` : ''}大会参加者向けの前泊推奨エリアと星3相当の宿泊費用目安を教えてください。座標から正確な場所を特定して回答してください。宿泊費は日本円換算の数値のみで返してください。
+日本語と英語の両方で回答してください。
+以下のJSON形式で回答してください：
+{
+  "recommended_area": "推奨宿泊エリア（日本語）",
+  "recommended_area_en": "Recommended accommodation area (English)",
+  "avg_cost_3star": 数値（1泊あたり円換算の目安、数値のみ）
+}
+JSONのみ返してください。`,
+      maxTokens: 768,
+    })
+  }
+
+  console.log(`[batch] ${batchRequests.length} 件のLLMリクエストをバッチ送信\n`)
+
+  // --- パス2: バッチ送信 + 待機 ---
+  let batchResults = new Map()
+  if (batchRequests.length > 0 && !DRY_RUN) {
+    batchResults = await runBatch(anthropic, batchRequests)
+  } else if (DRY_RUN) {
+    console.log(`[batch] DRY_RUN: バッチ送信スキップ`)
+  }
+
+  // --- パス3: 結果処理 + DB 書き込み ---
+  const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
+  await client.connect()
+
+  let ok = 0, errors = 0
+
+  for (const [eventId, ctx] of eventContext) {
+    const { event, isJapan, destinationForLlm } = ctx
+    const { name, location, country, official_url: officialUrl, latitude, longitude } = event
+
+    if (DRY_RUN) {
+      console.log(`  DRY (batch) ${name?.slice(0, 40)} | ${isJapan ? '国内' : '海外'} | google: ${ctx.googleRouteSuccess}`)
+      ok++
+      continue
+    }
+
+    try {
+      // 既存ルート確認
+      const existingRoutes = await client.query(
+        `SELECT id, direction FROM ${SCHEMA}.access_routes WHERE event_id = $1 AND origin_type = 'tokyo'`,
+        [eventId]
+      )
+      const existingDirections = new Set(existingRoutes.rows.map((r) => r.direction))
+      const existingIds = Object.fromEntries(existingRoutes.rows.map((r) => [r.direction, r.id]))
+
+      let outboundRoute = null
+      let returnRoute = null
+      let shuttleAvailable = null
+      let taxiEstimate = null
+      let transitAccessible = null
+
+      // 公式シャトル情報
+      shuttleAvailable = await extractOfficialShuttle(officialUrl)
+
+      if (ctx.googleRouteSuccess) {
+        outboundRoute = ctx.googleRoute
+        returnRoute = { ...ctx.googleRoute }
+        transitAccessible = true
+      } else {
+        const accessResult = batchResults.get(`access_${eventId}`)
+        if (accessResult?.success) {
+          const logiInfo = accessResult.parsed
+          if (isJapan && logiInfo) {
+            // null 正規化
+            const nullify = (v) => {
+              if (v == null) return null
+              if (typeof v !== 'string') return v
+              const s = v.trim().toLowerCase()
+              if (!s || s === 'null' || s === '不明' || s === '情報なし' || s === 'なし' || s === 'n/a' || s === 'unknown' || s === 'none') return null
+              if (/なし|ない|不要|no shuttle|not available|限定的|通常なし|不明/.test(v)) return null
+              return v
+            }
+            logiInfo.shuttle_available = nullify(logiInfo.shuttle_available)
+            logiInfo.shuttle_available_en = nullify(logiInfo.shuttle_available_en)
+            logiInfo.taxi_required_segment = nullify(logiInfo.taxi_required_segment)
+            logiInfo.taxi_estimate = nullify(logiInfo.taxi_estimate)
+
+            outboundRoute = {
+              route_detail: logiInfo.route_detail,
+              route_detail_en: logiInfo.route_detail_en || null,
+              total_time_estimate: logiInfo.total_time_estimate,
+              cost_estimate: logiInfo.cost_estimate,
+              shuttle_available_en: logiInfo.shuttle_available_en || null,
+            }
+            returnRoute = {
+              route_detail: logiInfo.route_detail || null,
+              route_detail_en: logiInfo.route_detail_en || null,
+              total_time_estimate: logiInfo.total_time_estimate,
+              cost_estimate: logiInfo.cost_estimate,
+              shuttle_available_en: logiInfo.shuttle_available_en || null,
+            }
+            if (!shuttleAvailable && logiInfo.shuttle_available) {
+              shuttleAvailable = logiInfo.shuttle_available
+            }
+            transitAccessible = transitAccessibleToBoolean(logiInfo.transit_accessible)
+            taxiEstimate = buildTaxiEstimate(logiInfo)
+          } else if (!isJapan && logiInfo) {
+            // 海外
+            const nullifyShuttle = (v) => {
+              if (v == null) return null
+              if (typeof v !== 'string') return v
+              const s = v.trim().toLowerCase()
+              if (!s || s === 'null' || s === '不明' || s === '情報なし' || s === 'なし' || s === 'n/a' || s === 'unknown' || s === 'none') return null
+              if (/なし|ない|no shuttle|not available|限定的|通常なし/.test(v)) return null
+              return v
+            }
+            if (logiInfo.outbound) {
+              logiInfo.outbound.shuttle_available = nullifyShuttle(logiInfo.outbound.shuttle_available)
+              logiInfo.outbound.shuttle_available_en = nullifyShuttle(logiInfo.outbound.shuttle_available_en)
+            }
+            if (logiInfo.return) {
+              logiInfo.return.shuttle_available = nullifyShuttle(logiInfo.return.shuttle_available)
+              logiInfo.return.shuttle_available_en = nullifyShuttle(logiInfo.return.shuttle_available_en)
+            }
+
+            outboundRoute = {
+              route_detail: logiInfo.outbound?.route_detail || null,
+              route_detail_en: logiInfo.outbound?.route_detail_en || null,
+              total_time_estimate: logiInfo.outbound?.total_time_estimate || null,
+              cost_estimate: logiInfo.outbound?.cost_estimate || null,
+              shuttle_available_en: logiInfo.outbound?.shuttle_available_en || null,
+            }
+            returnRoute = {
+              route_detail: logiInfo.outbound?.route_detail || null,
+              route_detail_en: logiInfo.outbound?.route_detail_en || null,
+              total_time_estimate: logiInfo.outbound?.total_time_estimate || null,
+              cost_estimate: logiInfo.outbound?.cost_estimate || null,
+              shuttle_available_en: logiInfo.outbound?.shuttle_available_en || null,
+            }
+            if (!shuttleAvailable && logiInfo.outbound?.shuttle_available) {
+              shuttleAvailable = logiInfo.outbound.shuttle_available
+            }
+            // VISA
+            if (logiInfo.visa_info || logiInfo.visa_info_en) {
+              const visaSetClause = FORCE
+                ? 'visa_info = COALESCE($2, visa_info), visa_info_en = COALESCE($3, visa_info_en)'
+                : 'visa_info = COALESCE(visa_info, $2), visa_info_en = COALESCE(visa_info_en, $3)'
+              await client.query(
+                `UPDATE ${SCHEMA}.events SET ${visaSetClause} WHERE id = $1`,
+                [eventId, logiInfo.visa_info || null, logiInfo.visa_info_en || null]
+              )
+            }
+          }
+        }
+      }
+
+      // DB upsert routes
+      const upsertRoute = async (direction, route) => {
+        if (!route) return
+        const params = [
+          route.route_detail || null,
+          route.total_time_estimate || null,
+          route.cost_estimate || null,
+          shuttleAvailable,
+          taxiEstimate,
+          transitAccessible,
+          route.route_detail_en || null,
+          route.shuttle_available_en || null,
+          route.route_polyline || null,
+        ]
+        if (existingDirections.has(direction)) {
+          const setClause = FORCE
+            ? `route_detail = $2, total_time_estimate = $3, cost_estimate = $4,
+               shuttle_available = $5, taxi_estimate = $6, transit_accessible = $7,
+               route_detail_en = $8, shuttle_available_en = $9, route_polyline = $10`
+            : `route_detail = COALESCE(route_detail, $2), total_time_estimate = COALESCE(total_time_estimate, $3),
+               cost_estimate = COALESCE(cost_estimate, $4), shuttle_available = COALESCE(shuttle_available, $5),
+               taxi_estimate = COALESCE(taxi_estimate, $6), transit_accessible = COALESCE(transit_accessible, $7),
+               route_detail_en = COALESCE(route_detail_en, $8), shuttle_available_en = COALESCE(shuttle_available_en, $9),
+               route_polyline = COALESCE(route_polyline, $10)`
+          await client.query(
+            `UPDATE ${SCHEMA}.access_routes SET ${setClause} WHERE id = $1`,
+            [existingIds[direction], ...params]
+          )
+        } else {
+          await client.query(
+            `INSERT INTO ${SCHEMA}.access_routes
+              (event_id, direction, origin_type, route_detail, total_time_estimate, cost_estimate, shuttle_available, taxi_estimate, transit_accessible, route_detail_en, shuttle_available_en, route_polyline)
+             VALUES ($1, $2, 'tokyo', $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            [eventId, direction, ...params]
+          )
+        }
+      }
+
+      await upsertRoute('outbound', outboundRoute)
+      await upsertRoute('return', returnRoute)
+
+      // 宿泊情報
+      const accomResult = batchResults.get(`accom_${eventId}`)
+      if (accomResult?.success && accomResult.parsed) {
+        const accomInfo = accomResult.parsed
+        const existingAccom = await client.query(
+          `SELECT id FROM ${SCHEMA}.accommodations WHERE event_id = $1`,
+          [eventId]
+        )
+        const accomArea = accomInfo.recommended_area || null
+        const accomAreaEn = accomInfo.recommended_area_en || null
+        let accomCost = accomInfo.avg_cost_3star != null ? parseInt(accomInfo.avg_cost_3star, 10) : null
+        if (accomCost != null && (accomCost < 1000 || isNaN(accomCost))) accomCost = null
+
+        let accomLat = null, accomLng = null
+        const geoApiKey = process.env.GOOGLE_DIRECTIONS_API_KEY
+        if (geoApiKey && accomArea) {
+          try {
+            const geoQuery = location ? `${accomArea} ${location}` : accomArea
+            const geoRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(geoQuery)}&key=${geoApiKey}`)
+            const geoData = await geoRes.json()
+            if (geoData.results?.length) {
+              accomLat = geoData.results[0].geometry.location.lat
+              accomLng = geoData.results[0].geometry.location.lng
+            }
+          } catch { /* ignore */ }
+        }
+
+        if (existingAccom.rows.length > 0) {
+          const accomSetClause = FORCE
+            ? 'recommended_area = $2, avg_cost_3star = $3, recommended_area_en = $4, latitude = $5, longitude = $6'
+            : 'recommended_area = COALESCE(recommended_area, $2), avg_cost_3star = COALESCE(avg_cost_3star, $3), recommended_area_en = COALESCE(recommended_area_en, $4), latitude = COALESCE(latitude, $5), longitude = COALESCE(longitude, $6)'
+          await client.query(
+            `UPDATE ${SCHEMA}.accommodations SET ${accomSetClause} WHERE id = $1`,
+            [existingAccom.rows[0].id, accomArea, accomCost, accomAreaEn, accomLat, accomLng]
+          )
+        } else {
+          await client.query(
+            `INSERT INTO ${SCHEMA}.accommodations (event_id, recommended_area, avg_cost_3star, recommended_area_en, latitude, longitude)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [eventId, accomArea, accomCost, accomAreaEn, accomLat, accomLng]
+          )
+        }
+      }
+
+      ok++
+      console.log(`  OK  (batch) ${name?.slice(0, 40)} | ${isJapan ? '国内' : '海外'}`)
+    } catch (e) {
+      errors++
+      console.log(`  ERR (batch) ${name?.slice(0, 40)} | ${e.message?.slice(0, 60)}`)
+    }
+  }
+
+  await client.end()
+  console.log(`\n完了: OK ${ok} / ERR ${errors}`)
+}
+
 // スクリプトとして直接実行された場合のみ CLI を起動
 if (process.argv[1]?.endsWith('enrich-logi-ja.js')) {
-  runCli().catch((e) => {
+  const useBatch = process.argv.includes('--batch')
+  const runner = useBatch ? runBatchCli : runCli
+  runner().catch((e) => {
     console.error(e)
     process.exit(1)
   })

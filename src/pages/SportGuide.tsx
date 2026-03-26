@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom'
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { trackGuideRead } from '../lib/analytics'
+import { trackGuideRead, trackGuideSectionView } from '../lib/analytics'
 import { useScrollDepth } from '@/hooks/useScrollDepth'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
@@ -524,9 +524,36 @@ function SportGuide() {
   useEffect(() => {
     if (sport && !loading && dbContent && guideReadFiredRef.current !== `${sport}_${lang}`) {
       guideReadFiredRef.current = `${sport}_${lang}`
-      trackGuideRead(sport, 0)
+      trackGuideRead(sport, lang || 'ja')
     }
   }, [sport, lang, loading, dbContent])
+
+  // GA4: guide_section_view — IntersectionObserver
+  const sectionViewedRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (!sport) return
+    sectionViewedRef.current = new Set()
+    const sectionIds = ['overview', 'rules', 'getting_started', 'recommended_races', 'common_mistakes', 'gear', 'community']
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const sectionName = entry.target.id.replace('section-', '')
+            if (!sectionViewedRef.current.has(sectionName)) {
+              sectionViewedRef.current.add(sectionName)
+              trackGuideSectionView(sport, sectionName)
+            }
+          }
+        }
+      },
+      { threshold: 0.3 }
+    )
+    for (const id of sectionIds) {
+      const el = document.getElementById(`section-${id}`)
+      if (el) observer.observe(el)
+    }
+    return () => observer.disconnect()
+  }, [sport, lang, loading])
 
   const fallback = sport ? FALLBACK_GUIDES[sport] : null
   const sportTitle = sport ? (isEn ? SPORT_TITLES[sport]?.en : SPORT_TITLES[sport]?.ja) ?? sport : ''

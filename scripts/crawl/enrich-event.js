@@ -7,6 +7,8 @@
  *   node scripts/crawl/enrich-event.js --event-id <uuid>      # 特定イベント
  *   node scripts/crawl/enrich-event.js --dry-run              # DB更新なし
  *   node scripts/crawl/enrich-event.js --limit 5              # 最初の5件のみ
+ *   node scripts/crawl/enrich-event.js --batch                # Batch API 使用（50%コスト削減）
+ *   node scripts/crawl/enrich-event.js --batch --limit 50     # Batch API + 件数制限
  */
 import pg from 'pg'
 import Anthropic from '@anthropic-ai/sdk'
@@ -15,6 +17,7 @@ import {
   extractRelevantLinks, callLlm, fetchTavilySearch, isPortalUrl,
   reclassifyRaceType, AGGREGATOR_DOMAINS, extractAndSaveCourseMap,
 } from './lib/enrich-utils.js'
+import { runBatch } from './lib/batch-utils.js'
 
 loadEnv()
 const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
@@ -126,9 +129,15 @@ Other:
 
 /**
  * 単一イベントの基本情報 + コース一覧を抽出
+ * @param {object} event
+ * @param {object} opts
+ * @param {boolean} opts.dryRun
+ * @param {object} opts._batchResult - バッチモード: 初回 LLM の結果を注入（内部用）
+ * @param {string} opts._html - バッチモード: 事前取得済み HTML（内部用）
+ * @param {string} opts._fetchedUrl - バッチモード: HTML 取得元 URL（内部用）
  */
 export async function enrichEvent(event, opts = { dryRun: false }) {
-  const { dryRun = false } = opts
+  const { dryRun = false, _batchResult = null, _html = null, _fetchedUrl = null } = opts
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
 
@@ -138,11 +147,11 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
 
     // --- ステップ1: ページ取得 ---
     const needsTavilyLookup = !officialUrl || isPortalUrl(officialUrl)
-    let html = null
-    let fetchedUrl = officialUrl
+    let html = _html || null
+    let fetchedUrl = _fetchedUrl || officialUrl
     let fetchFailed = needsTavilyLookup
 
-    if (!needsTavilyLookup) {
+    if (!html && !needsTavilyLookup) {
       try {
         html = await fetchHtml(officialUrl)
       } catch (e) {
@@ -159,14 +168,21 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
           return { success: false, eventId, error: `fetch failed: ${e.message}` }
         }
       }
-    } else {
+    } else if (_html) {
+      // バッチモード: HTML は事前取得済み
+      fetchFailed = false
+    } else if (needsTavilyLookup) {
       console.log(`  [tavily] ${name?.slice(0, 40)} | official_url=${officialUrl?.slice(0, 40) || '(なし)'} → Tavily検索`)
     }
 
     let extracted = { event: {}, courses: [] }
     let totalTokens = 0
 
-    if (!fetchFailed && html) {
+    if (_batchResult) {
+      // バッチモード: 初回 LLM 結果を使用（Batch API で 50% コスト削減済み）
+      extracted = _batchResult
+      totalTokens += (_batchResult._usage?.input_tokens || 0) + (_batchResult._usage?.output_tokens || 0)
+    } else if (!fetchFailed && html) {
       // 直接取得成功 → LLM 抽出
       const content = extractRelevantContent(html)
       if (content.length < 50) {
@@ -569,9 +585,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
 
 // --- CLI ---
 
-async function runCli() {
-  const args = process.argv.slice(2)
-  const DRY_RUN = args.includes('--dry-run')
+async function fetchEventTargets(args) {
   const limitIdx = args.indexOf('--limit')
   const LIMIT = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : Infinity
   const eventIdIdx = args.indexOf('--event-id')
@@ -597,6 +611,13 @@ async function runCli() {
     rows = res.rows
   }
   await client.end()
+  return rows
+}
+
+async function runCli() {
+  const args = process.argv.slice(2)
+  const DRY_RUN = args.includes('--dry-run')
+  const rows = await fetchEventTargets(args)
 
   console.log(`対象: ${rows.length} 件 (DRY_RUN: ${DRY_RUN})\n`)
   let ok = 0, err = 0
@@ -608,8 +629,127 @@ async function runCli() {
   console.log(`\n完了: OK ${ok} / ERR ${err}`)
 }
 
+/**
+ * バッチモード CLI
+ * 1. 全対象イベントの HTML を事前取得
+ * 2. 初回 LLM 抽出リクエストを一括で Batch API に送信（50% コスト削減）
+ * 3. バッチ結果を使って各イベントの enrichEvent を実行（初回 LLM をスキップ）
+ *
+ * 注意: 関連ページ探索・race_type 再分類・Tavily フォールバックは同期処理のまま
+ * （初回 LLM が全体コストの大部分を占めるため、ここだけでも十分な削減効果）
+ */
+async function runBatchCli() {
+  const args = process.argv.slice(2)
+  const DRY_RUN = args.includes('--dry-run')
+  const rows = await fetchEventTargets(args)
+
+  if (rows.length === 0) {
+    console.log('対象イベントなし')
+    return
+  }
+
+  console.log(`[batch] 対象: ${rows.length} 件 (DRY_RUN: ${DRY_RUN})\n`)
+
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+  // --- パス1: HTML 事前取得 + バッチリクエスト構築 ---
+  const batchRequests = []
+  const eventMeta = new Map()  // custom_id → { event, html, fetchedUrl }
+  const syncFallbackEvents = []  // バッチに含められないイベント
+
+  for (const event of rows) {
+    const { id: eventId, name, official_url: officialUrl } = event
+    const needsTavilyLookup = !officialUrl || isPortalUrl(officialUrl)
+
+    if (needsTavilyLookup) {
+      syncFallbackEvents.push(event)
+      console.log(`  [batch] ${name?.slice(0, 40)} → 同期フォールバック（ポータルURL / URL なし）`)
+      continue
+    }
+
+    let html = null
+    try {
+      html = await fetchHtml(officialUrl)
+    } catch (e) {
+      syncFallbackEvents.push(event)
+      console.log(`  [batch] ${name?.slice(0, 40)} → 同期フォールバック（fetch失敗: ${e.message?.slice(0, 30)}）`)
+      continue
+    }
+
+    const content = extractRelevantContent(html)
+    if (content.length < 50) {
+      syncFallbackEvents.push(event)
+      console.log(`  [batch] ${name?.slice(0, 40)} → 同期フォールバック（コンテンツ短い）`)
+      continue
+    }
+
+    const customId = `event_${eventId}`
+    const userMsg = `Page content for "${name}":\n\n${content}`
+    batchRequests.push({
+      custom_id: customId,
+      systemPrompt: EVENT_SYSTEM_PROMPT,
+      userContent: userMsg,
+    })
+    eventMeta.set(customId, { event, html, fetchedUrl: officialUrl })
+  }
+
+  console.log(`\n[batch] ${batchRequests.length} 件をバッチ送信、${syncFallbackEvents.length} 件は同期フォールバック\n`)
+
+  // --- パス2: バッチ送信 + 待機 ---
+  let batchResults = new Map()
+  if (batchRequests.length > 0 && !DRY_RUN) {
+    batchResults = await runBatch(anthropic, batchRequests)
+  } else if (DRY_RUN) {
+    console.log(`[batch] DRY_RUN: バッチ送信スキップ`)
+  }
+
+  // --- パス3: バッチ結果を使って enrichEvent を実行 ---
+  let ok = 0, err = 0
+
+  for (const [customId, meta] of eventMeta) {
+    const { event } = meta
+
+    if (DRY_RUN) {
+      console.log(`  DRY (batch) ${event.name?.slice(0, 50)}`)
+      ok++
+      continue
+    }
+
+    const batchResult = batchResults.get(customId)
+    if (batchResult && batchResult.success) {
+      // バッチ結果を使って enrichEvent を実行（_batchResult で初回 LLM をスキップ）
+      const result = await enrichEvent(event, {
+        dryRun: false,
+        _batchResult: batchResult.parsed,
+        _html: meta.html,
+        _fetchedUrl: meta.fetchedUrl,
+      })
+      if (result.success) { ok++; console.log(`  OK  (batch) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
+      else { err++; console.log(`  ERR (batch) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
+    } else {
+      // バッチ失敗 → 同期フォールバック
+      const errorMsg = batchResult?.error || 'No batch result'
+      console.log(`  [batch] ${event.name?.slice(0, 40)} | バッチ失敗: ${errorMsg.slice(0, 40)} → 同期フォールバック`)
+      const result = await enrichEvent(event, { dryRun: false })
+      if (result.success) { ok++; console.log(`  OK  (sync-fallback) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
+      else { err++; console.log(`  ERR (sync-fallback) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
+    }
+  }
+
+  // 同期フォールバック分
+  for (const event of syncFallbackEvents) {
+    const result = await enrichEvent(event, { dryRun: DRY_RUN })
+    if (result.success) { ok++; console.log(`  OK  (sync) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
+    else { err++; console.log(`  ERR (sync) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
+  }
+
+  console.log(`\n完了: OK ${ok} / ERR ${err}`)
+}
+
 // CLI 実行判定
 const isDirectRun = process.argv[1]?.includes('enrich-event')
 if (isDirectRun) {
-  runCli().catch((e) => { console.error(e); process.exit(1) })
+  const useBatch = process.argv.includes('--batch')
+  const runner = useBatch ? runBatchCli : runCli
+  runner().catch((e) => { console.error(e); process.exit(1) })
 }

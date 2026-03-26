@@ -17,8 +17,8 @@ function sendEvent(eventName: string, params?: Record<string, unknown>) {
 }
 
 /** CTAボタンクリック */
-export function trackCtaClick(ctaName: string, page: string) {
-  sendEvent('cta_click', { cta_name: ctaName, page })
+export function trackCtaClick(ctaName: string, ctaLocation: string, ctaVariant = 'default') {
+  sendEvent('cta_click', { cta_name: ctaName, cta_location: ctaLocation, cta_variant: ctaVariant })
 }
 
 /** アフィリエイトリンククリック */
@@ -31,9 +31,14 @@ export function trackPricingView() {
   sendEvent('pricing_view')
 }
 
-/** ガイドページ滞在 */
-export function trackGuideRead(guideSlug: string, durationSec: number) {
-  sendEvent('guide_read', { guide_slug: guideSlug, duration_sec: durationSec })
+/** ガイドページ表示 */
+export function trackGuideRead(guideSport: string, guideLanguage: string) {
+  sendEvent('guide_read', { guide_sport: guideSport, guide_language: guideLanguage })
+}
+
+/** ガイドセクション到達 */
+export function trackGuideSectionView(guideSport: string, sectionName: string) {
+  sendEvent('guide_section_view', { guide_sport: guideSport, section_name: sectionName })
 }
 
 /** イベント詳細閲覧 */
@@ -42,6 +47,6 @@ export function trackEventDetailView(eventId: string, eventName: string, raceTyp
 }
 
 /** スクロール深度 */
-export function trackScrollDepth(depth: number, page: string) {
-  sendEvent('scroll_depth', { depth_percent: depth, page })
+export function trackScrollDepth(depth: number, pagePath: string, pageType: string) {
+  sendEvent('scroll_depth', { depth_threshold: depth, page_path: pagePath, page_type: pageType })
 }

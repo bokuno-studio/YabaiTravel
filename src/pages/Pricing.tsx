@@ -7,12 +7,14 @@ import { Badge } from '@/components/ui/badge'
 import { createCheckout, cancelMembership } from '@/lib/payment'
 import { useAuth } from '@/lib/auth'
 import { trackPricingView, trackCtaClick } from '@/lib/analytics'
+import { useScrollDepth } from '@/hooks/useScrollDepth'
 
 function Pricing() {
   const { lang } = useParams<{ lang: string }>()
   const isEn = lang === 'en'
   const { user, session, isSupporter, signInWithGoogle } = useAuth()
 
+  useScrollDepth('pricing')
   const [donationAmount, setDonationAmount] = useState('5')
 
   useEffect(() => { trackPricingView() }, [])
@@ -257,7 +259,7 @@ function Pricing() {
                 <Button
                   className="w-full"
                   size="lg"
-                  onClick={signInWithGoogle}
+                  onClick={() => { trackCtaClick('google_login', '/pricing'); signInWithGoogle() }}
                 >
                   {isEn ? 'Sign in with Google to join Crew' : 'Googleでログインして Crew になる'}
                 </Button>

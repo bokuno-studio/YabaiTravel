@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Calendar, MapPin, Banknote } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { FX_TO_JPY, FX_TO_USD, convertJpyToUsd } from '@/lib/currency'
 import type { EventWithCategories, Category } from '@/types/event'
 
 interface EventCardProps {
@@ -103,19 +104,9 @@ export function EventCard({
     : null
   const costEstimate = totalCost
     ? isEn
-      ? `$${Math.round(totalCost / 150).toLocaleString()}`
+      ? `$${convertJpyToUsd(totalCost).toLocaleString()}`
       : `¥${totalCost.toLocaleString()}`
     : null
-
-  // Currency conversion rates (same as orchestrator.js)
-  const FX_TO_JPY: Record<string, number> = {
-    JPY: 1, USD: 150, EUR: 165, GBP: 190, CAD: 110, AUD: 100, NZD: 90,
-    PHP: 3, THB: 4, SGD: 112,
-  }
-  const FX_TO_USD: Record<string, number> = {
-    USD: 1, JPY: 1/150, EUR: 1.1, GBP: 1.27, CAD: 0.73, AUD: 0.67, NZD: 0.6,
-    PHP: 0.02, THB: 0.027, SGD: 0.75,
-  }
 
   // Convert entry fee to display currency (JPY for ja, USD for en)
   const minEntryFeeJpy = event.categories
@@ -221,7 +212,7 @@ export function EventCard({
                     <div className="mt-0.5 text-[10px] text-muted-foreground leading-tight">
                       {minEntryFeeDisplay && <span>{isEn ? 'Entry' : '参加'} {entryCurrSymbol}{minEntryFeeDisplay.toLocaleString()}</span>}
                       {minEntryFeeDisplay && restCost > 0 && <span> / </span>}
-                      {restCost > 0 && <span>{isEn ? 'Travel+Stay' : '交通+宿泊'} {isEn ? `$${Math.round(restCost / 150).toLocaleString()}` : `¥${restCost.toLocaleString()}`}</span>}
+                      {restCost > 0 && <span>{isEn ? 'Travel+Stay' : '交通+宿泊'} {isEn ? `$${convertJpyToUsd(restCost).toLocaleString()}` : `¥${restCost.toLocaleString()}`}</span>}
                     </div>
                   )}
                 </div>

@@ -1,10 +1,9 @@
 import { Home } from 'lucide-react'
 import type { Accommodation } from '@/types/event'
+import { formatCurrency } from '@/lib/currency'
 import SectionCard from './SectionCard'
 import DLRow from './DLRow'
 import AccommodationAffiliate from './AccommodationAffiliate'
-
-const JPY_PER_USD = 150
 
 interface AccommodationInfoProps {
   eventId: string
@@ -33,7 +32,7 @@ function AccommodationInfo({ eventId, categoryId, accommodations, isEn, lat, lng
           label={isEn ? 'Accommodation cost?' : '宿泊費の目安は？'}
           value={accommodations.some((a) => a.avg_cost_3star != null)
             ? (isEn
-              ? `Approx. $${Math.round((accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star ?? 0) / JPY_PER_USD).toLocaleString()}`
+              ? `Approx. ${formatCurrency(accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star ?? 0, true)}`
               : `\u7D04${accommodations.find((a) => a.avg_cost_3star != null)?.avg_cost_3star?.toLocaleString()}\u5186`)
             : null}
           eventId={eventId} categoryId={categoryId}

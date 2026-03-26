@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Category } from '@/types/event'
+import { FX_TO_JPY, convertJpyToUsd } from '@/lib/currency'
 import SectionCard from './SectionCard'
 import StatBox from './StatBox'
 import DLRow from './DLRow'
@@ -71,7 +72,9 @@ function RaceSpecs({
           <StatBox icon={<Clock className="h-4 w-4" />} label={isEn ? 'Time limit' : '制限時間'} value={formatInterval(category.time_limit) ?? '\u2014'} />
         )}
         {category.entry_fee != null && (
-          <StatBox icon={<Banknote className="h-4 w-4" />} label={isEn ? 'Entry fee' : '参加費'} value={`${category.entry_fee.toLocaleString()} ${category.entry_fee_currency ?? (isEn ? 'JPY' : '円')}`} />
+          <StatBox icon={<Banknote className="h-4 w-4" />} label={isEn ? 'Entry fee' : '参加費'} value={isEn
+            ? `$${convertJpyToUsd(Math.round(category.entry_fee * (FX_TO_JPY[category.entry_fee_currency || 'JPY'] || 1))).toLocaleString()}`
+            : `${category.entry_fee.toLocaleString()} ${category.entry_fee_currency ?? '円'}`} />
         )}
       </div>
 
@@ -95,7 +98,11 @@ function RaceSpecs({
         <DLRow label={isEn ? 'Poles allowed?' : 'ポールは使える？'} value={category.poles_allowed != null ? (category.poles_allowed ? (isEn ? 'Allowed' : '可') : (isEn ? 'Not allowed' : '不可')) : null} eventId={eventId} categoryId={category.id} />
         <DLRow
           label={isEn ? 'Entry fee?' : '参加費はいくら？'}
-          value={category.entry_fee != null ? `${category.entry_fee.toLocaleString()} ${category.entry_fee_currency ?? (isEn ? 'JPY' : '円')}` : null}
+          value={category.entry_fee != null
+            ? (isEn
+              ? `$${convertJpyToUsd(Math.round(category.entry_fee * (FX_TO_JPY[category.entry_fee_currency || 'JPY'] || 1))).toLocaleString()}`
+              : `${category.entry_fee.toLocaleString()} ${category.entry_fee_currency ?? '円'}`)
+            : null}
           eventId={eventId}
           categoryId={category.id}
         />

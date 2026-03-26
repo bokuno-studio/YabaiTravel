@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { eventToJsonLd } from '../lib/jsonld'
 import { supabase } from '../lib/supabaseClient'
 import { trackEventDetailView } from '../lib/analytics'
+import { useScrollDepth } from '@/hooks/useScrollDepth'
 import type { Event, Category, AccessRoute, Accommodation } from '../types/event'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -57,6 +58,7 @@ function EventDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const trackedRef = useRef(false)
+  useScrollDepth('event_detail')
 
   // GA4: イベント詳細閲覧 + view count increment
   useEffect(() => {

@@ -42,6 +42,9 @@ export interface FiltersSidebarProps {
   /* Entry status filter */
   entryStatus: string
   onEntryStatusChange: (value: string) => void
+  /* Pole filter */
+  poleFilter: string
+  onPoleFilterChange: (value: string) => void
   /* Past events */
   showPastEvents: boolean
   onShowPastEventsChange: (value: boolean) => void
@@ -67,6 +70,7 @@ function countActiveFilters(props: FiltersSidebarProps): number {
   if (props.distanceRanges.size > 0) count++
   if (props.timeLimitMin) count++
   if (props.costMin > 0 || props.costMax < Infinity) count++
+  if (props.poleFilter) count++
   if (props.entryStatus !== 'active') count++
   if (props.showPastEvents) count++
   return count
@@ -138,6 +142,19 @@ export function getActiveFilterChips(props: FiltersSidebarProps): { key: string;
       key: 'cost',
       label: `${props.lang === 'en' ? 'Cost' : 'コスト'}: ${label}`,
       onRemove: () => props.onCostRangeChange(0, Infinity),
+    })
+  }
+
+  // Pole filter
+  if (props.poleFilter) {
+    const poleLabels: Record<string, string> = {
+      allowed: props.t('filter.poleAllowed'),
+      prohibited: props.t('filter.poleProhibited'),
+    }
+    chips.push({
+      key: 'pole',
+      label: poleLabels[props.poleFilter] || props.poleFilter,
+      onRemove: () => props.onPoleFilterChange(''),
     })
   }
 
@@ -358,6 +375,22 @@ export function FilterBar(props: FiltersSidebarProps) {
                   }}
                   currency={props.lang === 'en' ? '$' : '¥'}
                 />
+              </div>
+
+              {/* Pole Filter */}
+              <div className="space-y-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {props.t('filter.poleFilter')}
+                </h3>
+                <select
+                  value={props.poleFilter}
+                  onChange={(e) => props.onPoleFilterChange(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
+                >
+                  <option value="">{props.t('filter.poleAll')}</option>
+                  <option value="allowed">{props.t('filter.poleAllowed')}</option>
+                  <option value="prohibited">{props.t('filter.poleProhibited')}</option>
+                </select>
               </div>
 
               {/* Entry Status */}

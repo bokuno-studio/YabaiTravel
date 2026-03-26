@@ -18,7 +18,7 @@ function SaveButton({ categoryId, isFavorite, onToggle, isEn }: SaveButtonProps)
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => { trackCtaClick('signin_save', window.location.pathname); signInWithGoogle() }}
+        onClick={() => { trackCtaClick('favorite_prompt', window.location.pathname); signInWithGoogle() }}
         className="text-muted-foreground"
       >
         <Heart className="mr-1 h-4 w-4" />

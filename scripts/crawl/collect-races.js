@@ -85,11 +85,19 @@ function isJunk(name) {
   return JUNK_NAMES.test(t) || JUNK_PATTERNS.some((p) => p.test(t)) || NON_ENDURANCE_KEYWORDS.test(t)
 }
 
+/** 全角英数→半角変換 */
+function fullwidthToHalfwidth(str) {
+  return str.replace(/[\uFF01-\uFF5E]/g, (ch) =>
+    String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)
+  )
+}
+
 /** 名前を正規化（重複比較用） */
 function normalizeName(name) {
-  return (name ?? '')
+  return fullwidthToHalfwidth(name ?? '')
+    .replace(/第\d+回\s*/g, '')     // 「第XX回」除去
     .replace(/[\s\u3000]+/g, '')   // 全角・半角スペース除去
-    .replace(/[・·\-–—]/g, '')     // 区切り文字除去
+    .replace(/[・·.\-–—]/g, '')    // 区切り文字除去
     .toLowerCase()
 }
 
@@ -206,12 +214,18 @@ async function insertRace(client, race) {
   // - official_url 一致 → 重複
   // - 正規化name 一致 AND (どちらかの event_date が NULL OR 同じ日付) → 重複（別年度は通す）
   // - 正規化: 全角/半角スペース・中黒・ドット等を除去して比較
+  // 正規化SQL: 全角→半角 + 第XX回除去 + スペース・区切り除去 + lower
+  const normalizeSQL = (col) => `lower(regexp_replace(regexp_replace(translate(${col}, '　・·.－–—ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９', ' ...----ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'), '第[0-9]+回\\s*', '', 'g'), '\\s+', '', 'g'))`
   const dupCheck = `WHERE NOT EXISTS (
     SELECT 1 FROM ${SCHEMA}.events
     WHERE official_url = $6
        OR (
-         regexp_replace(translate(name, '　・·', ' '), '\\s+', '', 'g')
-         = regexp_replace(translate($1, '　・·', ' '), '\\s+', '', 'g')
+         ${normalizeSQL('name')} = ${normalizeSQL('$1')}
+         AND ($2 IS NULL OR event_date IS NULL OR event_date::text = $2::text)
+       )
+       OR (
+         name_en IS NOT NULL AND $8 IS NOT NULL
+         AND ${normalizeSQL('name_en')} = ${normalizeSQL('$8')}
          AND ($2 IS NULL OR event_date IS NULL OR event_date::text = $2::text)
        )
   )`
@@ -296,8 +310,11 @@ async function run() {
     if (r.official_url && seenUrls.has(r.official_url)) return false
     const normalized = normalizeName(r.name)
     if (normalized && seenNames.has(normalized)) return false
+    const normalizedEn = r.name_en ? normalizeName(r.name_en) : null
+    if (normalizedEn && seenNames.has(normalizedEn)) return false
     if (r.official_url) seenUrls.add(r.official_url)
     if (normalized) seenNames.add(normalized)
+    if (normalizedEn) seenNames.add(normalizedEn)
     return true
   })
 

@@ -13,7 +13,7 @@ export function useScrollDepth(pageType: string) {
       for (const t of thresholds) {
         if (scrollPercent >= t && !firedRef.current.has(t)) {
           firedRef.current.add(t)
-          trackScrollDepth(t, window.location.pathname)
+          trackScrollDepth(t, window.location.pathname, pageType)
         }
       }
     }

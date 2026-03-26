@@ -1,5 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card'
 import type { Event, Category, CourseMapFile } from '@/types/event'
+import { FX_TO_JPY, convertJpyToUsd } from '@/lib/currency'
 import SectionCard from './SectionCard'
 
 interface PastEditionsProps {
@@ -49,7 +50,9 @@ function PastEditions({ event, category, pastEditions, isEn, formatDate }: PastE
                       {sameCat?.entry_fee != null && (
                         <>
                           <dt className="text-muted-foreground">{sameCat.name} {isEn ? 'fee' : '\u7533\u8FBC\u8CBB'}</dt>
-                          <dd>{sameCat.entry_fee.toLocaleString()} {sameCat.entry_fee_currency ?? (isEn ? 'JPY' : '\u5186')}</dd>
+                          <dd>{isEn
+                            ? `$${convertJpyToUsd(Math.round(sameCat.entry_fee * (FX_TO_JPY[sameCat.entry_fee_currency || 'JPY'] || 1))).toLocaleString()}`
+                            : `${sameCat.entry_fee.toLocaleString()} ${sameCat.entry_fee_currency ?? '\u5186'}`}</dd>
                         </>
                       )}
                       {courseMaps.length > 0 && (
