@@ -67,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log({ type: eventType }, 'Square webhook received')
 
     switch (eventType) {
-      case 'payment.completed': {
+      case 'payment.updated': {
         await handlePaymentCompleted(event.data as Record<string, unknown>)
         break
       }
@@ -90,12 +90,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 /**
- * Handle payment.completed: activate membership for crew subscription payments.
+ * Handle payment.updated: activate membership for crew subscription payments.
  */
 async function handlePaymentCompleted(data: Record<string, unknown>) {
   const object = data?.object as Record<string, unknown> | undefined
   const payment = object?.payment as Record<string, unknown> | undefined
   if (!payment) return
+
+  // Only process completed payments
+  const status = payment.status as string | undefined
+  if (status !== 'COMPLETED') return
 
   const note = payment.note as string | undefined
   if (!note) return
