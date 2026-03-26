@@ -1,6 +1,8 @@
 import { useParams, Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import { Badge } from '../components/ui/badge'
 import '../App.css'
 
 // --- Types ---
@@ -11,12 +13,39 @@ type GearInfo = {
   budget: string
 }
 
+// New structured content types
+type StructuredOverview = {
+  summary: string
+  highlights: string[]
+}
+
+type StructuredRules = {
+  items: Array<{ label: string; value: string }>
+  notes: string
+}
+
+type StructuredGettingStarted = {
+  steps: Array<{ title: string; description: string }>
+}
+
+type StructuredRecommendedRace = {
+  name: string
+  location: string
+  difficulty: string
+  description: string
+}
+
+type StructuredCommonMistake = {
+  mistake: string
+  solution: string
+}
+
 type GuideContent = {
-  overview: string
-  rules: string
-  getting_started: string
-  recommended_races: string
-  common_mistakes: string
+  overview: string | StructuredOverview
+  rules: string | StructuredRules
+  getting_started: string | StructuredGettingStarted
+  recommended_races: string | StructuredRecommendedRace[]
+  common_mistakes: string | StructuredCommonMistake[]
   gear: GearInfo
   community: string
 }
@@ -126,24 +155,181 @@ const SECTION_ICONS: Record<string, string> = {
   community: '👥',
 }
 
-// --- Sub-component: Section with title, icon, and paragraph-split text ---
+// --- Shared section wrapper ---
 
-function GuideSection({ title, content, sectionKey, id }: { title: string; content: string; sectionKey?: string; id?: string }) {
+function SectionWrapper({ id, icon, title, children }: { id: string; icon: string; title: string; children: React.ReactNode }) {
+  return (
+    <section id={id} className="mb-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-slate-800">
+        <span className="text-xl" aria-hidden="true">{icon}</span>
+        {title}
+      </h3>
+      {children}
+    </section>
+  )
+}
+
+// --- Legacy text section (backward compat) ---
+
+function LegacyTextSection({ title, content, sectionKey, id }: { title: string; content: string; sectionKey?: string; id?: string }) {
   if (!content) return null
   const icon = sectionKey ? SECTION_ICONS[sectionKey] || '' : ''
   const paragraphs = content.split(/\n\n+/).filter(Boolean)
   return (
-    <section id={id} style={{ marginBottom: '2rem', padding: '1.25rem', background: '#fff', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-      <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '0.75rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        {icon && <span style={{ fontSize: '1.2rem' }} aria-hidden="true">{icon}</span>}
-        {title}
-      </h3>
+    <SectionWrapper id={id || ''} icon={icon} title={title}>
       {paragraphs.map((p, i) => (
-        <p key={i} style={{ whiteSpace: 'pre-wrap', lineHeight: '1.8', color: '#334155', fontSize: '0.95rem', margin: i < paragraphs.length - 1 ? '0 0 0.8rem 0' : 0 }}>
+        <p key={i} className="whitespace-pre-wrap leading-relaxed text-slate-600 text-[0.95rem]" style={{ margin: i < paragraphs.length - 1 ? '0 0 0.8rem 0' : 0 }}>
           {p}
         </p>
       ))}
-    </section>
+    </SectionWrapper>
+  )
+}
+
+// --- Structured section components ---
+
+function OverviewSection({ data, title }: { data: StructuredOverview; title: string }) {
+  return (
+    <SectionWrapper id="section-overview" icon={SECTION_ICONS.overview} title={title}>
+      <p className="mb-4 whitespace-pre-wrap leading-relaxed text-slate-600 text-[0.95rem]">{data.summary}</p>
+      {data.highlights && data.highlights.length > 0 && (
+        <ul className="m-0 list-disc space-y-1 pl-5 text-slate-600 text-[0.9rem] leading-relaxed">
+          {data.highlights.map((h, i) => (
+            <li key={i}>{h}</li>
+          ))}
+        </ul>
+      )}
+    </SectionWrapper>
+  )
+}
+
+function RulesSection({ data, title }: { data: StructuredRules; title: string }) {
+  return (
+    <SectionWrapper id="section-rules" icon={SECTION_ICONS.rules} title={title}>
+      {data.items && data.items.length > 0 && (
+        <div className="mb-4 overflow-x-auto">
+          <table className="w-full text-left text-[0.9rem]">
+            <tbody>
+              {data.items.map((item, i) => (
+                <tr key={i} className={i % 2 === 0 ? 'bg-slate-50' : 'bg-white'}>
+                  <td className="whitespace-nowrap px-3 py-2 font-semibold text-slate-700">{item.label}</td>
+                  <td className="px-3 py-2 text-slate-600">{item.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {data.notes && (
+        <p className="whitespace-pre-wrap leading-relaxed text-slate-500 text-[0.85rem] italic">{data.notes}</p>
+      )}
+    </SectionWrapper>
+  )
+}
+
+function GettingStartedSection({ data, title }: { data: StructuredGettingStarted; title: string }) {
+  return (
+    <SectionWrapper id="section-getting_started" icon={SECTION_ICONS.getting_started} title={title}>
+      <ol className="m-0 list-none space-y-4 p-0">
+        {data.steps.map((step, i) => (
+          <li key={i} className="flex gap-3">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
+              {i + 1}
+            </span>
+            <div>
+              <p className="mb-1 font-semibold text-slate-800 text-[0.95rem]">{step.title}</p>
+              <p className="leading-relaxed text-slate-600 text-[0.9rem]">{step.description}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </SectionWrapper>
+  )
+}
+
+function RecommendedRacesSection({ data, title }: { data: StructuredRecommendedRace[]; title: string }) {
+  return (
+    <SectionWrapper id="section-recommended_races" icon={SECTION_ICONS.recommended_races} title={title}>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {data.map((race, i) => (
+          <Card key={i} className="py-4">
+            <CardHeader className="pb-0">
+              <CardTitle className="text-[0.95rem]">{race.name}</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-2">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="text-xs">{race.location}</Badge>
+                <Badge variant="secondary" className="text-xs">{race.difficulty}</Badge>
+              </div>
+              <p className="text-[0.85rem] leading-relaxed text-slate-600">{race.description}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </SectionWrapper>
+  )
+}
+
+function CommonMistakesSection({ data, title }: { data: StructuredCommonMistake[]; title: string }) {
+  return (
+    <SectionWrapper id="section-common_mistakes" icon={SECTION_ICONS.common_mistakes} title={title}>
+      <div className="space-y-4">
+        {data.map((item, i) => (
+          <Card key={i} className="border-amber-200 bg-amber-50/50 py-4">
+            <CardContent className="pt-0">
+              <p className="mb-2 font-semibold text-slate-800 text-[0.95rem]">{item.mistake}</p>
+              <p className="leading-relaxed text-slate-600 text-[0.85rem]">{item.solution}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </SectionWrapper>
+  )
+}
+
+function GearSection({ data, labels }: { data: GearInfo; labels: typeof SECTION_LABELS.ja }) {
+  return (
+    <SectionWrapper id="section-gear" icon={SECTION_ICONS.gear} title={labels.gear}>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        {data.essential?.length > 0 && (
+          <div>
+            <h4 className="mb-2 text-[0.95rem] font-semibold text-slate-700">{labels.gear_essential}</h4>
+            <ul className="m-0 list-disc space-y-1 pl-5 text-slate-600 text-[0.9rem] leading-relaxed">
+              {data.essential.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {data.recommended?.length > 0 && (
+          <div>
+            <h4 className="mb-2 text-[0.95rem] font-semibold text-slate-700">{labels.gear_recommended}</h4>
+            <ul className="m-0 list-disc space-y-1 pl-5 text-slate-600 text-[0.9rem] leading-relaxed">
+              {data.recommended.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {data.budget && (
+        <p className="mt-4 text-[0.9rem] text-slate-600">
+          <strong>{labels.gear_budget}:</strong> {data.budget}
+        </p>
+      )}
+    </SectionWrapper>
+  )
+}
+
+function CommunitySection({ content, title }: { content: string; title: string }) {
+  if (!content) return null
+  const paragraphs = content.split(/\n\n+/).filter(Boolean)
+  return (
+    <SectionWrapper id="section-community" icon={SECTION_ICONS.community} title={title}>
+      {paragraphs.map((p, i) => (
+        <p key={i} className="whitespace-pre-wrap leading-relaxed text-slate-600 text-[0.95rem]" style={{ margin: i < paragraphs.length - 1 ? '0 0 0.8rem 0' : 0 }}>
+          {p}
+        </p>
+      ))}
+    </SectionWrapper>
   )
 }
 
@@ -163,14 +349,14 @@ function GuideTOC({ labels, content, isEn }: { labels: typeof SECTION_LABELS.ja;
   if (sections.length < 3) return null
 
   return (
-    <nav aria-label={isEn ? 'Table of contents' : '目次'} style={{ marginBottom: '2rem', padding: '1rem 1.25rem', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-      <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600, fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+    <nav aria-label={isEn ? 'Table of contents' : '目次'} className="mb-8 rounded-xl border border-slate-200 bg-slate-50 px-5 py-4">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
         {isEn ? 'Contents' : '目次'}
       </p>
-      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: '0.4rem 1rem' }}>
+      <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1.5 p-0">
         {sections.map(s => (
           <li key={s.key}>
-            <a href={`#section-${s.key}`} style={{ color: '#2563eb', textDecoration: 'none', fontSize: '0.9rem' }}>
+            <a href={`#section-${s.key}`} className="text-sm text-blue-600 no-underline hover:underline">
               <span aria-hidden="true">{SECTION_ICONS[s.key] || ''}</span> {s.label}
             </a>
           </li>
@@ -178,6 +364,43 @@ function GuideTOC({ labels, content, isEn }: { labels: typeof SECTION_LABELS.ja;
       </ul>
     </nav>
   )
+}
+
+// --- Content rendering logic (handles backward compatibility) ---
+
+function renderOverview(content: GuideContent, labels: typeof SECTION_LABELS.ja) {
+  if (typeof content.overview === 'string') {
+    return <LegacyTextSection title={labels.overview} content={content.overview} sectionKey="overview" id="section-overview" />
+  }
+  return <OverviewSection data={content.overview} title={labels.overview} />
+}
+
+function renderRules(content: GuideContent, labels: typeof SECTION_LABELS.ja) {
+  if (typeof content.rules === 'string') {
+    return <LegacyTextSection title={labels.rules} content={content.rules} sectionKey="rules" id="section-rules" />
+  }
+  return <RulesSection data={content.rules} title={labels.rules} />
+}
+
+function renderGettingStarted(content: GuideContent, labels: typeof SECTION_LABELS.ja) {
+  if (typeof content.getting_started === 'string') {
+    return <LegacyTextSection title={labels.getting_started} content={content.getting_started} sectionKey="getting_started" id="section-getting_started" />
+  }
+  return <GettingStartedSection data={content.getting_started} title={labels.getting_started} />
+}
+
+function renderRecommendedRaces(content: GuideContent, labels: typeof SECTION_LABELS.ja) {
+  if (typeof content.recommended_races === 'string') {
+    return <LegacyTextSection title={labels.recommended_races} content={content.recommended_races} sectionKey="recommended_races" id="section-recommended_races" />
+  }
+  return <RecommendedRacesSection data={content.recommended_races} title={labels.recommended_races} />
+}
+
+function renderCommonMistakes(content: GuideContent, labels: typeof SECTION_LABELS.ja) {
+  if (typeof content.common_mistakes === 'string') {
+    return <LegacyTextSection title={labels.common_mistakes} content={content.common_mistakes} sectionKey="common_mistakes" id="section-common_mistakes" />
+  }
+  return <CommonMistakesSection data={content.common_mistakes} title={labels.common_mistakes} />
 }
 
 // --- Main component ---
@@ -238,7 +461,7 @@ function SportGuide() {
           <h1><Link to={langPrefix} style={{ textDecoration: 'none', color: 'inherit' }}>yabai.travel</Link></h1>
           <p className="app-subtitle">{isEn ? 'Sports Guide' : 'スポーツガイド'}</p>
         </header>
-        <p style={{ color: '#64748b' }}>{isEn ? 'Loading...' : '読み込み中...'}</p>
+        <p className="text-slate-500">{isEn ? 'Loading...' : '読み込み中...'}</p>
       </div>
     )
   }
@@ -255,56 +478,22 @@ function SportGuide() {
         </header>
 
         <article style={{ maxWidth: '720px' }}>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>{sportTitle}</h2>
+          <h2 className="mb-6 text-2xl font-bold">{sportTitle}</h2>
 
           <GuideTOC labels={labels} content={dbContent} isEn={isEn} />
 
-          <GuideSection title={labels.overview} content={dbContent.overview} sectionKey="overview" id="section-overview" />
-          <GuideSection title={labels.rules} content={dbContent.rules} sectionKey="rules" id="section-rules" />
-          <GuideSection title={labels.getting_started} content={dbContent.getting_started} sectionKey="getting_started" id="section-getting_started" />
-          <GuideSection title={labels.recommended_races} content={dbContent.recommended_races} sectionKey="recommended_races" id="section-recommended_races" />
-          <GuideSection title={labels.common_mistakes} content={dbContent.common_mistakes} sectionKey="common_mistakes" id="section-common_mistakes" />
-
-          {/* Gear section */}
-          {dbContent.gear && (
-            <section id="section-gear" style={{ marginBottom: '2rem', padding: '1.25rem', background: '#fff', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '0.75rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '1.2rem' }} aria-hidden="true">🎒</span>
-                {labels.gear}
-              </h3>
-
-              {dbContent.gear.essential?.length > 0 && (
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <h4 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.4rem', color: '#334155' }}>{labels.gear_essential}</h4>
-                  <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#475569', fontSize: '0.9rem', lineHeight: '1.7' }}>
-                    {dbContent.gear.essential.map((item, i) => <li key={i}>{item}</li>)}
-                  </ul>
-                </div>
-              )}
-
-              {dbContent.gear.recommended?.length > 0 && (
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <h4 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.4rem', color: '#334155' }}>{labels.gear_recommended}</h4>
-                  <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#475569', fontSize: '0.9rem', lineHeight: '1.7' }}>
-                    {dbContent.gear.recommended.map((item, i) => <li key={i}>{item}</li>)}
-                  </ul>
-                </div>
-              )}
-
-              {dbContent.gear.budget && (
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#475569' }}>
-                  <strong>{labels.gear_budget}:</strong> {dbContent.gear.budget}
-                </p>
-              )}
-            </section>
-          )}
-
-          <GuideSection title={labels.community} content={dbContent.community} sectionKey="community" id="section-community" />
+          {dbContent.overview && renderOverview(dbContent, labels)}
+          {dbContent.rules && renderRules(dbContent, labels)}
+          {dbContent.getting_started && renderGettingStarted(dbContent, labels)}
+          {dbContent.recommended_races && renderRecommendedRaces(dbContent, labels)}
+          {dbContent.common_mistakes && renderCommonMistakes(dbContent, labels)}
+          {dbContent.gear && <GearSection data={dbContent.gear} labels={labels} />}
+          {dbContent.community && <CommunitySection content={dbContent.community} title={labels.community} />}
 
           {/* Link to events */}
-          <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <p style={{ margin: 0, fontSize: '0.9rem' }}>
-              <Link to={`${langPrefix}?type=${sport}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
+          <div className="mt-8 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p className="m-0 text-sm">
+              <Link to={`${langPrefix}?type=${sport}`} className="text-blue-600 no-underline hover:underline">
                 {isEn ? `View ${sportTitle} events` : `${sportTitle}のレース一覧を見る`}
               </Link>
             </p>
@@ -317,8 +506,8 @@ function SportGuide() {
           </div>
         )}
 
-        <p style={{ marginTop: '2rem' }}>
-          <Link to={langPrefix} style={{ color: '#2563eb', textDecoration: 'none', fontSize: '0.9rem' }}>
+        <p className="mt-8">
+          <Link to={langPrefix} className="text-sm text-blue-600 no-underline hover:underline">
             {isEn ? 'Back to list' : '一覧に戻る'}
           </Link>
         </p>
@@ -347,14 +536,14 @@ function SportGuide() {
       </header>
 
       <article style={{ maxWidth: '720px' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>{fallbackContent.title}</h2>
-        <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.8', color: '#334155', fontSize: '0.95rem' }}>
+        <h2 className="mb-4 text-2xl font-bold">{fallbackContent.title}</h2>
+        <div className="whitespace-pre-wrap leading-relaxed text-slate-600 text-[0.95rem]">
           {fallbackContent.body}
         </div>
 
-        <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-          <p style={{ margin: 0, fontSize: '0.9rem' }}>
-            <Link to={`${langPrefix}?type=${sport}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
+        <div className="mt-8 rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <p className="m-0 text-sm">
+            <Link to={`${langPrefix}?type=${sport}`} className="text-blue-600 no-underline hover:underline">
               {isEn ? `View ${fallbackContent.title} events` : `${fallbackContent.title}のレース一覧を見る`}
             </Link>
           </p>
@@ -367,8 +556,8 @@ function SportGuide() {
         </div>
       )}
 
-      <p style={{ marginTop: '2rem' }}>
-        <Link to={langPrefix} style={{ color: '#2563eb', textDecoration: 'none', fontSize: '0.9rem' }}>
+      <p className="mt-8">
+        <Link to={langPrefix} className="text-sm text-blue-600 no-underline hover:underline">
           {isEn ? 'Back to list' : '一覧に戻る'}
         </Link>
       </p>
