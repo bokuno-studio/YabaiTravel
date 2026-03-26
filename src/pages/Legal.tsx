@@ -119,15 +119,15 @@ function Legal() {
             value={
               isEn ? (
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Crew Membership: $10/month (tax included)</li>
-                  <li>Comment: $1 per comment (tax included)</li>
-                  <li>One-time Donation: Any amount (USD)</li>
+                  <li>Crew Membership: ¥1,500/month (tax included)</li>
+                  <li>Comment: ¥150 per comment (tax included)</li>
+                  <li>One-time Donation: Any amount (JPY)</li>
                 </ul>
               ) : (
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Crew メンバーシップ: $10/月（税込）</li>
-                  <li>コメント: $1/件（税込）</li>
-                  <li>単発寄付: 任意の金額（USD）</li>
+                  <li>Crew メンバーシップ: ¥1,500/月（税込）</li>
+                  <li>コメント: ¥150/件（税込）</li>
+                  <li>単発寄付: 任意の金額（JPY）</li>
                 </ul>
               )
             }
@@ -189,8 +189,8 @@ function Legal() {
             label={isEn ? 'Special Conditions' : '特別な販売条件'}
             value={
               isEn
-                ? 'Crew Membership is a monthly subscription that renews and charges automatically each month unless cancelled. Prices are in USD; the amount charged in your local currency may vary depending on the exchange rate.'
-                : 'Crew メンバーシップは月額サブスクリプションです。キャンセルしない限り毎月自動的に更新・決済されます。価格は USD 建てであり、為替レートにより日本円での請求額が変動する場合があります。'
+                ? 'Crew Membership is a monthly subscription that renews and charges automatically each month unless cancelled.'
+                : 'Crew メンバーシップは月額サブスクリプションです。キャンセルしない限り毎月自動的に更新・決済されます。'
             }
           />
         </div>

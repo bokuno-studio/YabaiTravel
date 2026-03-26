@@ -43,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           name: 'yabai.travel Donation',
           price_money: {
             amount: unitAmount,
-            currency: 'USD',
+            currency: 'JPY',
           },
           location_id: process.env.SQUARE_LOCATION_ID,
         },
@@ -55,22 +55,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (mode === 'subscription') {
-      // Use Square Payment Links for subscription
-      // Square subscriptions require a catalog subscription plan.
-      // We use a payment link with a note indicating monthly subscription.
-      // The webhook will handle creating the actual subscription after first payment.
+      // Square Subscriptions: create subscription using Catalog plan
+      const PLAN_VARIATION_ID = 'FPGXO3F2NBRZMRDPX5ZWATGD'
       const data = await squareRequest('/v2/online-checkout/payment-links', {
         idempotency_key: idempotencyKey,
         quick_pay: {
-          name: 'yabai.travel Crew Membership ($10/month)',
+          name: 'yabai.travel Crew Membership (¥1,500/月)',
           price_money: {
-            amount: 1000, // $10.00 in cents
-            currency: 'USD',
+            amount: 1500,
+            currency: 'JPY',
           },
           location_id: process.env.SQUARE_LOCATION_ID,
         },
         checkout_options: {
           redirect_url: `${baseUrl}${langPrefix}/payment/success`,
+          subscription_plan_id: PLAN_VARIATION_ID,
         },
         pre_populated_data: {
           buyer_email: email || undefined,
@@ -94,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           name: 'yabai.travel Comment',
           price_money: {
             amount: 100, // $1.00
-            currency: 'USD',
+            currency: 'JPY',
           },
           location_id: process.env.SQUARE_LOCATION_ID,
         },

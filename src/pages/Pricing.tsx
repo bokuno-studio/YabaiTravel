@@ -30,8 +30,8 @@ function Pricing() {
       if (isNaN(amount) || amount < 1) {
         throw new Error(isEn ? 'Please enter a valid amount' : '有効な金額を入力してください')
       }
-      // USD: convert to cents
-      const unitAmount = amount * 100
+      // JPY: amount is already in yen (no cents)
+      const unitAmount = amount
       const url = await createCheckout({
         mode: 'donation',
         amount: unitAmount,
@@ -136,7 +136,7 @@ function Pricing() {
                 : 'サーバー費用やAPI費用の負担を助けていただけます。少額でも大歓迎です！'}
             </p>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-medium">$</span>
+              <span className="text-lg font-medium">¥</span>
               <Input
                 type="number"
                 min="1"
@@ -145,7 +145,7 @@ function Pricing() {
                 className="w-32"
                 placeholder={isEn ? 'Amount' : '金額'}
               />
-              <span className="text-sm text-muted-foreground">USD</span>
+              <span className="text-sm text-muted-foreground">JPY</span>
             </div>
           </CardContent>
 
@@ -187,7 +187,7 @@ function Pricing() {
 
           <CardContent className="flex-1">
             <div className="mb-6">
-              <span className="text-4xl font-bold">$10</span>
+              <span className="text-4xl font-bold">¥1,500</span>
               <span className="text-muted-foreground">
                 {isEn ? ' /month' : ' /月'}
               </span>
