@@ -25,7 +25,10 @@ export function useFavorites() {
 
       if (!cancelled) {
         if (error) {
-          console.error('Failed to fetch favorites:', error.message)
+          // Silently ignore 404 (table not found / schema cache stale)
+          if (error.code !== 'PGRST204' && !error.message?.includes('404')) {
+            console.error('Failed to fetch favorites:', error.message)
+          }
         } else {
           setFavoriteIds(new Set((data ?? []).map((d) => d.category_id)))
         }
@@ -57,7 +60,7 @@ export function useFavorites() {
           .delete()
           .eq('user_id', userId)
           .eq('category_id', categoryId)
-        if (error) {
+        if (error && error.code !== 'PGRST204' && !error.message?.includes('404')) {
           console.error('Failed to remove favorite:', error.message)
           setFavoriteIds((prev) => new Set(prev).add(categoryId))
         }
@@ -68,7 +71,7 @@ export function useFavorites() {
         const { error } = await supabase
           .from('user_favorites')
           .insert({ user_id: userId, category_id: categoryId })
-        if (error) {
+        if (error && error.code !== 'PGRST204' && !error.message?.includes('404')) {
           console.error('Failed to add favorite:', error.message)
           setFavoriteIds((prev) => {
             const next = new Set(prev)

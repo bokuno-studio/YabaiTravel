@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { trackCtaClick } from '@/lib/analytics'
 import type { User } from '@supabase/supabase-js'
 
 interface Props {
@@ -24,7 +25,7 @@ function ViewLimitWall({ isEn, langPrefix, user, signInWithGoogle }: Props) {
               ? 'Sign in with Google to view up to 30 race details per month for free.'
               : 'Googleアカウントを連携すると30件まで閲覧できます。'}
           </p>
-          <Button onClick={signInWithGoogle}>
+          <Button onClick={() => { trackCtaClick('signin_viewlimit', window.location.pathname); signInWithGoogle() }}>
             {isEn ? 'Sign in with Google' : 'Googleアカウント連携'}
           </Button>
         </>
@@ -36,7 +37,7 @@ function ViewLimitWall({ isEn, langPrefix, user, signInWithGoogle }: Props) {
               : 'Crewになると無制限で閲覧できます。お気に入り保存などの機能もご利用いただけます。'}
           </p>
           <Button asChild>
-            <Link to={`${langPrefix}/pricing`}>
+            <Link to={`${langPrefix}/pricing`} onClick={() => trackCtaClick('crew_viewlimit', window.location.pathname)}>
               {isEn ? 'Learn about Crew' : 'Crewについて詳しく'}
             </Link>
           </Button>

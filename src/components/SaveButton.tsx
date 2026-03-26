@@ -1,6 +1,7 @@
 import { Heart } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
+import { trackCtaClick } from '@/lib/analytics'
 
 interface SaveButtonProps {
   categoryId: string
@@ -17,7 +18,7 @@ function SaveButton({ categoryId, isFavorite, onToggle, isEn }: SaveButtonProps)
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => signInWithGoogle()}
+        onClick={() => { trackCtaClick('signin_save', window.location.pathname); signInWithGoogle() }}
         className="text-muted-foreground"
       >
         <Heart className="mr-1 h-4 w-4" />

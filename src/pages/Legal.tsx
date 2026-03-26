@@ -99,8 +99,8 @@ function Legal() {
             label={isEn ? 'Contact' : '連絡先'}
             value={
               isEn
-                ? 'support@yabai.travel (You may also use the contact form below.)'
-                : 'support@yabai.travel（お問い合わせフォームもご利用いただけます）'
+                ? 'Please use the contact form below.'
+                : 'お問い合わせフォームよりご連絡ください'
             }
           />
           <LegalRow

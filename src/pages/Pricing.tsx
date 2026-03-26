@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { createCheckout, cancelMembership } from '@/lib/payment'
 import { useAuth } from '@/lib/auth'
-import { trackPricingView } from '@/lib/analytics'
+import { trackPricingView, trackCtaClick } from '@/lib/analytics'
 
 function Pricing() {
   const { lang } = useParams<{ lang: string }>()
@@ -272,7 +272,7 @@ function Pricing() {
                 <Button
                   className="w-full"
                   size="lg"
-                  onClick={handleSubscribe}
+                  onClick={() => { trackCtaClick('signup_pricing', '/pricing'); handleSubscribe() }}
                   disabled={subscriptionLoading}
                 >
                   {subscriptionLoading

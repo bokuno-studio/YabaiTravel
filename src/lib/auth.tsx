@@ -34,7 +34,7 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
     .from('user_profiles')
     .select('*')
     .eq('id', userId)
-    .single()
+    .maybeSingle()
 
   if (error) {
     console.error('Failed to fetch user profile:', error.message)

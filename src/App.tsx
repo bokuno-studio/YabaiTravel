@@ -7,16 +7,27 @@ import LoadingSpinner from './components/LoadingSpinner'
 import { SidebarFilterProvider } from './contexts/SidebarFilterContext'
 import { SidebarStatsProvider } from './contexts/SidebarStatsContext'
 
-const EventList = lazy(() => import('./pages/EventList'))
-const EventDetail = lazy(() => import('./pages/EventDetail'))
-const CategoryDetail = lazy(() => import('./pages/CategoryDetail'))
-const Sources = lazy(() => import('./pages/Sources'))
-const SportGuide = lazy(() => import('./pages/SportGuide'))
-const Pricing = lazy(() => import('./pages/Pricing'))
-const Legal = lazy(() => import('./pages/Legal'))
-const Feedback = lazy(() => import('./pages/Feedback'))
-const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'))
-const PaymentCancel = lazy(() => import('./pages/PaymentCancel'))
+/** Retry dynamic import once, then force reload to bust stale chunks */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function lazyWithRetry(importFn: () => Promise<{ default: any }>) {
+  return lazy(() =>
+    importFn().catch(() => {
+      window.location.reload()
+      return { default: () => null }
+    }),
+  )
+}
+
+const EventList = lazyWithRetry(() => import('./pages/EventList'))
+const EventDetail = lazyWithRetry(() => import('./pages/EventDetail'))
+const CategoryDetail = lazyWithRetry(() => import('./pages/CategoryDetail'))
+const Sources = lazyWithRetry(() => import('./pages/Sources'))
+const SportGuide = lazyWithRetry(() => import('./pages/SportGuide'))
+const Pricing = lazyWithRetry(() => import('./pages/Pricing'))
+const Legal = lazyWithRetry(() => import('./pages/Legal'))
+const Feedback = lazyWithRetry(() => import('./pages/Feedback'))
+const PaymentSuccess = lazyWithRetry(() => import('./pages/PaymentSuccess'))
+const PaymentCancel = lazyWithRetry(() => import('./pages/PaymentCancel'))
 
 /** パスの :lang から i18n 言語を設定し、子ルートを描画 */
 function LangLayout() {

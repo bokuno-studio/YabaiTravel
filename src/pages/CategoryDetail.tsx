@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { categoryToJsonLd } from '../lib/jsonld'
 import { supabase } from '../lib/supabaseClient'
 import { trackEventDetailView } from '../lib/analytics'
+import { useScrollDepth } from '@/hooks/useScrollDepth'
 import type { Event, AccessRoute, Accommodation, Category, CourseMapFile, StayStatus } from '../types/event'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -111,6 +112,7 @@ function CategoryDetail() {
   const [error, setError] = useState<string | null>(null)
   const { isFavorite, toggle: toggleFavorite } = useFavorites()
   const { user, signInWithGoogle } = useAuth()
+  useScrollDepth('event_detail')
   const trackedEventRef = useRef<string | null>(null)
   const { remaining, isLimited, increment, isSupporter, viewLimit } = useViewLimit()
 

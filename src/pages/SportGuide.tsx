@@ -1,6 +1,8 @@
 import { useParams, Link } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { trackGuideRead } from '../lib/analytics'
+import { useScrollDepth } from '@/hooks/useScrollDepth'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
@@ -466,6 +468,7 @@ function SportGuide() {
   const isEn = lang === 'en'
   const labels = isEn ? SECTION_LABELS.en : SECTION_LABELS.ja
 
+  useScrollDepth('guide')
   const [dbContent, setDbContent] = useState<GuideContent | null>(null)
   const [loading, setLoading] = useState(true)
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['overview']))
@@ -515,6 +518,15 @@ function SportGuide() {
     }
     fetchGuide()
   }, [sport, isEn])
+
+  // GA4: guide_read tracking — fire once when guide content loads
+  const guideReadFiredRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (sport && !loading && dbContent && guideReadFiredRef.current !== `${sport}_${lang}`) {
+      guideReadFiredRef.current = `${sport}_${lang}`
+      trackGuideRead(sport, 0)
+    }
+  }, [sport, lang, loading, dbContent])
 
   const fallback = sport ? FALLBACK_GUIDES[sport] : null
   const sportTitle = sport ? (isEn ? SPORT_TITLES[sport]?.en : SPORT_TITLES[sport]?.ja) ?? sport : ''
