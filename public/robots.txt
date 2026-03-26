@@ -20,4 +20,4 @@ Allow: /
 User-agent: meta-externalagent
 Allow: /
 
-Sitemap: https://yabai-travel.vercel.app/sitemap.xml
+Sitemap: https://yabai.travel/sitemap.xml

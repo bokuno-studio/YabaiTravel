@@ -351,11 +351,11 @@ function CategoryDetail() {
       <meta name="description" content={`${displayName} ${displayCategoryName}${isEn ? ' - entry fee, access, accommodation, mandatory gear' : 'コースの参加費・アクセス・宿泊・必携品をまとめてチェック。'}`} />
       <meta property="og:title" content={`${displayName} ${displayCategoryName} | yabai.travel`} />
       <meta property="og:description" content={`${displayName} ${displayCategoryName}${isEn ? ' - entry fee, access, accommodation, mandatory gear' : 'コースの参加費・アクセス・宿泊・必携品をまとめてチェック。'}`} />
-      <meta property="og:url" content={`https://yabai-travel.vercel.app/ja/events/${event.id}/categories/${category.id}`} />
-      <link rel="canonical" href={`https://yabai-travel.vercel.app${location.pathname}`} />
-      <link rel="alternate" hrefLang="ja" href={`https://yabai-travel.vercel.app${location.pathname.replace(/^\/(ja|en)/, '/ja')}`} />
-      <link rel="alternate" hrefLang="en" href={`https://yabai-travel.vercel.app${location.pathname.replace(/^\/(ja|en)/, '/en')}`} />
-      <link rel="alternate" hrefLang="x-default" href={`https://yabai-travel.vercel.app${location.pathname.replace(/^\/(ja|en)/, '/en')}`} />
+      <meta property="og:url" content={`https://yabai.travel/ja/events/${event.id}/categories/${category.id}`} />
+      <link rel="canonical" href={`https://yabai.travel${location.pathname}`} />
+      <link rel="alternate" hrefLang="ja" href={`https://yabai.travel${location.pathname.replace(/^\/(ja|en)/, '/ja')}`} />
+      <link rel="alternate" hrefLang="en" href={`https://yabai.travel${location.pathname.replace(/^\/(ja|en)/, '/en')}`} />
+      <link rel="alternate" hrefLang="x-default" href={`https://yabai.travel${location.pathname.replace(/^\/(ja|en)/, '/en')}`} />
       <script type="application/ld+json">{JSON.stringify(categoryToJsonLd(event, category))}</script>
       <div className="mx-auto max-w-4xl px-4 py-6 md:px-6">
         {/* Breadcrumb */}

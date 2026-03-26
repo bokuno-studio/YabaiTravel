@@ -14,7 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { mode, amount, lang, email, userId, commentData } = req.body || {}
     const langPrefix = lang === 'en' ? '/en' : '/ja'
-    const baseUrl = 'https://yabai-travel.vercel.app'
+    const baseUrl = 'https://yabai.travel'
 
     if (mode === 'donation') {
       const unitAmount = amount || 500 // cents

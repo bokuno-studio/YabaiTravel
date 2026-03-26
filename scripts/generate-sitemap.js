@@ -20,7 +20,7 @@ if (existsSync(envPath)) {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SCHEMA = process.env.VITE_SUPABASE_SCHEMA || 'yabai_travel'
-const BASE_URL = 'https://yabai-travel.vercel.app'
+const BASE_URL = 'https://yabai.travel'
 const LANGS = ['ja', 'en']
 
 async function generateSitemap() {
