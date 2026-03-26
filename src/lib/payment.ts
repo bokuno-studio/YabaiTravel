@@ -1,4 +1,4 @@
-export async function createStripeCheckout(options: {
+export async function createCheckout(options: {
   mode: 'donation' | 'subscription' | 'comment'
   amount?: number
   lang?: string
@@ -6,7 +6,7 @@ export async function createStripeCheckout(options: {
   userId?: string
   commentData?: string
 }) {
-  const res = await fetch('/api/create-stripe-checkout', {
+  const res = await fetch('/api/square-checkout', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(options),

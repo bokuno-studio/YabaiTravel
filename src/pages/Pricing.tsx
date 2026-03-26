@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { createStripeCheckout, cancelMembership } from '@/lib/stripe'
+import { createCheckout, cancelMembership } from '@/lib/payment'
 import { useAuth } from '@/lib/auth'
 import { trackPricingView } from '@/lib/analytics'
 
@@ -32,7 +32,7 @@ function Pricing() {
       }
       // USD: convert to cents
       const unitAmount = amount * 100
-      const url = await createStripeCheckout({
+      const url = await createCheckout({
         mode: 'donation',
         amount: unitAmount,
         lang,
@@ -48,7 +48,7 @@ function Pricing() {
     setSubscriptionLoading(true)
     setError(null)
     try {
-      const url = await createStripeCheckout({
+      const url = await createCheckout({
         mode: 'subscription',
         lang,
         email: user?.email || undefined,
@@ -163,8 +163,8 @@ function Pricing() {
             </Button>
             <p className="text-xs text-muted-foreground text-center">
               {isEn
-                ? 'You will be redirected to Stripe for secure payment.'
-                : 'Stripe の安全な決済ページにリダイレクトされます。'}
+                ? 'You will be redirected to Square for secure payment.'
+                : 'Square の安全な決済ページにリダイレクトされます。'}
             </p>
           </CardFooter>
         </Card>
@@ -281,8 +281,8 @@ function Pricing() {
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">
                   {isEn
-                    ? 'You will be redirected to Stripe for secure payment.'
-                    : 'Stripe の安全な決済ページにリダイレクトされます。'}
+                    ? 'You will be redirected to Square for secure payment.'
+                    : 'Square の安全な決済ページにリダイレクトされます。'}
                 </p>
               </>
             )}

@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createStripeCheckout, cancelMembership } from '../stripe'
+import { createCheckout, cancelMembership } from '../payment'
 
 // Mock global fetch
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
-describe('createStripeCheckout', () => {
+describe('createCheckout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -13,16 +13,16 @@ describe('createStripeCheckout', () => {
   it('returns checkout URL on success', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ url: 'https://checkout.stripe.com/c/pay_123' }),
+      json: () => Promise.resolve({ url: 'https://squareup.com/checkout/pay_123' }),
     })
 
-    const url = await createStripeCheckout({
+    const url = await createCheckout({
       mode: 'subscription',
       lang: 'ja',
     })
 
-    expect(url).toBe('https://checkout.stripe.com/c/pay_123')
-    expect(mockFetch).toHaveBeenCalledWith('/api/create-stripe-checkout', {
+    expect(url).toBe('https://squareup.com/checkout/pay_123')
+    expect(mockFetch).toHaveBeenCalledWith('/api/square-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mode: 'subscription', lang: 'ja' }),
@@ -35,7 +35,7 @@ describe('createStripeCheckout', () => {
       json: () => Promise.resolve({ error: 'Card declined' }),
     })
 
-    await expect(createStripeCheckout({ mode: 'donation', amount: 1000 }))
+    await expect(createCheckout({ mode: 'donation', amount: 1000 }))
       .rejects.toThrow('Card declined')
   })
 
@@ -45,17 +45,17 @@ describe('createStripeCheckout', () => {
       json: () => Promise.reject(new Error('Not JSON')),
     })
 
-    await expect(createStripeCheckout({ mode: 'donation' }))
+    await expect(createCheckout({ mode: 'donation' }))
       .rejects.toThrow('Checkout creation failed')
   })
 
   it('passes all options to the API', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ url: 'https://checkout.stripe.com/c/pay_123' }),
+      json: () => Promise.resolve({ url: 'https://squareup.com/checkout/pay_123' }),
     })
 
-    await createStripeCheckout({
+    await createCheckout({
       mode: 'donation',
       amount: 5000,
       lang: 'ja',
@@ -72,10 +72,10 @@ describe('createStripeCheckout', () => {
   it('supports comment mode with commentData', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ url: 'https://checkout.stripe.com/c/pay_456' }),
+      json: () => Promise.resolve({ url: 'https://squareup.com/checkout/pay_456' }),
     })
 
-    await createStripeCheckout({
+    await createCheckout({
       mode: 'comment',
       lang: 'en',
       commentData: '{"content":"test"}',

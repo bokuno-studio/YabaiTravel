@@ -44,7 +44,7 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
 
   useEffect(() => { fetchComments() }, [fetchComments])
 
-  // Handle return from Stripe payment
+  // Handle return from Square payment
   useEffect(() => {
     const pendingComment = searchParams.get('pending_comment')
     if (pendingComment) {
@@ -56,7 +56,7 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...data,
-            payment_id: 'stripe-confirmed',
+            payment_id: 'square-confirmed',
           }),
         }).then(res => {
           if (res.ok) fetchComments()
@@ -83,8 +83,8 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
         race_type: raceType || null,
       }
 
-      // Create Stripe payment link for $1
-      const res = await fetch('/api/create-stripe-checkout', {
+      // Create Square payment link for $1
+      const res = await fetch('/api/square-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

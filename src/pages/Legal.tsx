@@ -136,8 +136,8 @@ function Legal() {
             label={isEn ? 'Payment Method' : '支払方法'}
             value={
               isEn
-                ? 'Credit card (via Stripe)'
-                : 'クレジットカード決済（Stripe 経由）'
+                ? 'Credit card (via Square)'
+                : 'クレジットカード決済（Square 経由）'
             }
           />
           <LegalRow

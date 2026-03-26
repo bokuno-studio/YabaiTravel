@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import Stripe from 'stripe'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL!,
@@ -8,9 +7,9 @@ const supabase = createClient(
   { db: { schema: 'yabai_travel' } }
 )
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-02-25.clover',
-})
+const SQUARE_BASE_URL = process.env.SQUARE_ENVIRONMENT === 'sandbox'
+  ? 'https://connect.squareupsandbox.com'
+  : 'https://connect.squareup.com'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -35,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Get user profile
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('id, membership, stripe_customer_id, stripe_subscription_id')
+      .select('id, membership, square_customer_id, square_subscription_id')
       .eq('id', user.id)
       .single()
 
@@ -47,22 +46,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'No active membership to cancel' })
     }
 
-    // Cancel Stripe subscription if exists
-    if (profile.stripe_subscription_id) {
+    // Cancel Square subscription if exists
+    if (profile.square_subscription_id) {
       try {
-        await stripe.subscriptions.update(profile.stripe_subscription_id, { cancel_at_period_end: true })
-        console.log({ subscriptionId: profile.stripe_subscription_id }, 'Scheduled Stripe subscription cancellation at period end')
-      } catch (stripeErr) {
-        console.error({ err: stripeErr }, 'Failed to cancel Stripe subscription')
-        // Continue with local cancellation even if Stripe API fails
+        const cancelRes = await fetch(
+          `${SQUARE_BASE_URL}/v2/subscriptions/${profile.square_subscription_id}/cancel`,
+          {
+            method: 'POST',
+            headers: {
+              'Square-Version': '2024-11-20',
+              'Authorization': `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        )
+        if (cancelRes.ok) {
+          console.log({ subscriptionId: profile.square_subscription_id }, 'Cancelled Square subscription')
+        } else {
+          const errData = await cancelRes.json().catch(() => ({}))
+          console.error({ err: errData }, 'Failed to cancel Square subscription')
+        }
+      } catch (squareErr) {
+        console.error({ err: squareErr }, 'Failed to cancel Square subscription')
+        // Continue with local cancellation even if Square API fails
       }
     }
 
-    // キャンセル予約のみ。実際のダウングレードはStripe webhook (customer.subscription.deleted) で行う
-    // membership は 'supporter' のまま維持し、期間末まで利用可能
+    // Downgrade membership locally
     await supabase
       .from('user_profiles')
       .update({
+        membership: 'free',
+        membership_expires_at: null,
+        square_subscription_id: null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
