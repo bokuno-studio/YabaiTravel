@@ -85,6 +85,14 @@ function isJunk(name) {
   return JUNK_NAMES.test(t) || JUNK_PATTERNS.some((p) => p.test(t)) || NON_ENDURANCE_KEYWORDS.test(t)
 }
 
+/** 名前を正規化（重複比較用） */
+function normalizeName(name) {
+  return (name ?? '')
+    .replace(/[\s\u3000]+/g, '')   // 全角・半角スペース除去
+    .replace(/[・·\-–—]/g, '')     // 区切り文字除去
+    .toLowerCase()
+}
+
 // --- プラグインローダー ---
 
 async function loadSources() {
@@ -194,13 +202,18 @@ Return ONLY a valid JSON object mapping each original name to its English transl
 // --- DB挿入 ---
 
 async function insertRace(client, race) {
-  // official_url OR (name + event_date) で重複チェック
+  // official_url OR (正規化name + event_date) で重複チェック
   // - official_url 一致 → 重複
-  // - name 一致 AND (どちらかの event_date が NULL OR 同じ日付) → 重複（別年度は通す）
+  // - 正規化name 一致 AND (どちらかの event_date が NULL OR 同じ日付) → 重複（別年度は通す）
+  // - 正規化: 全角/半角スペース・中黒・ドット等を除去して比較
   const dupCheck = `WHERE NOT EXISTS (
     SELECT 1 FROM ${SCHEMA}.events
     WHERE official_url = $6
-       OR (name = $1 AND ($2 IS NULL OR event_date IS NULL OR event_date::text = $2::text))
+       OR (
+         regexp_replace(translate(name, '　・·', ' '), '\\s+', '', 'g')
+         = regexp_replace(translate($1, '　・·', ' '), '\\s+', '', 'g')
+         AND ($2 IS NULL OR event_date IS NULL OR event_date::text = $2::text)
+       )
   )`
   const result = await client.query(
     `INSERT INTO ${SCHEMA}.events (name, name_en, event_date, location, country, race_type, official_url, entry_url, collected_at)
@@ -275,15 +288,16 @@ async function run() {
     }
   }
 
-  // ジャンク除去・重複除去
+  // ジャンク除去・重複除去（正規化名で比較）
   allRaces = allRaces.filter((r) => !isJunk(r.name))
   const seenUrls = new Set()
   const seenNames = new Set()
   allRaces = allRaces.filter((r) => {
     if (r.official_url && seenUrls.has(r.official_url)) return false
-    if (r.name && seenNames.has(r.name)) return false
+    const normalized = normalizeName(r.name)
+    if (normalized && seenNames.has(normalized)) return false
     if (r.official_url) seenUrls.add(r.official_url)
-    if (r.name) seenNames.add(r.name)
+    if (normalized) seenNames.add(normalized)
     return true
   })
 
