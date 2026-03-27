@@ -94,7 +94,8 @@ jobs:
 
           echo ""
           echo "── Server-side key exposure check ──"
-          SENSITIVE_PATTERNS="sk_live sq0 service_role AIzaSy"
+          # AIzaSy は Google Maps ブラウザ用キー（公開前提・リファラー制限で保護）のため除外
+          SENSITIVE_PATTERNS="sk_live sq0 service_role"
           KEY_FAIL=0
           for PATTERN in $SENSITIVE_PATTERNS; do
             if grep -r "$PATTERN" dist/ --include='*.html' --include='*.js' 2>/dev/null; then

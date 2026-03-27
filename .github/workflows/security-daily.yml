@@ -85,11 +85,11 @@ jobs:
 
           # ── 4. Server-side key exposure in frontend JS ──
           echo "── [4/6] Frontend Key Exposure Check ──"
+          # AIzaSy は Google Maps ブラウザ用キー（公開前提・リファラー制限で保護）のため除外
           SENSITIVE_PATTERNS=(
             "sk_live"
             "sq0"
             "service_role"
-            "AIzaSy"
           )
           PAGE_CONTENT=$(curl -s "$TARGET_URL" 2>/dev/null)
 
