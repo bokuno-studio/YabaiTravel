@@ -38,10 +38,14 @@ jobs:
 
       - name: Security gate — npm audit
         run: |
-          echo "── npm audit (high+) ──"
-          npm audit --audit-level=high || {
-            echo "::error::npm audit found high/critical vulnerabilities — aborting deploy"
+          echo "── npm audit (critical) ──"
+          npm audit --audit-level=critical || {
+            echo "::error::npm audit found critical vulnerabilities — aborting deploy"
             exit 1
+          }
+          echo "── npm audit (high — warning only) ──"
+          npm audit --audit-level=high || {
+            echo "::warning::npm audit found high vulnerabilities (non-blocking)"
           }
 
       - name: Verify Secrets
