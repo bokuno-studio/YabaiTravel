@@ -97,11 +97,12 @@ function FeedbackWidget() {
               <>
                 {/* Guideline */}
                 <div className="mb-3 rounded border border-border bg-muted/50 px-2 py-1.5 text-[11px] text-muted-foreground space-y-0.5">
-                  <p className="font-medium">{isEn ? 'Guidelines' : 'ガイドライン'}</p>
-                  <ul className="list-disc pl-3 space-y-0">
-                    <li>{isEn ? 'No personal info' : '個人情報を含めない'}</li>
-                    <li>{isEn ? 'No hate speech' : '誹謗中傷の禁止'}</li>
-                    <li>{isEn ? 'Stay on topic' : 'レース・サービスに関する内容のみ'}</li>
+                  <p className="font-medium">{isEn ? 'Posting Guidelines:' : '投稿ガイドライン:'}</p>
+                  <ul className="space-y-0">
+                    <li>{isEn ? '• Constructive feedback about races' : '・建設的なフィードバックをお願いします'}</li>
+                    <li>{isEn ? '• No personal info' : '・個人情報を含めないでください'}</li>
+                    <li>{isEn ? '• Spam/defamation will be removed' : '・誹謗中傷・スパムは削除されます'}</li>
+                    <li>{isEn ? '• Up to 5 posts/day' : '・1日5件まで'}</li>
                   </ul>
                 </div>
 

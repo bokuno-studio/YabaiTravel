@@ -345,12 +345,12 @@ function NewFeedbackForm({
 
         {/* Guideline */}
         <div className="mb-4 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground space-y-1">
-          <p className="font-medium">{isEn ? 'Posting Guidelines' : '投稿ガイドライン'}</p>
-          <ul className="list-disc pl-4 space-y-0.5">
-            <li>{isEn ? 'Do not include personal information (names, emails, phone numbers, etc.)' : '個人情報（氏名・メールアドレス・電話番号等）を含めないでください'}</li>
-            <li>{isEn ? 'No hate speech, harassment, or defamation' : '誹謗中傷・差別的な表現は禁止です'}</li>
-            <li>{isEn ? 'Stay on topic — feedback about races and the service' : 'レースやサービスに関する内容に限定してください'}</li>
-            <li>{isEn ? 'Posts that violate these rules may be removed without notice' : 'ルールに反する投稿は予告なく削除される場合があります'}</li>
+          <p className="font-medium">{isEn ? 'Posting Guidelines:' : '投稿ガイドライン:'}</p>
+          <ul className="space-y-0.5">
+            <li>{isEn ? '• Please share constructive feedback about races and events' : '・レースや大会に関する建設的なフィードバックをお願いします'}</li>
+            <li>{isEn ? '• Do not include personal information (names, contact details, etc.)' : '・個人情報（氏名・連絡先等）を含めないでください'}</li>
+            <li>{isEn ? '• Defamatory content, spam, and ads will be removed' : '・誹謗中傷・スパム・広告は削除されます'}</li>
+            <li>{isEn ? '• Up to 5 posts per day' : '・1日5件まで投稿できます'}</li>
           </ul>
         </div>
 
