@@ -1,0 +1,168 @@
+# 日次セキュリティチェック — HTTPS/SSL/ヘッダー/キー露出/ページ応答/npm audit
+name: Daily Security Check
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # UTC 00:00 = JST 09:00
+  workflow_dispatch:
+
+env:
+  TARGET_URL: https://yabai-travel.vercel.app
+
+jobs:
+  security-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security checks
+        run: |
+          set +e
+          FAIL=0
+          WARN=0
+
+          echo "============================================"
+          echo "  Daily Security Check — $(date -u '+%Y-%m-%d %H:%M UTC')"
+          echo "  Target: $TARGET_URL"
+          echo "============================================"
+          echo ""
+
+          # ── 1. HTTPS redirect ──
+          echo "── [1/6] HTTPS Redirect Check ──"
+          HTTP_URL="$(echo "$TARGET_URL" | sed 's|https://|http://|')"
+          HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' -L --max-redirs 0 "$HTTP_URL" 2>/dev/null || echo "000")
+          if [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ] || [ "$HTTP_CODE" = "308" ]; then
+            echo "  PASS: HTTP redirects with status $HTTP_CODE"
+          else
+            echo "  FAIL: HTTP did not redirect (status: $HTTP_CODE)"
+            FAIL=$((FAIL + 1))
+          fi
+          echo ""
+
+          # ── 2. SSL certificate expiry ──
+          echo "── [2/6] SSL Certificate Expiry Check ──"
+          DOMAIN="$(echo "$TARGET_URL" | sed 's|https://||' | sed 's|/.*||')"
+          EXPIRY_DATE=$(echo | openssl s_client -servername "$DOMAIN" -connect "$DOMAIN:443" 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | sed 's/notAfter=//')
+          if [ -n "$EXPIRY_DATE" ]; then
+            EXPIRY_EPOCH=$(date -d "$EXPIRY_DATE" +%s 2>/dev/null || date -j -f "%b %d %H:%M:%S %Y %Z" "$EXPIRY_DATE" +%s 2>/dev/null)
+            NOW_EPOCH=$(date +%s)
+            DAYS_LEFT=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
+            if [ "$DAYS_LEFT" -lt 30 ]; then
+              echo "  WARNING: SSL certificate expires in $DAYS_LEFT days ($EXPIRY_DATE)"
+              WARN=$((WARN + 1))
+            else
+              echo "  PASS: SSL certificate valid for $DAYS_LEFT days (expires: $EXPIRY_DATE)"
+            fi
+          else
+            echo "  WARNING: Could not retrieve SSL certificate info"
+            WARN=$((WARN + 1))
+          fi
+          echo ""
+
+          # ── 3. Security headers ──
+          echo "── [3/6] Security Headers Check ──"
+          HEADERS=$(curl -s -D - -o /dev/null "$TARGET_URL" 2>/dev/null)
+          REQUIRED_HEADERS="Strict-Transport-Security X-Content-Type-Options X-Frame-Options Referrer-Policy"
+          for HEADER in $REQUIRED_HEADERS; do
+            if echo "$HEADERS" | grep -qi "^${HEADER}:"; then
+              echo "  PASS: $HEADER present"
+            else
+              echo "  FAIL: $HEADER missing"
+              FAIL=$((FAIL + 1))
+            fi
+          done
+          echo ""
+
+          # ── 4. Server-side key exposure in frontend JS ──
+          echo "── [4/6] Frontend Key Exposure Check ──"
+          SENSITIVE_PATTERNS=(
+            "sk_live"
+            "sq0"
+            "service_role"
+            "AIzaSy"
+          )
+          PAGE_CONTENT=$(curl -s "$TARGET_URL" 2>/dev/null)
+
+          # Extract JS URLs from the HTML and fetch them
+          JS_URLS=$(echo "$PAGE_CONTENT" | grep -oE 'src="[^"]*\.js"' | sed 's/src="//;s/"$//' | head -20)
+          ALL_CONTENT="$PAGE_CONTENT"
+          for JS_URL in $JS_URLS; do
+            # Handle relative URLs
+            case "$JS_URL" in
+              http*) FULL_URL="$JS_URL" ;;
+              //*) FULL_URL="https:$JS_URL" ;;
+              /*) FULL_URL="${TARGET_URL}${JS_URL}" ;;
+              *) FULL_URL="${TARGET_URL}/${JS_URL}" ;;
+            esac
+            JS_CONTENT=$(curl -s "$FULL_URL" 2>/dev/null)
+            ALL_CONTENT="${ALL_CONTENT}${JS_CONTENT}"
+          done
+
+          KEY_EXPOSED=0
+          for PATTERN in "${SENSITIVE_PATTERNS[@]}"; do
+            if echo "$ALL_CONTENT" | grep -q "$PATTERN"; then
+              echo "  FAIL: Sensitive pattern '$PATTERN' found in frontend code!"
+              KEY_EXPOSED=1
+              FAIL=$((FAIL + 1))
+            else
+              echo "  PASS: '$PATTERN' not found"
+            fi
+          done
+          if [ "$KEY_EXPOSED" -eq 0 ]; then
+            echo "  All key exposure checks passed"
+          fi
+          echo ""
+
+          # ── 5. Page response check ──
+          echo "── [5/6] Page Response Check ──"
+          CHECK_PATHS="/ /ja/events/ /en/events/"
+          for PATH in $CHECK_PATHS; do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' "${TARGET_URL}${PATH}" 2>/dev/null)
+            if [ "$STATUS" = "200" ]; then
+              echo "  PASS: ${PATH} → $STATUS"
+            else
+              echo "  FAIL: ${PATH} → $STATUS (expected 200)"
+              FAIL=$((FAIL + 1))
+            fi
+          done
+          echo ""
+
+          # ── 6. npm audit ──
+          echo "── [6/6] npm audit Check ──"
+          AUDIT_OUTPUT=$(npm audit --audit-level=critical 2>&1)
+          AUDIT_EXIT=$?
+          if [ $AUDIT_EXIT -ne 0 ]; then
+            echo "  WARNING: npm audit found critical/high vulnerabilities"
+            echo "$AUDIT_OUTPUT" | tail -20
+            WARN=$((WARN + 1))
+          else
+            echo "  PASS: No critical vulnerabilities found"
+          fi
+          echo ""
+
+          # ── Summary ──
+          echo "============================================"
+          echo "  SUMMARY"
+          echo "  FAIL: $FAIL | WARNING: $WARN"
+          echo "============================================"
+
+          if [ "$FAIL" -gt 0 ]; then
+            echo "::error::Security check failed with $FAIL failure(s)"
+            exit 1
+          fi
+
+          if [ "$WARN" -gt 0 ]; then
+            echo "::warning::Security check passed with $WARN warning(s)"
+          fi
+
+          echo "All checks passed!"

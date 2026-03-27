@@ -36,6 +36,14 @@ jobs:
       - name: Run tests
         run: npm run test
 
+      - name: Security gate — npm audit
+        run: |
+          echo "── npm audit (high+) ──"
+          npm audit --audit-level=high || {
+            echo "::error::npm audit found high/critical vulnerabilities — aborting deploy"
+            exit 1
+          }
+
       - name: Verify Secrets
         run: |
           if [ -z "$VERCEL_ORG_ID" ]; then echo "::error::VERCEL_ORG_ID is empty"; exit 1; fi
@@ -62,6 +70,40 @@ jobs:
           VITE_GOOGLE_MAPS_KEY: ${{ secrets.VITE_GOOGLE_MAPS_KEY }}
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
         run: npx vercel build --token=$VERCEL_TOKEN
+
+      - name: Security gate — check build output
+        run: |
+          echo "── Mixed content check ──"
+          MIXED=$(grep -r 'http://' dist/ --include='*.html' --include='*.js' \
+            | grep -v 'http://www.w3.org' \
+            | grep -v 'http://localhost' \
+            | grep -v '//schema.org' \
+            | grep -v 'sourceMappingURL' \
+            || true)
+          if [ -n "$MIXED" ]; then
+            echo "::error::Mixed content (http://) found in build output:"
+            echo "$MIXED"
+            exit 1
+          else
+            echo "  PASS: No mixed content found"
+          fi
+
+          echo ""
+          echo "── Server-side key exposure check ──"
+          SENSITIVE_PATTERNS="sk_live sq0 service_role AIzaSy"
+          KEY_FAIL=0
+          for PATTERN in $SENSITIVE_PATTERNS; do
+            if grep -r "$PATTERN" dist/ --include='*.html' --include='*.js' 2>/dev/null; then
+              echo "  FAIL: '$PATTERN' found in build output!"
+              KEY_FAIL=1
+            fi
+          done
+          if [ "$KEY_FAIL" -eq 1 ]; then
+            echo "::error::Sensitive keys detected in build output — aborting deploy"
+            exit 1
+          else
+            echo "  PASS: No sensitive keys found in build output"
+          fi
 
       - name: Deploy to Vercel (Preview)
         run: npx vercel deploy --prebuilt --token=$VERCEL_TOKEN
