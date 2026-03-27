@@ -40,7 +40,7 @@ jobs:
           # ── 1. HTTPS redirect ──
           echo "── [1/6] HTTPS Redirect Check ──"
           HTTP_URL="$(echo "$TARGET_URL" | sed 's|https://|http://|')"
-          HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' -L --max-redirs 0 "$HTTP_URL" 2>/dev/null || echo "000")
+          HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-redirs 0 "$HTTP_URL" 2>/dev/null) || true
           if [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ] || [ "$HTTP_CODE" = "308" ]; then
             echo "  PASS: HTTP redirects with status $HTTP_CODE"
           else
@@ -126,12 +126,12 @@ jobs:
           # ── 5. Page response check ──
           echo "── [5/6] Page Response Check ──"
           CHECK_PATHS="/ /ja/events/ /en/events/"
-          for PATH in $CHECK_PATHS; do
-            STATUS=$(curl -s -o /dev/null -w '%{http_code}' "${TARGET_URL}${PATH}" 2>/dev/null)
+          for CHECK_PATH in $CHECK_PATHS; do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' "${TARGET_URL}${CHECK_PATH}" 2>/dev/null)
             if [ "$STATUS" = "200" ]; then
-              echo "  PASS: ${PATH} → $STATUS"
+              echo "  PASS: ${CHECK_PATH} → $STATUS"
             else
-              echo "  FAIL: ${PATH} → $STATUS (expected 200)"
+              echo "  FAIL: ${CHECK_PATH} → $STATUS (expected 200)"
               FAIL=$((FAIL + 1))
             fi
           done
