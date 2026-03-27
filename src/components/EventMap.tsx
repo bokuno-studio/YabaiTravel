@@ -32,7 +32,7 @@ function EventMap({ events, langPrefix, raceTypeLabel, lang: langProp }: EventMa
         <Map
           defaultCenter={{ lat: 36.0, lng: 139.6 }}
           defaultZoom={3}
-          gestureHandling="greedy"
+          gestureHandling="cooperative"
           disableDefaultUI={false}
         >
           {mappable.map((event) => (
