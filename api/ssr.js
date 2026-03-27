@@ -5839,7 +5839,10 @@ const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta chars
 
 export default function handler(req, res) {
   try {
-    const url = req.url || "/"
+    // Vercel rewrites set x-matched-path; use original URL from headers or req.url
+    const originalUrl = req.headers["x-invoke-path"] || req.headers["x-matched-path"] || req.url || "/"
+    // Strip /api/ssr prefix if present (rewrite artifact)
+    const url = originalUrl.startsWith("/api/ssr") ? originalUrl.replace(/^\/api\/ssr/, "") || "/" : originalUrl
     const { html: appHtml } = render(url)
 
     let finalHtml = TEMPLATE
