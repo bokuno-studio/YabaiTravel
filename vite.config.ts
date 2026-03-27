@@ -11,6 +11,20 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-ui': ['lucide-react', 'class-variance-authority', 'clsx', 'tailwind-merge'],
+          'vendor-i18n': ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
+          'vendor-maps': ['@vis.gl/react-google-maps'],
+          'vendor-sentry': ['@sentry/react'],
+        },
+      },
+    },
+  },
   ssr: {},
   test: {
     environment: 'jsdom',

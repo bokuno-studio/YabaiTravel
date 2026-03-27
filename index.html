@@ -11,14 +11,34 @@
     <meta property="og:title" content="yabai.travel" />
     <meta property="og:description" content="トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト" />
     <meta property="og:type" content="website" />
+    <!-- Preconnect to critical origins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://maps.googleapis.com" />
+    <link rel="dns-prefetch" href="https://supabase.co" />
+    <!-- Font display swap for system font fallback during load -->
+    <style>
+      @font-face {
+        font-family: 'Inter';
+        font-display: swap;
+        src: local('Inter');
+      }
+    </style>
     <!-- Google Search Console verification: add meta tag here after registration -->
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP"></script>
+    <!-- Google tag (gtag.js) - deferred to reduce TBT -->
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-TNN6DES8DP', { send_page_view: false });
+      window.addEventListener('load', function() {
+        var s = document.createElement('script');
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';
+        s.async = true;
+        document.head.appendChild(s);
+        s.onload = function() {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });
+        };
+      });
     </script>
   </head>
   <body>

@@ -1,9 +1,11 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react'
 import { useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabaseClient'
 import type { EventWithCategories, Category } from '../types/event'
-import EventMap from '../components/EventMap'
+import LazyLoadWrapper from '../components/LazyLoadWrapper'
+
+const EventMap = lazy(() => import('../components/EventMap'))
 import { EventCard } from '../components/EventCard'
 import { EventCardSkeleton } from '../components/EventCardSkeleton'
 import { getActiveFilterChips } from '../components/FiltersSidebar'
@@ -565,16 +567,31 @@ function EventList() {
           </div>
         </div>
 
-        {/* Map (toggle, max height 300px) */}
+        {/* Map (toggle, max height 300px, lazy-loaded) */}
         {!loading && showMap && (
-          <div className="mb-6 max-h-[300px] overflow-hidden rounded-xl">
-            <EventMap events={filtered} langPrefix={langPrefix} raceTypeLabel={raceTypeLabel} lang={lang} />
-          </div>
+          <LazyLoadWrapper
+            className="mb-6 max-h-[300px] overflow-hidden rounded-xl"
+            minHeight="300px"
+            rootMargin="100px"
+            placeholder={
+              <div className="flex h-[300px] items-center justify-center rounded-xl border border-border/40 bg-muted/30">
+                <MapIcon className="h-8 w-8 animate-pulse text-muted-foreground/40" />
+              </div>
+            }
+          >
+            <Suspense fallback={
+              <div className="flex h-[300px] items-center justify-center rounded-xl border border-border/40 bg-muted/30">
+                <MapIcon className="h-8 w-8 animate-pulse text-muted-foreground/40" />
+              </div>
+            }>
+              <EventMap events={filtered} langPrefix={langPrefix} raceTypeLabel={raceTypeLabel} lang={lang} />
+            </Suspense>
+          </LazyLoadWrapper>
         )}
 
         {/* Event Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-h-[600px]">
             {Array.from({ length: 8 }).map((_, i) => (
               <EventCardSkeleton key={i} />
             ))}

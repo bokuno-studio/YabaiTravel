@@ -55,8 +55,42 @@ async function handlePost(req: VercelRequest, res: VercelResponse) {
     if (!content || typeof content !== 'string' || content.trim().length === 0) {
       return res.status(400).json({ error: 'content is required' })
     }
-    if (!payment_id || typeof payment_id !== 'string' || payment_id.trim().length === 0) {
+
+    // Phase 1: payment_id は 'free-phase1' を許可（Phase 2 で課金必須に戻す）
+    const isFreeComment = payment_id === 'free-phase1'
+    if (!isFreeComment && (!payment_id || typeof payment_id !== 'string')) {
       return res.status(400).json({ error: 'payment_id is required' })
+    }
+
+    // Rate limiting for free comments
+    if (isFreeComment) {
+      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+        || req.headers['x-real-ip'] as string
+        || 'unknown'
+
+      // 60-second cooldown (by IP)
+      const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString()
+      const { count: recentCount } = await supabase
+        .from('event_comments')
+        .select('id', { count: 'exact', head: true })
+        .eq('payment_id', 'free-phase1')
+        .gte('created_at', oneMinuteAgo)
+        .eq('display_name', display_name || '')
+      if (recentCount != null && recentCount > 0) {
+        return res.status(429).json({ error: 'Please wait 60 seconds between posts' })
+      }
+
+      // Daily limit: 3 comments per day (by event_id + IP approximation via display_name)
+      const today = new Date().toISOString().slice(0, 10)
+      const { count: dailyCount } = await supabase
+        .from('event_comments')
+        .select('id', { count: 'exact', head: true })
+        .eq('payment_id', 'free-phase1')
+        .gte('created_at', `${today}T00:00:00Z`)
+        .eq('display_name', display_name || '')
+      if (dailyCount != null && dailyCount >= 3) {
+        return res.status(429).json({ error: 'Daily limit reached (3 comments/day)' })
+      }
     }
 
     const { data, error } = await supabase
@@ -68,7 +102,7 @@ async function handlePost(req: VercelRequest, res: VercelResponse) {
         user_id: user_id || null,
         display_name: display_name || null,
         race_type: race_type || null,
-        payment_id: payment_id.trim(),
+        payment_id: payment_id?.trim() || 'free-phase1',
       })
       .select()
       .single()

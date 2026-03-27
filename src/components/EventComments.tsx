@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Loader2, Lock } from 'lucide-react'
+import { Loader2, Send } from 'lucide-react'
 import type { EventComment } from '@/types/event'
 
 interface EventCommentsProps {
@@ -14,6 +14,9 @@ interface EventCommentsProps {
 }
 
 const COMMENTS_ENABLED = !import.meta.env.PROD || !!import.meta.env.VITE_ENABLE_COMMENTS
+
+// Phase 1: 無料開放（Phase 2 で課金復活時に false にする）
+const FREE_COMMENTS = true
 
 function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventCommentsProps) {
   const [comments, setComments] = useState<EventComment[]>([])
@@ -44,13 +47,13 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
 
   useEffect(() => { fetchComments() }, [fetchComments])
 
-  // Handle return from Square payment
+  // Handle return from Square payment (Phase 2: 課金フロー)
   useEffect(() => {
+    if (FREE_COMMENTS) return // Phase 1: 課金不要
     const pendingComment = searchParams.get('pending_comment')
     if (pendingComment) {
       try {
         const data = JSON.parse(decodeURIComponent(pendingComment))
-        // Post the comment with payment confirmed
         fetch('/api/event-comment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -62,7 +65,6 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
           if (res.ok) fetchComments()
         })
       } catch { /* ignore */ }
-      // Clean up URL
       const newParams = new URLSearchParams(searchParams)
       newParams.delete('pending_comment')
       setSearchParams(newParams, { replace: true })
@@ -74,7 +76,6 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
     setSubmitting(true)
     setError(null)
     try {
-      // Store comment data for after payment
       const commentData = {
         event_id: eventId,
         category_id: categoryId || null,
@@ -83,33 +84,47 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
         race_type: raceType || null,
       }
 
-      // Create Square payment link for $1
-      const res = await fetch('/api/square-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: 'comment',
-          amount: 100, // $1 in cents
-          lang: isEn ? 'en' : 'ja',
-          commentData: JSON.stringify(commentData),
-        }),
-      })
-
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        throw new Error(json.error || 'Payment creation failed')
-      }
-
-      const { url } = await res.json()
-      if (url) {
-        // Save pending comment to sessionStorage as backup
-        sessionStorage.setItem('yabai_pending_comment', JSON.stringify(commentData))
-        window.location.href = url
+      if (FREE_COMMENTS) {
+        // Phase 1: 直接投稿（無料）
+        const res = await fetch('/api/event-comment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...commentData, payment_id: 'free-phase1' }),
+        })
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}))
+          throw new Error(json.error || 'Failed to post comment')
+        }
+        setContent('')
+        setDisplayName('')
+        fetchComments()
       } else {
-        throw new Error('No payment URL returned')
+        // Phase 2: 課金フロー（$1/件）
+        const res = await fetch('/api/square-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mode: 'comment',
+            amount: 150,
+            lang: isEn ? 'en' : 'ja',
+            commentData: JSON.stringify(commentData),
+          }),
+        })
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}))
+          throw new Error(json.error || 'Payment creation failed')
+        }
+        const { url } = await res.json()
+        if (url) {
+          sessionStorage.setItem('yabai_pending_comment', JSON.stringify(commentData))
+          window.location.href = url
+        } else {
+          throw new Error('No payment URL returned')
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed')
+    } finally {
       setSubmitting(false)
     }
   }
@@ -187,9 +202,9 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
                   onClick={handlePublish}
                 >
                   {submitting ? (
-                    <><Loader2 className="mr-1 h-3 w-3 animate-spin" />{isEn ? 'Redirecting...' : 'リダイレクト中...'}</>
+                    <><Loader2 className="mr-1 h-3 w-3 animate-spin" />{isEn ? 'Posting...' : '投稿中...'}</>
                   ) : (
-                    <><Lock className="mr-1 h-3 w-3" />{isEn ? 'Publish for $1' : '$1で公開する'}</>
+                    <><Send className="mr-1 h-3 w-3" />{isEn ? 'Post' : '投稿する'}</>
                   )}
                 </Button>
               </div>

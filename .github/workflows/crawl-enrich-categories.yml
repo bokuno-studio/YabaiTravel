@@ -20,8 +20,8 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - name: カテゴリ詳細収集
-        run: node scripts/crawl/orchestrator.js --category-only
+      - name: カテゴリ詳細収集（Batch API）
+        run: node scripts/crawl/enrich-category-detail.js --batch
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_SCHEMA: yabai_travel

@@ -498,6 +498,21 @@ async function fetchTargets(args) {
       [EVENT_ID]
     )
     targets = cats.map((c) => ({ event: ev, category: c }))
+  } else {
+    // 引数なし: 全未処理カテゴリを取得
+    const limitIdx = args.indexOf('--limit')
+    const limit = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : 50
+    const { rows } = await client.query(
+      `SELECT c.id, c.name, c.distance_km, e.id as event_id, e.name as event_name, e.official_url, e.race_type, e.country_en
+       FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id
+       WHERE c.collected_at IS NULL AND c.attempt_count < 3 AND e.collected_at IS NOT NULL
+       ORDER BY c.updated_at ASC LIMIT $1`,
+      [limit]
+    )
+    targets = rows.map((r) => ({
+      event: { id: r.event_id, name: r.event_name, official_url: r.official_url, race_type: r.race_type, country_en: r.country_en },
+      category: { id: r.id, name: r.name, distance_km: r.distance_km },
+    }))
   }
 
   await client.end()
