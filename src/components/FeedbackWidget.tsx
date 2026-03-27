@@ -96,11 +96,14 @@ function FeedbackWidget() {
             ) : (
               <>
                 {/* Guideline */}
-                <p className="mb-3 text-xs text-muted-foreground">
-                  {isEn
-                    ? 'Share your feedback or improvement ideas about races.'
-                    : 'レースに関するフィードバックや改善提案を共有してください。'}
-                </p>
+                <div className="mb-3 rounded border border-border bg-muted/50 px-2 py-1.5 text-[11px] text-muted-foreground space-y-0.5">
+                  <p className="font-medium">{isEn ? 'Guidelines' : 'ガイドライン'}</p>
+                  <ul className="list-disc pl-3 space-y-0">
+                    <li>{isEn ? 'No personal info' : '個人情報を含めない'}</li>
+                    <li>{isEn ? 'No hate speech' : '誹謗中傷の禁止'}</li>
+                    <li>{isEn ? 'Stay on topic' : 'レース・サービスに関する内容のみ'}</li>
+                  </ul>
+                </div>
 
                 {/* Type selector */}
                 <div className="flex gap-2 mb-3">
