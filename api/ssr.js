@@ -5850,7 +5850,8 @@ export default function handler(req, res) {
     res.status(200).end(finalHtml)
   } catch (e) {
     console.error("SSR Error:", e)
-    const fallback = TEMPLATE.replace("<!--ssr-outlet-->", "")
+    const errMsg = e instanceof Error ? e.message + "\n" + e.stack : String(e)
+    const fallback = TEMPLATE.replace("<!--ssr-outlet-->", "<!-- SSR_ERROR: " + errMsg.replace(/--/g, "==") + " -->")
     res.setHeader("Content-Type", "text/html; charset=utf-8")
     res.status(200).end(fallback)
   }

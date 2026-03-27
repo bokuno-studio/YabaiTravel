@@ -121,7 +121,8 @@ const parts = [
   '    res.status(200).end(finalHtml)',
   '  } catch (e) {',
   '    console.error("SSR Error:", e)',
-  '    const fallback = TEMPLATE.replace("<!--ssr-outlet-->", "")',
+  '    const errMsg = e instanceof Error ? e.message + "\\n" + e.stack : String(e)',
+  '    const fallback = TEMPLATE.replace("<!--ssr-outlet-->", "<!-- SSR_ERROR: " + errMsg.replace(/--/g, "==") + " -->")',
   '    res.setHeader("Content-Type", "text/html; charset=utf-8")',
   '    res.status(200).end(fallback)',
   '  }',
@@ -137,10 +138,15 @@ fs.writeFileSync(outputPath, ssrHandler, 'utf-8')
 const sizeKB = (Buffer.byteLength(ssrHandler, 'utf-8') / 1024).toFixed(1)
 console.log('api/ssr.js generated (' + sizeKB + ' KB, SSR bundle inlined, env vars replaced)')
 
-// Remove dist/index.html so Vercel doesn't serve it as a static file
+// Remove index.html from all output locations so Vercel doesn't serve it as a static file
 // (all requests should go through api/ssr for SSR)
-const distIndexPath = path.resolve(ROOT, 'dist/index.html')
-if (fs.existsSync(distIndexPath)) {
-  fs.unlinkSync(distIndexPath)
-  console.log('dist/index.html removed (SSR handles all HTML requests)')
+const indexPaths = [
+  path.resolve(ROOT, 'dist/index.html'),
+  path.resolve(ROOT, '.vercel/output/static/index.html'),
+]
+for (const p of indexPaths) {
+  if (fs.existsSync(p)) {
+    fs.unlinkSync(p)
+    console.log(path.relative(ROOT, p) + ' removed (SSR handles all HTML requests)')
+  }
 }
