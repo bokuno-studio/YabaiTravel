@@ -136,3 +136,11 @@ fs.writeFileSync(outputPath, ssrHandler, 'utf-8')
 
 const sizeKB = (Buffer.byteLength(ssrHandler, 'utf-8') / 1024).toFixed(1)
 console.log('api/ssr.js generated (' + sizeKB + ' KB, SSR bundle inlined, env vars replaced)')
+
+// Remove dist/index.html so Vercel doesn't serve it as a static file
+// (all requests should go through api/ssr for SSR)
+const distIndexPath = path.resolve(ROOT, 'dist/index.html')
+if (fs.existsSync(distIndexPath)) {
+  fs.unlinkSync(distIndexPath)
+  console.log('dist/index.html removed (SSR handles all HTML requests)')
+}
