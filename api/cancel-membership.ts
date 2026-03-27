@@ -61,42 +61,58 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         )
         if (cancelRes.ok) {
-          console.log({ subscriptionId: profile.square_subscription_id }, 'Cancelled Square subscription')
+          const cancelData = await cancelRes.json()
+          const subscription = cancelData?.subscription
+          const chargedThroughDate = subscription?.charged_through_date as string | undefined
+
+          // Keep membership active until end of billing period
+          await supabase
+            .from('user_profiles')
+            .update({
+              membership: 'supporter',
+              membership_expires_at: chargedThroughDate || null,
+              updated_at: new Date().toISOString(),
+              // Keep square_subscription_id — needed until period ends
+            })
+            .eq('id', user.id)
+
+          // Mark subscription as pending cancellation
+          const email = user.email
+          if (email) {
+            await supabase
+              .from('subscriptions')
+              .update({
+                status: 'pending_cancellation',
+                current_period_end: chargedThroughDate || null,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('email', email)
+              .eq('status', 'active')
+          }
+
+          console.log({ subscriptionId: profile.square_subscription_id, chargedThroughDate }, 'Square subscription scheduled for cancellation at period end')
         } else {
           const errData = await cancelRes.json().catch(() => ({}))
           console.error({ err: errData }, 'Failed to cancel Square subscription')
+          return res.status(502).json({ error: 'Failed to cancel subscription with payment provider' })
         }
       } catch (squareErr) {
         console.error({ err: squareErr }, 'Failed to cancel Square subscription')
-        // Continue with local cancellation even if Square API fails
+        return res.status(502).json({ error: 'Failed to cancel subscription with payment provider' })
       }
-    }
-
-    // Downgrade membership locally
-    await supabase
-      .from('user_profiles')
-      .update({
-        membership: 'free',
-        membership_expires_at: null,
-        square_subscription_id: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id)
-
-    // Update subscription record
-    const email = user.email
-    if (email) {
+    } else {
+      // No Square subscription — direct downgrade (legacy/manual)
       await supabase
-        .from('subscriptions')
+        .from('user_profiles')
         .update({
-          status: 'cancelled',
+          membership: 'free',
+          membership_expires_at: null,
           updated_at: new Date().toISOString(),
         })
-        .eq('email', email)
-        .eq('status', 'active')
+        .eq('id', user.id)
     }
 
-    console.log({ userId: user.id }, 'Membership cancelled')
+    console.log({ userId: user.id }, 'Membership cancellation processed')
     return res.status(200).json({ data: { success: true } })
   } catch (e) {
     console.error({ err: e }, 'Cancel membership error')

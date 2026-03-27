@@ -193,9 +193,14 @@ function Pricing() {
             <div className="mb-6">
               <span className="text-4xl font-bold">¥1,500</span>
               <span className="text-muted-foreground">
-                {isEn ? ' /month' : ' /月'}
+                {isEn ? ' /month (tax included)' : ' /月（税込）'}
               </span>
             </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              {isEn
+                ? 'Your subscription renews automatically each month. You can cancel anytime from your account settings.'
+                : 'サブスクリプションは毎月自動更新されます。アカウント設定からいつでもキャンセルできます。'}
+            </p>
 
             <ul className="space-y-3">
               {supporterFeatures.map((feature) => (
