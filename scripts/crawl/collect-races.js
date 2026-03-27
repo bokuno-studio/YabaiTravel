@@ -85,6 +85,20 @@ function isJunk(name) {
   return JUNK_NAMES.test(t) || JUNK_PATTERNS.some((p) => p.test(t)) || NON_ENDURANCE_KEYWORDS.test(t)
 }
 
+/** 非イベント URL を除外 */
+const JUNK_URL_PATTERNS = [
+  /\/(results?|classement|palmares|rankings?)(\/|$|\?)/i,
+  /\/(category|tag|categorie|tags|categories)(\/|$|\?)/i,
+  /\/(terms|privacy|legal|cgu|cgv|mentions-legales|contact|about|faq|help|blog(?!\/[a-z])|news|press|sponsors?)(\/|$|\?)/i,
+  /\/(login|signup|register|cart|checkout|account)(\/|$|\?)/i,
+  /\/(archives?|page\/\d+)(\/|$|\?)/i,
+]
+
+function isJunkUrl(url) {
+  if (!url) return false
+  return JUNK_URL_PATTERNS.some((p) => p.test(url))
+}
+
 /** 全角英数→半角変換 */
 function fullwidthToHalfwidth(str) {
   return str.replace(/[\uFF01-\uFF5E]/g, (ch) =>
@@ -303,7 +317,7 @@ async function run() {
   }
 
   // ジャンク除去・重複除去（正規化名で比較）
-  allRaces = allRaces.filter((r) => !isJunk(r.name))
+  allRaces = allRaces.filter((r) => !isJunk(r.name) && !isJunkUrl(r.official_url))
   const seenUrls = new Set()
   const seenNames = new Set()
   allRaces = allRaces.filter((r) => {
