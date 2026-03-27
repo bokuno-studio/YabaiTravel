@@ -5,6 +5,7 @@ import { eventToJsonLd } from '../lib/jsonld'
 import { supabase } from '../lib/supabaseClient'
 import { trackEventDetailView } from '../lib/analytics'
 import { useScrollDepth } from '@/hooks/useScrollDepth'
+import EventComments from '@/components/EventComments'
 import type { Event, Category, AccessRoute, Accommodation } from '../types/event'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -404,6 +405,7 @@ function EventDetail() {
           </Card>
 
           {/* レースレポート・口コミ */}
+          <EventComments eventId={event.id} raceType={event.race_type ?? undefined} isEn={isEn} />
 
           {/* Related races */}
           {relatedEvents.length > 0 && (
@@ -564,6 +566,7 @@ function EventDetail() {
         </div>
 
         {/* レースレポート・口コミ */}
+        <EventComments eventId={event.id} raceType={event.race_type ?? undefined} isEn={isEn} />
 
         {/* 最終更新 */}
         {event.updated_at && (

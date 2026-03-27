@@ -15,7 +15,9 @@ interface EventCommentsProps {
   limit?: number
 }
 
-const COMMENTS_ENABLED = !import.meta.env.PROD || !!import.meta.env.VITE_ENABLE_COMMENTS
+// Phase 1: コメント機能を有効化。Phase 2 で環境変数制御に戻す場合は下記を使用:
+// const COMMENTS_ENABLED = !import.meta.env.PROD || !!import.meta.env.VITE_ENABLE_COMMENTS
+const COMMENTS_ENABLED = true
 
 // Phase 1: 無料開放（Phase 2 で課金復活時に false にする）
 const FREE_COMMENTS = true

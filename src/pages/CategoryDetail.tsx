@@ -16,6 +16,7 @@ import { useFavorites } from '@/hooks/useFavorites'
 import ViewLimitBadge from '@/components/ViewLimitBadge'
 import ViewLimitWall from '@/components/ViewLimitWall'
 import SaveButton from '@/components/SaveButton'
+import EventComments from '@/components/EventComments'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   ExternalLink,
@@ -701,6 +702,12 @@ function CategoryDetail() {
         )}
 
         {/* レースレポート・口コミ */}
+        <EventComments
+          eventId={event.id}
+          categoryId={category.id}
+          raceType={event.race_type ?? undefined}
+          isEn={isEn}
+        />
 
         {/* Related races */}
         {relatedEvents.length > 0 && (
