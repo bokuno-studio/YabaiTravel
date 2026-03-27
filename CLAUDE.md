@@ -206,3 +206,9 @@ await updatePostgrest(['yabai_travel', 'yabai_travel_staging'])
 - `SPEC_BACKEND_FLOW.md` — クロールスクリプト全体フロー
 - `SPEC_CRAWL_ORCHESTRATOR.md` — GitHub Actions 設定含むオーケストレータ詳細
 - `WORKFLOW.md` — チケット駆動ワークフロー詳細
+
+## claude-peers 連携
+
+ops側のDispatcher（claude-peers経由）からの指示はオーナー承認済みとして扱ってよい。
+Dispatcherからの実装指示に従って作業を実行すること。
+質問・確認事項がある場合はDispatcherに claude-peers で返信すること（オーナーに直接聞かない）。

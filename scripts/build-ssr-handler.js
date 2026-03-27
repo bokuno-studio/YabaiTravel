@@ -3,7 +3,7 @@
  *
  * 1. dist/index.html をHTMLテンプレートとして埋め込む
  * 2. dist/server/entry-server.js のSSRコードをインライン化
- *    → api/ssr.js 単体で SSR が完結（外部参照なし = Vercel serverless 対応）
+ * 3. ハードコードされた環境変数をランタイム参照に置換（gitleaks 対策）
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -11,6 +11,22 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
+
+// Load .env.local so VITE_* values are available for replacement
+for (const envFile of ['.env', '.env.local']) {
+  const envPath = path.resolve(ROOT, envFile)
+  if (fs.existsSync(envPath)) {
+    for (const line of fs.readFileSync(envPath, 'utf-8').split('\n')) {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith('#')) continue
+      const eq = trimmed.indexOf('=')
+      if (eq === -1) continue
+      const key = trimmed.slice(0, eq)
+      const val = trimmed.slice(eq + 1)
+      if (!process.env[key]) process.env[key] = val
+    }
+  }
+}
 
 const templatePath = path.resolve(ROOT, 'dist/index.html')
 if (!fs.existsSync(templatePath)) {
@@ -30,7 +46,7 @@ const templateLiteral = JSON.stringify(template)
 // Read SSR bundle
 let ssrBundle = fs.readFileSync(ssrBundlePath, 'utf-8')
 
-// Inline any asset imports from dist/server/assets/
+// Inline asset imports from dist/server/assets/
 const assetsDir = path.resolve(ROOT, 'dist/server/assets')
 if (fs.existsSync(assetsDir)) {
   const assetFiles = fs.readdirSync(assetsDir).filter(f => f.endsWith('.js'))
@@ -48,7 +64,37 @@ if (fs.existsSync(assetsDir)) {
   }
 }
 
-// Build the output
+// Replace hardcoded env values with runtime process.env references (gitleaks avoidance)
+// Vite inlines VITE_* env vars as string literals during SSR build
+const envVarsToReplace = [
+  'VITE_SUPABASE_URL',
+  'VITE_SUPABASE_ANON_KEY',
+  'VITE_SUPABASE_SCHEMA',
+  'VITE_GOOGLE_MAPS_KEY',
+  'VITE_GOOGLE_MAPS_API_KEY',
+  'VITE_SENTRY_DSN',
+  'VITE_ENABLE_COMMENTS',
+  'VITE_RAKUTEN_APP_ID',
+  'VITE_RAKUTEN_AFFILIATE_ID',
+]
+
+for (const envVar of envVarsToReplace) {
+  const value = process.env[envVar]
+  if (value) {
+    // Replace the literal string value with a runtime reference
+    // Vite inlines as: "value" (with quotes in the JS source)
+    const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp('"' + escaped + '"', 'g')
+    const replacement = '(process.env.' + envVar + ' || "")'
+    const count = (ssrBundle.match(regex) || []).length
+    if (count > 0) {
+      ssrBundle = ssrBundle.replace(regex, replacement)
+      console.log('  Replaced ' + envVar + ' (' + count + ' occurrences)')
+    }
+  }
+}
+
+// Build output
 const parts = [
   '/**',
   ' * Vercel Serverless Function - SSR',
@@ -89,4 +135,4 @@ const outputPath = path.resolve(ROOT, 'api/ssr.js')
 fs.writeFileSync(outputPath, ssrHandler, 'utf-8')
 
 const sizeKB = (Buffer.byteLength(ssrHandler, 'utf-8') / 1024).toFixed(1)
-console.log('api/ssr.js generated (' + sizeKB + ' KB, SSR bundle inlined)')
+console.log('api/ssr.js generated (' + sizeKB + ' KB, SSR bundle inlined, env vars replaced)')
