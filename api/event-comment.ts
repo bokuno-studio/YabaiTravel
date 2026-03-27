@@ -62,32 +62,53 @@ async function handlePost(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'payment_id is required' })
     }
 
-    // Rate limiting for free comments
+    // Authentication check for free comments
+    if (isFreeComment) {
+      const authHeader = req.headers.authorization
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Authentication required' })
+      }
+      // Verify token via Supabase
+      const token = authHeader.slice(7)
+      const { data: { user: authUser }, error: authErr } = await supabase.auth.getUser(token)
+      if (authErr || !authUser) {
+        return res.status(401).json({ error: 'Invalid or expired token' })
+      }
+    }
+
+    // Rate limiting for free comments (keyed by user_id or IP)
     if (isFreeComment) {
       const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
         || req.headers['x-real-ip'] as string
         || 'unknown'
+      const rateLimitKey = user_id || clientIp
 
-      // 60-second cooldown (by IP)
+      // 60-second cooldown
       const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString()
-      const { count: recentCount } = await supabase
+      let recentQuery = supabase
         .from('event_comments')
         .select('id', { count: 'exact', head: true })
         .eq('payment_id', 'free-phase1')
         .gte('created_at', oneMinuteAgo)
-        .eq('display_name', display_name || '')
+      recentQuery = user_id
+        ? recentQuery.eq('user_id', rateLimitKey)
+        : recentQuery.eq('display_name', display_name || '')
+      const { count: recentCount } = await recentQuery
       if (recentCount != null && recentCount > 0) {
         return res.status(429).json({ error: 'Please wait 60 seconds between posts' })
       }
 
-      // Daily limit: 3 comments per day (by event_id + IP approximation via display_name)
+      // Daily limit: 3 comments per day
       const today = new Date().toISOString().slice(0, 10)
-      const { count: dailyCount } = await supabase
+      let dailyQuery = supabase
         .from('event_comments')
         .select('id', { count: 'exact', head: true })
         .eq('payment_id', 'free-phase1')
         .gte('created_at', `${today}T00:00:00Z`)
-        .eq('display_name', display_name || '')
+      dailyQuery = user_id
+        ? dailyQuery.eq('user_id', rateLimitKey)
+        : dailyQuery.eq('display_name', display_name || '')
+      const { count: dailyCount } = await dailyQuery
       if (dailyCount != null && dailyCount >= 3) {
         return res.status(429).json({ error: 'Daily limit reached (3 comments/day)' })
       }

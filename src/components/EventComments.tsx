@@ -2,7 +2,9 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Loader2, Send } from 'lucide-react'
+import { useAuth } from '@/lib/auth'
 import type { EventComment } from '@/types/event'
 
 interface EventCommentsProps {
@@ -19,6 +21,7 @@ const COMMENTS_ENABLED = !import.meta.env.PROD || !!import.meta.env.VITE_ENABLE_
 const FREE_COMMENTS = true
 
 function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventCommentsProps) {
+  const { user, session } = useAuth()
   const [comments, setComments] = useState<EventComment[]>([])
   const [loading, setLoading] = useState(true)
   const [content, setContent] = useState('')
@@ -72,7 +75,7 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePublish = async () => {
-    if (!content.trim() || !eventId) return
+    if (!content.trim() || !eventId || !user) return
     setSubmitting(true)
     setError(null)
     try {
@@ -82,13 +85,17 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
         content: content.trim(),
         display_name: displayName.trim() || null,
         race_type: raceType || null,
+        user_id: user.id,
       }
 
       if (FREE_COMMENTS) {
-        // Phase 1: 直接投稿（無料）
+        // Phase 1: 直接投稿（無料、認証付き）
         const res = await fetch('/api/event-comment', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
           body: JSON.stringify({ ...commentData, payment_id: 'free-phase1' }),
         })
         if (!res.ok) {
@@ -99,7 +106,7 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
         setDisplayName('')
         fetchComments()
       } else {
-        // Phase 2: 課金フロー（$1/件）
+        // Phase 2: 課金フロー
         const res = await fetch('/api/square-checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -143,9 +150,14 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
   return (
     <Card className="mb-4 mt-6">
       <CardHeader>
-        <CardTitle className="text-base">
-          {isEn ? 'Race Reports' : 'レースレポート・口コミ'}
-        </CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-base">
+            {isEn ? 'Race Reports' : 'レースレポート・口コミ'}
+          </CardTitle>
+          <Badge variant="outline" className="text-[10px] border-amber-300 bg-amber-50 text-amber-700">
+            {isEn ? 'Beta — This feature is in testing' : 'β版 — この機能はテスト中です'}
+          </Badge>
+        </div>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -174,8 +186,14 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
           </div>
         )}
 
-        {canPost && (
+        {canPost && user ? (
           <div className="mt-6 border-t border-border pt-4">
+            {/* Guideline */}
+            <p className="mb-3 text-xs text-muted-foreground">
+              {isEn
+                ? 'Share your race experience or tips. Spam and abusive content will be removed.'
+                : 'このレースに参加した体験や感想を共有してください。誹謗中傷・スパムは削除されます。'}
+            </p>
             <div className="space-y-3">
               <input
                 type="text"
@@ -210,7 +228,13 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
               </div>
             </div>
           </div>
-        )}
+        ) : canPost ? (
+          <div className="mt-6 border-t border-border pt-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              {isEn ? 'Sign in to post a race report.' : 'ログインしてレースレポートを投稿しましょう。'}
+            </p>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   )
