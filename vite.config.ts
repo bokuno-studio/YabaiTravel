@@ -13,7 +13,7 @@ export default defineConfig(({ isSsrBuild }) => ({
   },
   build: {
     rollupOptions: {
-      output: isSsrBuild ? {} : {
+      output: isSsrBuild ? { inlineDynamicImports: true } : {
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
           'vendor-supabase': ['@supabase/supabase-js'],

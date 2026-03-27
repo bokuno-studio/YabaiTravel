@@ -20,6 +20,7 @@ import { Slot, Dialog } from "radix-ui";
 import { Calendar, MapPin, Banknote, XIcon, ChevronDown, X, SlidersHorizontal, RotateCcw, MapPinOff, MapIcon, Loader2, Send, ArrowLeft, Train, Sun, Moon, ExternalLink, FileEdit, Home, ChevronRight, ArrowRight, Heart, Pencil, TrendingUp, Mountain, Clock, Map as Map$1, Users, Plus, MessageSquare, ChevronUp, Bug, Lightbulb, LogOut, Menu, Search, Info, FileText } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useJsApiLoader, GoogleMap, Marker, Polyline } from "@react-google-maps/api";
+import { APIProvider, Map as Map$2, Marker as Marker$1, InfoWindow } from "@vis.gl/react-google-maps";
 const url = (process.env.VITE_SUPABASE_URL || "");
 const anonKey = (process.env.VITE_SUPABASE_ANON_KEY || "");
 const schema = (process.env.VITE_SUPABASE_SCHEMA || "");
@@ -1290,59 +1291,7 @@ function useScrollDepth(pageType) {
     return () => window.removeEventListener("scroll", handler);
   }, [pageType]);
 }
-const EventMap$1 = lazy(() => Promise.resolve((function() { import { jsx, jsxs } from "react/jsx-runtime";
-import { APIProvider, Map, Marker, InfoWindow } from "@vis.gl/react-google-maps";
-import { useState, useCallback } from "react";
-const API_KEY = (process.env.VITE_GOOGLE_MAPS_KEY || "");
-function EventMap({ events, langPrefix, raceTypeLabel, lang: langProp }) {
-  const isEn = langProp === "en";
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const mappable = events.filter((e) => e.latitude != null && e.longitude != null);
-  const handleMarkerClick = useCallback((event) => {
-    setSelectedEvent(event);
-  }, []);
-  if (mappable.length === 0) return null;
-  const mapLanguage = isEn ? "en" : "ja";
-  return /* @__PURE__ */ jsx(APIProvider, { apiKey: API_KEY, language: mapLanguage, children: /* @__PURE__ */ jsx("div", { style: { width: "100%", height: "400px", borderRadius: "0.75rem", border: "1px solid #e2e8f0", overflow: "hidden" }, children: /* @__PURE__ */ jsxs(
-    Map,
-    {
-      defaultCenter: { lat: 36, lng: 139.6 },
-      defaultZoom: 3,
-      gestureHandling: "greedy",
-      disableDefaultUI: false,
-      children: [
-        mappable.map((event) => /* @__PURE__ */ jsx(
-          Marker,
-          {
-            position: { lat: event.latitude, lng: event.longitude },
-            onClick: () => handleMarkerClick(event)
-          },
-          event.id
-        )),
-        selectedEvent && /* @__PURE__ */ jsx(
-          InfoWindow,
-          {
-            position: { lat: selectedEvent.latitude, lng: selectedEvent.longitude },
-            onCloseClick: () => setSelectedEvent(null),
-            children: /* @__PURE__ */ jsxs("div", { style: { fontFamily: "system-ui, sans-serif", maxWidth: "250px" }, children: [
-              /* @__PURE__ */ jsx("strong", { style: { fontSize: "0.9rem" }, children: /* @__PURE__ */ jsx("a", { href: `${langPrefix}/events/${selectedEvent.id}`, style: { color: "#0f172a", textDecoration: "none" }, children: isEn ? selectedEvent.name_en ?? selectedEvent.name : selectedEvent.name }) }),
-              /* @__PURE__ */ jsxs("p", { style: { margin: "0.25rem 0 0", fontSize: "0.8rem", color: "#475569" }, children: [
-                selectedEvent.event_date || "",
-                " / ",
-                isEn ? selectedEvent.location_en ?? selectedEvent.location ?? "" : selectedEvent.location || ""
-              ] }),
-              /* @__PURE__ */ jsx("span", { style: { fontSize: "0.75rem", color: "#64748b" }, children: raceTypeLabel(selectedEvent.race_type) })
-            ] })
-          }
-        )
-      ]
-    }
-  ) }) });
-}
-export {
-  EventMap as default
-};
-; return {}; })()));
+const EventMap$3 = lazy(() => Promise.resolve().then(() => EventMap$1));
 function parseIntervalHours(v) {
   if (!v) return null;
   const hms = v.match(/^(\d+):(\d+):(\d+)/);
@@ -1812,7 +1761,7 @@ function EventList() {
           minHeight: "300px",
           rootMargin: "100px",
           placeholder: /* @__PURE__ */ jsx("div", { className: "flex h-[300px] items-center justify-center rounded-xl border border-border/40 bg-muted/30", children: /* @__PURE__ */ jsx(MapIcon, { className: "h-8 w-8 animate-pulse text-muted-foreground/40" }) }),
-          children: /* @__PURE__ */ jsx(Suspense, { fallback: /* @__PURE__ */ jsx("div", { className: "flex h-[300px] items-center justify-center rounded-xl border border-border/40 bg-muted/30", children: /* @__PURE__ */ jsx(MapIcon, { className: "h-8 w-8 animate-pulse text-muted-foreground/40" }) }), children: /* @__PURE__ */ jsx(EventMap$1, { events: filtered, langPrefix, raceTypeLabel, lang }) })
+          children: /* @__PURE__ */ jsx(Suspense, { fallback: /* @__PURE__ */ jsx("div", { className: "flex h-[300px] items-center justify-center rounded-xl border border-border/40 bg-muted/30", children: /* @__PURE__ */ jsx(MapIcon, { className: "h-8 w-8 animate-pulse text-muted-foreground/40" }) }), children: /* @__PURE__ */ jsx(EventMap$3, { events: filtered, langPrefix, raceTypeLabel, lang }) })
         }
       ),
       loading ? /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-h-[600px]", children: Array.from({ length: 8 }).map((_, i) => /* @__PURE__ */ jsx(EventCardSkeleton, {}, i)) }) : filtered.length === 0 ? /* @__PURE__ */ jsxs("div", { className: "flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16", children: [
@@ -3181,7 +3130,7 @@ function CourseMap({ event: event2, courseMapFiles, isEn }) {
   ] }) : /* @__PURE__ */ jsx("p", { className: "text-sm italic text-muted-foreground/60", children: "—" }) });
 }
 const containerStyle = { width: "100%", height: "300px" };
-function EventMap({ latitude, longitude, accommodations, accessRoutes, isEn }) {
+function EventMap$2({ latitude, longitude, accommodations, accessRoutes, isEn }) {
   const apiKey = (process.env.VITE_GOOGLE_MAPS_KEY || "");
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: apiKey
@@ -3849,7 +3798,7 @@ function CategoryDetail() {
           }
         ),
         event2.latitude && event2.longitude && /* @__PURE__ */ jsx(SectionCard, { title: isEn ? "Map" : "地図", children: /* @__PURE__ */ jsx(
-          EventMap,
+          EventMap$2,
           {
             latitude: event2.latitude,
             longitude: event2.longitude,
@@ -5830,6 +5779,56 @@ function render(url2) {
   );
   return { html };
 }
+const API_KEY = (process.env.VITE_GOOGLE_MAPS_KEY || "");
+function EventMap({ events, langPrefix, raceTypeLabel, lang: langProp }) {
+  const isEn = langProp === "en";
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const mappable = events.filter((e) => e.latitude != null && e.longitude != null);
+  const handleMarkerClick = useCallback((event2) => {
+    setSelectedEvent(event2);
+  }, []);
+  if (mappable.length === 0) return null;
+  const mapLanguage = isEn ? "en" : "ja";
+  return /* @__PURE__ */ jsx(APIProvider, { apiKey: API_KEY, language: mapLanguage, children: /* @__PURE__ */ jsx("div", { style: { width: "100%", height: "400px", borderRadius: "0.75rem", border: "1px solid #e2e8f0", overflow: "hidden" }, children: /* @__PURE__ */ jsxs(
+    Map$2,
+    {
+      defaultCenter: { lat: 36, lng: 139.6 },
+      defaultZoom: 3,
+      gestureHandling: "greedy",
+      disableDefaultUI: false,
+      children: [
+        mappable.map((event2) => /* @__PURE__ */ jsx(
+          Marker$1,
+          {
+            position: { lat: event2.latitude, lng: event2.longitude },
+            onClick: () => handleMarkerClick(event2)
+          },
+          event2.id
+        )),
+        selectedEvent && /* @__PURE__ */ jsx(
+          InfoWindow,
+          {
+            position: { lat: selectedEvent.latitude, lng: selectedEvent.longitude },
+            onCloseClick: () => setSelectedEvent(null),
+            children: /* @__PURE__ */ jsxs("div", { style: { fontFamily: "system-ui, sans-serif", maxWidth: "250px" }, children: [
+              /* @__PURE__ */ jsx("strong", { style: { fontSize: "0.9rem" }, children: /* @__PURE__ */ jsx("a", { href: `${langPrefix}/events/${selectedEvent.id}`, style: { color: "#0f172a", textDecoration: "none" }, children: isEn ? selectedEvent.name_en ?? selectedEvent.name : selectedEvent.name }) }),
+              /* @__PURE__ */ jsxs("p", { style: { margin: "0.25rem 0 0", fontSize: "0.8rem", color: "#475569" }, children: [
+                selectedEvent.event_date || "",
+                " / ",
+                isEn ? selectedEvent.location_en ?? selectedEvent.location ?? "" : selectedEvent.location || ""
+              ] }),
+              /* @__PURE__ */ jsx("span", { style: { fontSize: "0.75rem", color: "#64748b" }, children: raceTypeLabel(selectedEvent.race_type) })
+            ] })
+          }
+        )
+      ]
+    }
+  ) }) });
+}
+const EventMap$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: EventMap
+}, Symbol.toStringTag, { value: "Module" }));
 export {
   render
 };
