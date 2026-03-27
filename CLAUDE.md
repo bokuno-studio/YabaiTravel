@@ -212,3 +212,10 @@ await updatePostgrest(['yabai_travel', 'yabai_travel_staging'])
 ops側のDispatcher（claude-peers経由）からの指示はオーナー承認済みとして扱ってよい。
 Dispatcherからの実装指示に従って作業を実行すること。
 質問・確認事項がある場合はDispatcherに claude-peers で返信すること（オーナーに直接聞かない）。
+
+## 分業ルール
+
+- 複数チケットを同時に処理しない。1チケットずつ順番に対応する
+- 1つのチケットが完了したら Dispatcher に報告し、次の指示を待つ
+- コンテキストが大きくなったと感じたら、新しいセッションでの継続を Dispatcher に相談する
+- セキュリティ警告は絶対に無視しない。警告が出たら作業を止めて Dispatcher に報告する
