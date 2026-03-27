@@ -24,6 +24,9 @@ dist-ssr
 *.sln
 *.sw?
 
+# SSR handler（ビルド時自動生成、VITE_ 環境変数がインライン化されるため）
+api/ssr.js
+
 # テンプレート（クローン元はそのまま保持）
 spec-driven-root
 
