@@ -16,6 +16,14 @@ function sendEvent(eventName: string, params?: Record<string, unknown>) {
   }
 }
 
+/** SPA ページ遷移時のページビュー送信 */
+export function trackPageView(pagePath: string, pageTitle?: string) {
+  sendEvent('page_view', {
+    page_path: pagePath,
+    page_title: pageTitle || document.title,
+  })
+}
+
 /** CTAボタンクリック */
 export function trackCtaClick(ctaName: string, ctaLocation: string, ctaVariant = 'default') {
   sendEvent('cta_click', { cta_name: ctaName, cta_location: ctaLocation, cta_variant: ctaVariant })

@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, Outlet, useParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useRef } from 'react'
+import { trackPageView } from './lib/analytics'
 import SideMenu from './components/SideMenu'
 import FeedbackWidget from './components/FeedbackWidget'
 import LoadingSpinner from './components/LoadingSpinner'
@@ -78,6 +79,18 @@ function LegacyRedirect() {
 
 /** ルート定義（BrowserRouter / StaticRouter の中で使う） */
 function AppRoutes() {
+  const location = useLocation()
+  const isFirstRender = useRef(true)
+
+  useEffect(() => {
+    // Skip initial render (handled by gtag config or SSR)
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    trackPageView(location.pathname + location.search)
+  }, [location.pathname, location.search])
+
   return (
     <Routes>
       <Route path="/:lang" element={<LangLayout />}>

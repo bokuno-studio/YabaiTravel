@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './lib/auth'
 import { initSentry } from './lib/sentry'
 import { captureUtmParams } from './lib/utm'
+import { initWebVitals } from './lib/web-vitals'
 import ErrorBoundary from './components/ErrorBoundary'
 import './index.css'
 import './i18n'
@@ -11,6 +12,7 @@ import AppRoutes from './App'
 
 initSentry()
 captureUtmParams()
+initWebVitals()
 
 const rootElement = document.getElementById('root')!
 const app = (
