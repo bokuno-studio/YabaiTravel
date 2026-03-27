@@ -1,12 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import crypto from 'crypto'
 
-const SQUARE_BASE_URL = process.env.SQUARE_ENVIRONMENT === 'sandbox'
-  ? 'https://connect.squareupsandbox.com'
-  : 'https://connect.squareup.com'
+function getSquareBaseUrl() {
+  return (process.env.SQUARE_ENVIRONMENT || '').trim() === 'sandbox'
+    ? 'https://connect.squareupsandbox.com'
+    : 'https://connect.squareup.com'
+}
 
 async function squareRequest(path: string, body: Record<string, unknown>) {
-  const accessToken = process.env.SQUARE_ACCESS_TOKEN
+  const SQUARE_BASE_URL = getSquareBaseUrl()
+  const accessToken = (process.env.SQUARE_ACCESS_TOKEN || '').trim()
   if (!accessToken) {
     throw new Error('SQUARE_ACCESS_TOKEN is not configured')
   }
@@ -14,7 +17,7 @@ async function squareRequest(path: string, body: Record<string, unknown>) {
   const res = await fetch(`${SQUARE_BASE_URL}${path}`, {
     method: 'POST',
     headers: {
-      'Square-Version': '2024-11-20',
+      'Square-Version': '2025-01-23',
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
@@ -49,7 +52,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const langPrefix = lang === 'en' ? '/en' : '/ja'
     const baseUrl = 'https://yabai.travel'
     const idempotencyKey = crypto.randomUUID()
-    const locationId = process.env.SQUARE_LOCATION_ID!
+    const locationId = (process.env.SQUARE_LOCATION_ID || '').trim()
+    const accessTokenTrimmed = (process.env.SQUARE_ACCESS_TOKEN || '').trim()
+
+    // Debug: log env var lengths to detect whitespace/newline contamination
+    console.log('Square checkout debug:', {
+      mode,
+      locationIdLength: locationId.length,
+      locationIdRaw: process.env.SQUARE_LOCATION_ID?.length,
+      tokenLength: accessTokenTrimmed.length,
+      tokenRaw: process.env.SQUARE_ACCESS_TOKEN?.length,
+      env: process.env.SQUARE_ENVIRONMENT || '(not set, using production)',
+      baseUrl: getSquareBaseUrl(),
+    })
 
     if (mode === 'donation') {
       const unitAmount = amount || 500 // JPY

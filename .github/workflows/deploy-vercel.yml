@@ -69,12 +69,12 @@ jobs:
 
       - name: Set Vercel environment variables
         run: |
-          echo "${{ secrets.RAKUTEN_APP_ID }}" | npx vercel env add RAKUTEN_APP_ID production --token=$VERCEL_TOKEN --force 2>/dev/null || true
-          echo "${{ secrets.RAKUTEN_AFFILIATE_ID }}" | npx vercel env add RAKUTEN_AFFILIATE_ID production --token=$VERCEL_TOKEN --force 2>/dev/null || true
-          echo "${{ secrets.RAKUTEN_APP_SECRET }}" | npx vercel env add RAKUTEN_ACCESS_KEY production --token=$VERCEL_TOKEN --force 2>/dev/null || true
-          echo "${{ secrets.SQUARE_ACCESS_TOKEN }}" | npx vercel env add SQUARE_ACCESS_TOKEN production --token=$VERCEL_TOKEN --force 2>/dev/null || true
-          echo "${{ secrets.SQUARE_LOCATION_ID }}" | npx vercel env add SQUARE_LOCATION_ID production --token=$VERCEL_TOKEN --force 2>/dev/null || true
-          echo "${{ secrets.SQUARE_WEBHOOK_SIGNATURE_KEY }}" | npx vercel env add SQUARE_WEBHOOK_SIGNATURE_KEY production --token=$VERCEL_TOKEN --force 2>/dev/null || true
+          printf '%s' "${{ secrets.RAKUTEN_APP_ID }}" | npx vercel env add RAKUTEN_APP_ID production --token=$VERCEL_TOKEN --force 2>/dev/null || true
+          printf '%s' "${{ secrets.RAKUTEN_AFFILIATE_ID }}" | npx vercel env add RAKUTEN_AFFILIATE_ID production --token=$VERCEL_TOKEN --force 2>/dev/null || true
+          printf '%s' "${{ secrets.RAKUTEN_APP_SECRET }}" | npx vercel env add RAKUTEN_ACCESS_KEY production --token=$VERCEL_TOKEN --force 2>/dev/null || true
+          printf '%s' "${{ secrets.SQUARE_ACCESS_TOKEN }}" | npx vercel env add SQUARE_ACCESS_TOKEN production --token=$VERCEL_TOKEN --force 2>/dev/null || true
+          printf '%s' "${{ secrets.SQUARE_LOCATION_ID }}" | npx vercel env add SQUARE_LOCATION_ID production --token=$VERCEL_TOKEN --force 2>/dev/null || true
+          printf '%s' "${{ secrets.SQUARE_WEBHOOK_SIGNATURE_KEY }}" | npx vercel env add SQUARE_WEBHOOK_SIGNATURE_KEY production --token=$VERCEL_TOKEN --force 2>/dev/null || true
 
       - name: Deploy to Vercel
         run: npx vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
