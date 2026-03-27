@@ -341,7 +341,14 @@ function NewFeedbackForm({
           <X className="size-5" />
         </button>
 
-        <h2 className="text-lg font-semibold mb-4">{isEn ? 'Post Feedback' : 'フィードバックを投稿'}</h2>
+        <h2 className="text-lg font-semibold mb-2">{isEn ? 'Post Feedback' : 'フィードバックを投稿'}</h2>
+
+        {/* Guideline */}
+        <p className="mb-4 text-sm text-muted-foreground">
+          {isEn
+            ? 'Share your feedback or improvement ideas about races.'
+            : 'レースに関するフィードバックや改善提案を共有してください。'}
+        </p>
 
         {/* Type selector */}
         <div className="flex gap-2 mb-4">

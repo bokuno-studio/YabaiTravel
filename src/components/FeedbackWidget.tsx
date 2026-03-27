@@ -95,6 +95,13 @@ function FeedbackWidget() {
               </div>
             ) : (
               <>
+                {/* Guideline */}
+                <p className="mb-3 text-xs text-muted-foreground">
+                  {isEn
+                    ? 'Share your feedback or improvement ideas about races.'
+                    : 'レースに関するフィードバックや改善提案を共有してください。'}
+                </p>
+
                 {/* Type selector */}
                 <div className="flex gap-2 mb-3">
                   <button
