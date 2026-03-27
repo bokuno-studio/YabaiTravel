@@ -1,5 +1,5 @@
 import { renderToString } from 'react-dom/server'
-import { StaticRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { StaticRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { AuthProvider } from './lib/auth'
 import ErrorBoundary from './components/ErrorBoundary'
 import './i18n-server'
@@ -20,7 +20,7 @@ import { SidebarFilterProvider } from './contexts/SidebarFilterContext'
 import { SidebarStatsProvider } from './contexts/SidebarStatsContext'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useEffect, Suspense } from 'react'
+import { useEffect } from 'react'
 
 // eslint-disable-next-line react-refresh/only-export-components
 function SsrLangLayout() {
@@ -38,9 +38,7 @@ function SsrLangLayout() {
       <SidebarStatsProvider>
         <SideMenu />
         <div className="min-[960px]:ml-60 min-[960px]:pl-6">
-          <Suspense fallback={null}>
-            {/* SSR outlet — react-router renders matched child here */}
-          </Suspense>
+          <Outlet />
         </div>
       </SidebarStatsProvider>
     </SidebarFilterProvider>
