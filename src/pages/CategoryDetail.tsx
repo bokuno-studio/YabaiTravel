@@ -16,6 +16,7 @@ import { useFavorites } from '@/hooks/useFavorites'
 import ViewLimitBadge from '@/components/ViewLimitBadge'
 import ViewLimitWall from '@/components/ViewLimitWall'
 import SaveButton from '@/components/SaveButton'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   ExternalLink,
   FileEdit,
@@ -23,6 +24,10 @@ import {
   MapPin,
   Users,
   ChevronRight,
+  Train,
+  Sun,
+  Moon,
+  ArrowRight,
 } from 'lucide-react'
 
 import RaceSpecs from '@/components/category/RaceSpecs'
@@ -108,6 +113,7 @@ function CategoryDetail() {
   const [categories, setCategories] = useState<Category[]>([])
   const [courseMapFiles, setCourseMapFiles] = useState<CourseMapFile[]>([])
   const [pastEditions, setPastEditions] = useState<Array<{ event: Event; courseMaps: CourseMapFile[]; categories: Category[] }>>([])
+  const [relatedEvents, setRelatedEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { isFavorite, toggle: toggleFavorite } = useFavorites()
@@ -188,6 +194,23 @@ function CategoryDetail() {
     fetchData()
   }, [eventId, categoryId])
 
+  // Fetch related events (same race_type, limit 3)
+  useEffect(() => {
+    if (!event?.race_type || !event.id) return
+    async function fetchRelated() {
+      const { data } = await supabase
+        .from('events')
+        .select('*')
+        .eq('race_type', event!.race_type!)
+        .neq('id', event!.id)
+        .not('location', 'is', null)
+        .order('event_date', { ascending: true })
+        .limit(3)
+      setRelatedEvents(data ?? [])
+    }
+    fetchRelated()
+  }, [event?.id, event?.race_type])
+
   const stayStatusLabel = (s: StayStatus | null) => {
     if (!s) return null
     if (isEn) {
@@ -210,6 +233,40 @@ function CategoryDetail() {
     day_trip: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     pre_stay_required: 'bg-orange-50 text-orange-700 border-orange-200',
     post_stay_recommended: 'bg-violet-50 text-violet-700 border-violet-200',
+  }
+
+  /** Format interval string (e.g. "03:30:00") to human readable */
+  const formatTimeEstimate = (v: string | null): string | null => {
+    if (!v) return null
+    const hms = v.match(/^(\d+):(\d+):(\d+)/)
+    if (hms) {
+      const h = parseInt(hms[1], 10)
+      const min = parseInt(hms[2], 10)
+      if (isEn) {
+        const parts = []
+        if (h > 0) parts.push(`${h}h`)
+        if (min > 0) parts.push(`${min}m`)
+        return parts.join('') || v
+      }
+      const parts = []
+      if (h > 0) parts.push(`${h}時間`)
+      if (min > 0) parts.push(`${min}分`)
+      return parts.join('') || v
+    }
+    const hourMatch = v.match(/(\d+)\s*hour/)
+    const minMatch = v.match(/(\d+)\s*minute/)
+    if (hourMatch || minMatch) {
+      const parts = []
+      if (isEn) {
+        if (hourMatch) parts.push(`${parseInt(hourMatch[1], 10)}h`)
+        if (minMatch) parts.push(`${parseInt(minMatch[1], 10)}m`)
+      } else {
+        if (hourMatch) parts.push(`${parseInt(hourMatch[1], 10)}時間`)
+        if (minMatch) parts.push(`${parseInt(minMatch[1], 10)}分`)
+      }
+      return parts.join('')
+    }
+    return v
   }
 
   const raceTypeLabel = (rt: string | null) => {
@@ -314,6 +371,8 @@ function CategoryDetail() {
   const returnRoute = isEn && venueAccessRoute ? undefined : tokyoReturn
   const sameStartGoal = isEn && venueAccessRoute ? true : (!tokyoReturn || (tokyoOutbound?.route_detail === tokyoReturn?.route_detail))
   const stayStatus = category.stay_status ?? event.stay_status
+  const travelTime = formatTimeEstimate(tokyoOutbound?.total_time_estimate ?? null)
+  const isDayTrip = stayStatus === 'day_trip'
 
   const dateDisplay = event.event_date_end && event.event_date_end !== event.event_date
     ? `${event.event_date}〜${event.event_date_end}`
@@ -353,12 +412,12 @@ function CategoryDetail() {
       <meta name="description" content={`${displayName} ${displayCategoryName}${isEn ? ' - entry fee, access, accommodation, mandatory gear' : 'コースの参加費・アクセス・宿泊・必携品をまとめてチェック。'}`} />
       <meta property="og:title" content={`${displayName} ${displayCategoryName} | yabai.travel`} />
       <meta property="og:description" content={`${displayName} ${displayCategoryName}${isEn ? ' - entry fee, access, accommodation, mandatory gear' : 'コースの参加費・アクセス・宿泊・必携品をまとめてチェック。'}`} />
-      <meta property="og:url" content={`https://yabai.travel/ja/events/${event.id}/categories/${category.id}`} />
+      <meta property="og:url" content={`https://yabai.travel${location.pathname}`} />
       <link rel="canonical" href={`https://yabai.travel${location.pathname}`} />
-      <link rel="alternate" hrefLang="ja" href={`https://yabai.travel${location.pathname.replace(/^\/(ja|en)/, '/ja')}`} />
-      <link rel="alternate" hrefLang="en" href={`https://yabai.travel${location.pathname.replace(/^\/(ja|en)/, '/en')}`} />
-      <link rel="alternate" hrefLang="x-default" href={`https://yabai.travel${location.pathname.replace(/^\/(ja|en)/, '/en')}`} />
-      <script type="application/ld+json">{JSON.stringify(categoryToJsonLd(event, category))}</script>
+      <link rel="alternate" hrefLang="ja" href={`https://yabai.travel/ja/events/${event.id}/categories/${category.id}`} />
+      <link rel="alternate" hrefLang="en" href={`https://yabai.travel/en/events/${event.id}/categories/${category.id}`} />
+      <link rel="alternate" hrefLang="x-default" href={`https://yabai.travel/en/events/${event.id}/categories/${category.id}`} />
+      <script type="application/ld+json">{JSON.stringify(categoryToJsonLd(event, category, isEn))}</script>
       <div className="mx-auto max-w-4xl px-4 py-6 md:px-6">
         {/* Breadcrumb */}
         <div className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
@@ -378,6 +437,13 @@ function CategoryDetail() {
           <ChevronRight className="h-3.5 w-3.5" />
           <span className="text-foreground">{displayCategoryName}</span>
         </div>
+
+        {/* Service tagline */}
+        <p className="mb-4 text-xs text-muted-foreground/70">
+          {isEn
+            ? 'Find endurance races in Japan \u2014 access, accommodation, costs all in one place'
+            : '日本のエンデュランスレースを探して、旅行計画まで。'}
+        </p>
 
         {/* Hero */}
         <div className="mb-8">
@@ -403,13 +469,25 @@ function CategoryDetail() {
             )}
           </div>
 
-          {/* Badges */}
+          {/* Value badges */}
           <div className="mt-3 flex flex-wrap gap-2">
+            {travelTime && (
+              <Badge variant="outline" className="border border-sky-200 bg-sky-50 text-xs text-sky-700">
+                <Train className="mr-1 h-3 w-3" />
+                {isEn ? `Tokyo Station \u2192 ${travelTime}` : `東京駅 \u2192 ${travelTime}`}
+              </Badge>
+            )}
             {stayStatus && (
               <Badge
                 variant="outline"
-                className={cn('border text-xs', stayStatusColors[stayStatus])}
+                className={cn(
+                  'border text-xs',
+                  isDayTrip
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : stayStatusColors[stayStatus]
+                )}
               >
+                {isDayTrip ? <Sun className="mr-1 h-3 w-3" /> : <Moon className="mr-1 h-3 w-3" />}
                 {stayStatusLabel(stayStatus)}
               </Badge>
             )}
@@ -623,6 +701,61 @@ function CategoryDetail() {
         )}
 
         {/* レースレポート・口コミ */}
+
+        {/* Related races */}
+        {relatedEvents.length > 0 && (
+          <Card className="mb-4 mt-6">
+            <CardHeader>
+              <CardTitle className="text-base">
+                {isEn ? 'Related races' : '関連レース'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {relatedEvents.map((re) => {
+                  const reName = isEn ? (re.name_en ?? re.name) : re.name
+                  const reLoc = isEn ? (re.location_en ?? re.location) : re.location
+                  return (
+                    <Link
+                      key={re.id}
+                      to={`${langPrefix}/events/${re.id}`}
+                      className="flex items-center justify-between rounded-lg border border-border/60 p-3 no-underline transition-colors hover:border-primary/40 hover:bg-primary/5"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground">{reName}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                          {re.event_date && (
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {re.event_date}
+                            </span>
+                          )}
+                          {reLoc && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {reLoc}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </Link>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* CTA to event list */}
+        <div className="mt-6 text-center">
+          <Button asChild variant="outline" size="sm">
+            <Link to={`${langPrefix}/events`}>
+              {isEn ? 'Browse more races from Tokyo' : '東京発のレースをもっと探す'}
+              <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </div>
 
         {/* 最終更新 */}
         {(category.updated_at || event.updated_at) && (

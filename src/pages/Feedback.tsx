@@ -154,7 +154,7 @@ function CommentSection({
   lang: string
   isEn: boolean
 }) {
-  const { user, session, isSupporter } = useAuth()
+  const { user, session } = useAuth()
   const [comments, setComments] = useState<FeedbackComment[]>([])
   const [expanded, setExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -240,7 +240,7 @@ function CommentSection({
           )}
 
           {/* Comment input */}
-          {user && isSupporter ? (
+          {user ? (
             <div className="flex gap-2">
               <input
                 type="text"
@@ -273,7 +273,7 @@ function CommentSection({
                 to={`/${lang}/pricing`}
                 className="text-primary underline hover:no-underline"
               >
-                {isEn ? 'Become a Crew member to comment' : 'Crewになるとコメントできます'}
+                {isEn ? 'Sign in to comment' : 'ログインするとコメントできます'}
               </Link>
             </p>
           )}
@@ -286,12 +286,10 @@ function CommentSection({
 /* ---------- New feedback form ---------- */
 
 function NewFeedbackForm({
-  isSupporter,
   isEn,
   onSubmitted,
   onClose,
 }: {
-  isSupporter: boolean
   isEn: boolean
   onSubmitted: () => void
   onClose: () => void
@@ -359,20 +357,18 @@ function NewFeedbackForm({
             <Lightbulb className="size-3.5" />
             {isEn ? 'Feature' : '要望'}
           </button>
-          {isSupporter && (
-            <button
-              onClick={() => setType('bug')}
-              className={cn(
-                'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm border transition-colors',
-                type === 'bug'
-                  ? 'border-red-300 bg-red-50 text-red-700'
-                  : 'border-border text-muted-foreground hover:border-red-200'
-              )}
-            >
-              <Bug className="size-3.5" />
-              {isEn ? 'Bug' : 'バグ'}
-            </button>
-          )}
+          <button
+            onClick={() => setType('bug')}
+            className={cn(
+              'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm border transition-colors',
+              type === 'bug'
+                ? 'border-red-300 bg-red-50 text-red-700'
+                : 'border-border text-muted-foreground hover:border-red-200'
+            )}
+          >
+            <Bug className="size-3.5" />
+            {isEn ? 'Bug' : 'バグ'}
+          </button>
         </div>
 
         <textarea
@@ -417,7 +413,7 @@ function NewFeedbackForm({
 function Feedback() {
   const { lang } = useParams<{ lang: string }>()
   const isEn = lang === 'en'
-  const { isSupporter } = useAuth()
+  const { user, isSupporter } = useAuth()
 
   const statusLabels = isEn ? STATUS_LABEL_EN : STATUS_LABEL_JA
 
@@ -503,22 +499,25 @@ function Feedback() {
           <h1 className="text-2xl font-bold">
             {isEn ? 'Ideas' : 'みんなのアイデア'}
           </h1>
-          {isSupporter ? (
+          {user ? (
             <Button onClick={() => setShowForm(true)}>
               <Plus className="size-4" />
               {isEn ? 'Post' : '投稿する'}
             </Button>
           ) : null}
         </div>
-        {!isSupporter && (
+        {user && (
           <p className="text-sm text-muted-foreground mb-4">
             {isEn
-              ? 'Only Crew members can post ideas.'
-              : 'Crewだけがリクエストを投稿できます。'}
-            {' '}
-            <Link to={`/${lang}/pricing`} className="text-primary underline hover:no-underline">
-              {isEn ? 'Become a Crew member' : 'Crewになる'}
-            </Link>
+              ? 'Share your feedback or improvement ideas about races.'
+              : 'レースに関するフィードバックや改善提案を共有してください。'}
+          </p>
+        )}
+        {!user && (
+          <p className="text-sm text-muted-foreground mb-4">
+            {isEn
+              ? 'Sign in to post feedback.'
+              : 'フィードバックを投稿するにはログインしてください。'}
           </p>
         )}
 
@@ -655,7 +654,6 @@ function Feedback() {
       {/* New feedback modal */}
       {showForm && (
         <NewFeedbackForm
-          isSupporter={isSupporter}
           isEn={isEn}
           onSubmitted={fetchFeedbacks}
           onClose={() => setShowForm(false)}

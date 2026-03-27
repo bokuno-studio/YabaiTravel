@@ -78,9 +78,9 @@ describe('Feedback', () => {
     expect(screen.getByText('全ステータス')).toBeInTheDocument()
   })
 
-  it('shows Crew-only notice for non-supporters', () => {
+  it('shows sign-in notice for non-logged-in users', () => {
     renderFeedback()
-    expect(screen.getByText(/Crewだけがリクエストを投稿できます/)).toBeInTheDocument()
+    expect(screen.getByText(/フィードバックを投稿するにはログインしてください/)).toBeInTheDocument()
   })
 
   it('renders feedback items when data is returned', async () => {

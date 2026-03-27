@@ -20,6 +20,10 @@ import {
   FileEdit,
   Home,
   ChevronRight,
+  Train,
+  Moon,
+  Sun,
+  ArrowRight,
 } from 'lucide-react'
 // SaveButton moved to CategoryDetail (#375: カテゴリ単位のお気に入り)
 
@@ -53,8 +57,9 @@ function EventDetail() {
   const isEn = lang === 'en'
   const [event, setEvent] = useState<Event | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
-  const [, setAccessRoutes] = useState<AccessRoute[]>([])
+  const [accessRoutes, setAccessRoutes] = useState<AccessRoute[]>([])
   const [accommodations, setAccommodations] = useState<Accommodation[]>([])
+  const [relatedEvents, setRelatedEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const trackedRef = useRef(false)
@@ -72,6 +77,58 @@ function EventDetail() {
   const raceTypeLabel = (rt: string | null) => {
     if (!rt) return isEn ? 'Other' : 'その他'
     return t(`raceType.${rt}`, rt)
+  }
+
+  /** Format interval string (e.g. "03:30:00") to human readable */
+  const formatTimeEstimate = (v: string | null): string | null => {
+    if (!v) return null
+    const hms = v.match(/^(\d+):(\d+):(\d+)/)
+    if (hms) {
+      const h = parseInt(hms[1], 10)
+      const min = parseInt(hms[2], 10)
+      if (isEn) {
+        const parts = []
+        if (h > 0) parts.push(`${h}h`)
+        if (min > 0) parts.push(`${min}m`)
+        return parts.join('') || v
+      }
+      const parts = []
+      if (h > 0) parts.push(`${h}時間`)
+      if (min > 0) parts.push(`${min}分`)
+      return parts.join('') || v
+    }
+    const hourMatch = v.match(/(\d+)\s*hour/)
+    const minMatch = v.match(/(\d+)\s*minute/)
+    if (hourMatch || minMatch) {
+      const parts = []
+      if (isEn) {
+        if (hourMatch) parts.push(`${parseInt(hourMatch[1], 10)}h`)
+        if (minMatch) parts.push(`${parseInt(minMatch[1], 10)}m`)
+      } else {
+        if (hourMatch) parts.push(`${parseInt(hourMatch[1], 10)}時間`)
+        if (minMatch) parts.push(`${parseInt(minMatch[1], 10)}分`)
+      }
+      return parts.join('')
+    }
+    return v
+  }
+
+  const stayStatusLabel = (s: string | null) => {
+    if (!s) return null
+    if (isEn) {
+      const map: Record<string, string> = {
+        day_trip: 'Day trip OK',
+        pre_stay_required: 'Overnight needed',
+        post_stay_recommended: 'Overnight recommended',
+      }
+      return map[s] ?? null
+    }
+    const map: Record<string, string> = {
+      day_trip: '日帰りOK',
+      pre_stay_required: '前泊必須',
+      post_stay_recommended: '後泊推奨',
+    }
+    return map[s] ?? null
   }
 
   useEffect(() => {
@@ -105,6 +162,23 @@ function EventDetail() {
     }
     fetchData()
   }, [eventId])
+
+  // Fetch related events (same race_type, limit 3)
+  useEffect(() => {
+    if (!event?.race_type || !event.id) return
+    async function fetchRelated() {
+      const { data } = await supabase
+        .from('events')
+        .select('*')
+        .eq('race_type', event!.race_type!)
+        .neq('id', event!.id)
+        .not('location', 'is', null)
+        .order('event_date', { ascending: true })
+        .limit(3)
+      setRelatedEvents(data ?? [])
+    }
+    fetchRelated()
+  }, [event?.id, event?.race_type])
 
   if (loading) {
     return (
@@ -155,6 +229,14 @@ function EventDetail() {
   const displayLocation = isEn ? (event.location_en ?? event.location) : event.location
   const displayDescription = isEn ? (event.description_en ?? event.description) : event.description
 
+  // Value badges data
+  const tokyoOutbound = accessRoutes.find(
+    (r) => r.origin_type === 'tokyo' && r.direction === 'outbound'
+  )
+  const travelTime = formatTimeEstimate(tokyoOutbound?.total_time_estimate ?? null)
+  const stayLabel = stayStatusLabel(event.stay_status ?? null)
+  const isDayTrip = event.stay_status === 'day_trip'
+
   // カテゴリ0件: イベントレベルの情報を直接表示 (#32)
   if (categories.length === 0) {
     return (
@@ -163,12 +245,12 @@ function EventDetail() {
         <meta name="description" content={displayDescription ?? `${displayName}の大会情報・アクセス・宿泊をまとめてチェック。`} />
         <meta property="og:title" content={`${displayName} | yabai.travel`} />
         <meta property="og:description" content={displayDescription ?? `${displayName}の大会情報・アクセス・宿泊をまとめてチェック。`} />
-        <meta property="og:url" content={`https://yabai.travel/ja/events/${event.id}`} />
+        <meta property="og:url" content={`https://yabai.travel${location.pathname}`} />
         <link rel="canonical" href={`https://yabai.travel${location.pathname}`} />
-        <link rel="alternate" hrefLang="ja" href={`https://yabai.travel${location.pathname.replace(/^\/(ja|en)/, '/ja')}`} />
-        <link rel="alternate" hrefLang="en" href={`https://yabai.travel${location.pathname.replace(/^\/(ja|en)/, '/en')}`} />
-        <link rel="alternate" hrefLang="x-default" href={`https://yabai.travel${location.pathname.replace(/^\/(ja|en)/, '/en')}`} />
-        <script type="application/ld+json">{JSON.stringify(eventToJsonLd(event, categories))}</script>
+        <link rel="alternate" hrefLang="ja" href={`https://yabai.travel/ja/events/${event.id}`} />
+        <link rel="alternate" hrefLang="en" href={`https://yabai.travel/en/events/${event.id}`} />
+        <link rel="alternate" hrefLang="x-default" href={`https://yabai.travel/en/events/${event.id}`} />
+        <script type="application/ld+json">{JSON.stringify(eventToJsonLd(event, categories, isEn))}</script>
         <div className="mx-auto max-w-4xl px-4 py-6 md:px-6">
           {/* Breadcrumb */}
           <div className="mb-6">
@@ -180,6 +262,13 @@ function EventDetail() {
               {t('detail.backToList')}
             </Link>
           </div>
+
+          {/* Service tagline */}
+          <p className="mb-4 text-xs text-muted-foreground/70">
+            {isEn
+              ? 'Find endurance races in Japan \u2014 access, accommodation, costs all in one place'
+              : '日本のエンデュランスレースを探して、旅行計画まで。'}
+          </p>
 
           {/* Hero */}
           <div className="mb-8">
@@ -205,6 +294,33 @@ function EventDetail() {
                 </span>
               )}
             </div>
+
+            {/* Value badges */}
+            {(travelTime || stayLabel) && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {travelTime && (
+                  <Badge variant="outline" className="border border-sky-200 bg-sky-50 text-xs text-sky-700">
+                    <Train className="mr-1 h-3 w-3" />
+                    {isEn ? `Tokyo Station \u2192 ${travelTime}` : `東京駅 \u2192 ${travelTime}`}
+                  </Badge>
+                )}
+                {stayLabel && (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'border text-xs',
+                      isDayTrip
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        : 'border-amber-200 bg-amber-50 text-amber-700'
+                    )}
+                  >
+                    {isDayTrip ? <Sun className="mr-1 h-3 w-3" /> : <Moon className="mr-1 h-3 w-3" />}
+                    {stayLabel}
+                  </Badge>
+                )}
+              </div>
+            )}
+
             <div className="mt-3 flex flex-wrap gap-2">
               {event.race_type && (
                 <Badge
@@ -289,6 +405,61 @@ function EventDetail() {
 
           {/* レースレポート・口コミ */}
 
+          {/* Related races */}
+          {relatedEvents.length > 0 && (
+            <Card className="mb-4 mt-6">
+              <CardHeader>
+                <CardTitle className="text-base">
+                  {isEn ? 'Related races' : '関連レース'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {relatedEvents.map((re) => {
+                    const reName = isEn ? (re.name_en ?? re.name) : re.name
+                    const reLoc = isEn ? (re.location_en ?? re.location) : re.location
+                    return (
+                      <Link
+                        key={re.id}
+                        to={`${langPrefix}/events/${re.id}`}
+                        className="flex items-center justify-between rounded-lg border border-border/60 p-3 no-underline transition-colors hover:border-primary/40 hover:bg-primary/5"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-foreground">{reName}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                            {re.event_date && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {re.event_date}
+                              </span>
+                            )}
+                            {reLoc && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {reLoc}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      </Link>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* CTA to event list */}
+          <div className="mt-6 text-center">
+            <Button asChild variant="outline" size="sm">
+              <Link to={`${langPrefix}/events`}>
+                {isEn ? 'Browse more races from Tokyo' : '東京発のレースをもっと探す'}
+                <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </div>
+
           {/* 最終更新 */}
           {event.updated_at && (
             <p className="mt-6 border-t border-border pt-4 text-right text-xs text-muted-foreground/70">
@@ -308,12 +479,12 @@ function EventDetail() {
       <meta name="description" content={displayDescription ?? `${displayName}の大会情報・アクセス・宿泊をまとめてチェック。`} />
       <meta property="og:title" content={`${displayName} | yabai.travel`} />
       <meta property="og:description" content={displayDescription ?? `${displayName}の大会情報・アクセス・宿泊をまとめてチェック。`} />
-      <meta property="og:url" content={`https://yabai.travel/ja/events/${event.id}`} />
+      <meta property="og:url" content={`https://yabai.travel${location.pathname}`} />
       <link rel="canonical" href={`https://yabai.travel${location.pathname}`} />
-      <link rel="alternate" hrefLang="ja" href={`https://yabai.travel${location.pathname}`} />
-      <link rel="alternate" hrefLang="en" href={`https://yabai.travel${location.pathname}?lang=en`} />
-      <link rel="alternate" hrefLang="x-default" href={`https://yabai.travel${location.pathname}`} />
-      <script type="application/ld+json">{JSON.stringify(eventToJsonLd(event, categories))}</script>
+      <link rel="alternate" hrefLang="ja" href={`https://yabai.travel/ja/events/${event.id}`} />
+      <link rel="alternate" hrefLang="en" href={`https://yabai.travel/en/events/${event.id}`} />
+      <link rel="alternate" hrefLang="x-default" href={`https://yabai.travel/en/events/${event.id}`} />
+      <script type="application/ld+json">{JSON.stringify(eventToJsonLd(event, categories, isEn))}</script>
       <div className="mx-auto max-w-4xl px-4 py-6 md:px-6">
         {/* Breadcrumb */}
         <div className="mb-6">

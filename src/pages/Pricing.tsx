@@ -15,7 +15,7 @@ function Pricing() {
   const { user, session, isSupporter, signInWithGoogle } = useAuth()
 
   useScrollDepth('pricing')
-  const [donationAmount, setDonationAmount] = useState('5')
+  const [donationAmount, setDonationAmount] = useState('500')
 
   useEffect(() => { trackPricingView() }, [])
   const [donationLoading, setDonationLoading] = useState(false)
@@ -88,12 +88,14 @@ function Pricing() {
 
   const supporterFeatures = isEn
     ? [
+        'Unlimited race detail viewing',
         'Comment on the feedback board',
         'Submit feature requests from any page',
         'View bug reports',
         'Crew badge on your profile',
       ]
     : [
+        'レース詳細の無制限閲覧',
         '要望掲示板コメント権',
         '各ページで要望投稿',
         'バグレポート閲覧',

@@ -51,10 +51,10 @@ describe('FeedbackWidget', () => {
     expect(screen.getByText('バグ')).toBeInTheDocument()
   })
 
-  it('shows idea button for non-supporters as link to pricing', () => {
+  it('shows idea button for all users', () => {
     renderWidget()
     fireEvent.click(screen.getByText('バグ報告・アイデア'))
-    expect(screen.getByText('アイデア（Crew限定）')).toBeInTheDocument()
+    expect(screen.getByText('アイデア')).toBeInTheDocument()
   })
 
   it('disables send button when textarea is empty', () => {

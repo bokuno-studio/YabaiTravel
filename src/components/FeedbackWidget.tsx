@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { Bug, Lightbulb, X, Loader2, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 
 function FeedbackWidget() {
-  const { user, isSupporter } = useAuth()
+  const { user } = useAuth()
   const { lang } = useParams<{ lang: string }>()
   const [open, setOpen] = useState(false)
   const [content, setContent] = useState('')
@@ -109,29 +109,18 @@ function FeedbackWidget() {
                     <Bug className="size-3" />
                     {isEn ? 'Bug' : 'バグ'}
                   </button>
-                  {isSupporter ? (
-                    <button
-                      onClick={() => setType('feature')}
-                      className={cn(
-                        'flex items-center gap-1 rounded-full px-2.5 py-1 text-xs border transition-colors',
-                        type === 'feature'
-                          ? 'border-blue-300 bg-blue-50 text-blue-700'
-                          : 'border-border text-muted-foreground hover:border-blue-200'
-                      )}
-                    >
-                      <Lightbulb className="size-3" />
-                      {isEn ? 'Idea' : 'アイデア'}
-                    </button>
-                  ) : (
-                    <Link
-                      to={`/${lang}/pricing`}
-                      className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs border border-border text-muted-foreground hover:border-blue-200 no-underline"
-                      onClick={() => setOpen(false)}
-                    >
-                      <Lightbulb className="size-3" />
-                      {isEn ? 'Idea (Crew only)' : 'アイデア（Crew限定）'}
-                    </Link>
-                  )}
+                  <button
+                    onClick={() => setType('feature')}
+                    className={cn(
+                      'flex items-center gap-1 rounded-full px-2.5 py-1 text-xs border transition-colors',
+                      type === 'feature'
+                        ? 'border-blue-300 bg-blue-50 text-blue-700'
+                        : 'border-border text-muted-foreground hover:border-blue-200'
+                    )}
+                  >
+                    <Lightbulb className="size-3" />
+                    {isEn ? 'Idea' : 'アイデア'}
+                  </button>
                 </div>
 
                 <textarea

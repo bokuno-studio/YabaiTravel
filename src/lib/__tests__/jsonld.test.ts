@@ -9,9 +9,9 @@ function makeEvent(overrides: Partial<Event> = {}): Event {
     event_date: '2025-06-15',
     event_date_end: '2025-06-16',
     location: 'Tokyo',
-    location_en: null,
-    country: 'Japan',
-    country_en: null,
+    location_en: 'Tokyo, Japan',
+    country: '日本',
+    country_en: 'Japan',
     official_url: 'https://example.com',
     entry_url: null,
     race_type: 'trail',
@@ -37,8 +37,10 @@ function makeEvent(overrides: Partial<Event> = {}): Event {
     recovery_facilities: null,
     photo_spots: null,
     description: 'A great race',
-    latitude: null,
-    longitude: null,
+    description_en: 'A great race in English',
+    name_en: 'Test Race EN',
+    latitude: 35.6762,
+    longitude: 139.6503,
     collected_at: null,
     updated_at: null,
     ...overrides,
@@ -50,6 +52,7 @@ function makeCategory(overrides: Partial<Category> = {}): Category {
     id: 'cat-1',
     event_id: 'ev-1',
     name: '50km',
+    name_en: '50km EN',
     stay_status: null,
     distance_km: 50,
     elevation_gain: 3000,
@@ -87,18 +90,55 @@ describe('eventToJsonLd', () => {
     expect(result.description).toBe('A great race')
   })
 
-  it('includes location as Place', () => {
+  it('includes eventAttendanceMode and eventStatus', () => {
+    const result = eventToJsonLd(makeEvent(), [])
+    expect(result.eventAttendanceMode).toBe('https://schema.org/OfflineEventAttendanceMode')
+    expect(result.eventStatus).toBe('https://schema.org/EventScheduled')
+  })
+
+  it('includes location as Place with PostalAddress', () => {
     const result = eventToJsonLd(makeEvent(), [])
     expect(result.location).toEqual({
       '@type': 'Place',
       name: 'Tokyo',
-      address: 'Tokyo',
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: 'Tokyo',
+        addressCountry: '日本',
+      },
+      geo: {
+        '@type': 'GeoCoordinates',
+        latitude: 35.6762,
+        longitude: 139.6503,
+      },
     })
+  })
+
+  it('omits geo when lat/lng are null', () => {
+    const result = eventToJsonLd(makeEvent({ latitude: null, longitude: null }), [])
+    expect(result.location.geo).toBeUndefined()
   })
 
   it('omits location when null', () => {
     const result = eventToJsonLd(makeEvent({ location: null }), [])
     expect(result.location).toBeUndefined()
+  })
+
+  it('includes top-level offers from first category', () => {
+    const cats = [makeCategory()]
+    const result = eventToJsonLd(makeEvent(), cats)
+    expect(result.offers).toEqual({
+      '@type': 'Offer',
+      price: 15000,
+      priceCurrency: 'JPY',
+      availability: 'https://schema.org/InStock',
+    })
+  })
+
+  it('includes entry_url in top-level offers when available', () => {
+    const cats = [makeCategory()]
+    const result = eventToJsonLd(makeEvent({ entry_url: 'https://entry.example.com' }), cats)
+    expect(result.offers.url).toBe('https://entry.example.com')
   })
 
   it('includes subEvents from categories', () => {
@@ -126,6 +166,7 @@ describe('eventToJsonLd', () => {
       '@type': 'Offer',
       price: 15000,
       priceCurrency: 'JPY',
+      availability: 'https://schema.org/InStock',
     })
   })
 
@@ -140,12 +181,50 @@ describe('eventToJsonLd', () => {
     expect(result).not.toHaveProperty('startDate')
     expect(result).not.toHaveProperty('description')
   })
+
+  it('uses English names when isEn=true', () => {
+    const cats = [makeCategory()]
+    const result = eventToJsonLd(makeEvent(), cats, true)
+    expect(result.name).toBe('Test Race EN')
+    expect(result.description).toBe('A great race in English')
+    expect(result.location.name).toBe('Tokyo, Japan')
+    expect(result.location.address.addressCountry).toBe('Japan')
+    expect(result.subEvent[0].name).toBe('50km EN')
+  })
+
+  it('falls back to Japanese when English fields are null', () => {
+    const result = eventToJsonLd(makeEvent({ name_en: null, description_en: null, location_en: null }), [], true)
+    expect(result.name).toBe('Test Race')
+    expect(result.description).toBe('A great race')
+    expect(result.location.name).toBe('Tokyo')
+  })
 })
 
 describe('categoryToJsonLd', () => {
   it('returns JSON-LD with combined name', () => {
     const result = categoryToJsonLd(makeEvent(), makeCategory())
     expect(result.name).toBe('Test Race - 50km')
+  })
+
+  it('uses English names when isEn=true', () => {
+    const result = categoryToJsonLd(makeEvent(), makeCategory(), true)
+    expect(result.name).toBe('Test Race EN - 50km EN')
+    expect(result.description).toBe('A great race in English')
+  })
+
+  it('includes eventAttendanceMode and eventStatus', () => {
+    const result = categoryToJsonLd(makeEvent(), makeCategory())
+    expect(result.eventAttendanceMode).toBe('https://schema.org/OfflineEventAttendanceMode')
+    expect(result.eventStatus).toBe('https://schema.org/EventScheduled')
+  })
+
+  it('includes location with geo', () => {
+    const result = categoryToJsonLd(makeEvent(), makeCategory())
+    expect(result.location.geo).toEqual({
+      '@type': 'GeoCoordinates',
+      latitude: 35.6762,
+      longitude: 139.6503,
+    })
   })
 
   it('includes distance', () => {
@@ -162,10 +241,16 @@ describe('categoryToJsonLd', () => {
     expect(result.distance).toBeUndefined()
   })
 
-  it('includes offers', () => {
+  it('includes offers with availability', () => {
     const result = categoryToJsonLd(makeEvent(), makeCategory({ entry_fee: 20000, entry_fee_currency: null }))
     expect(result.offers.price).toBe(20000)
     expect(result.offers.priceCurrency).toBe('JPY')
+    expect(result.offers.availability).toBe('https://schema.org/InStock')
+  })
+
+  it('includes entry_url in offers when available', () => {
+    const result = categoryToJsonLd(makeEvent({ entry_url: 'https://entry.example.com' }), makeCategory())
+    expect(result.offers.url).toBe('https://entry.example.com')
   })
 
   it('omits offers when entry_fee is null', () => {

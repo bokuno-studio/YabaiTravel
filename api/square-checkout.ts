@@ -36,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const idempotencyKey = crypto.randomUUID()
 
     if (mode === 'donation') {
-      const unitAmount = amount || 500 // cents
+      const unitAmount = amount || 500 // JPY
       const data = await squareRequest('/v2/online-checkout/payment-links', {
         idempotency_key: idempotencyKey,
         quick_pay: {
@@ -92,7 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         quick_pay: {
           name: 'yabai.travel Comment',
           price_money: {
-            amount: 100, // $1.00
+            amount: 150, // ¥150
             currency: 'JPY',
           },
           location_id: process.env.SQUARE_LOCATION_ID,
@@ -106,7 +106,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(400).json({ error: 'Invalid mode' })
   } catch (e) {
-    console.error('Square checkout error:', e)
-    return res.status(500).json({ error: 'Failed to create checkout' })
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error'
+    console.error('Square checkout error:', errorMessage, e)
+    return res.status(500).json({ error: `Checkout failed: ${errorMessage}` })
   }
 }

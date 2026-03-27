@@ -41,6 +41,19 @@ async function handlePost(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'feedback_type must be bug or feature' })
     }
 
+    // Rate limit: 5 posts per user per day
+    if (user_id) {
+      const today = new Date().toISOString().slice(0, 10)
+      const { count } = await supabase
+        .from('feedbacks')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user_id)
+        .gte('created_at', `${today}T00:00:00Z`)
+      if (count != null && count >= 5) {
+        return res.status(429).json({ error: 'Daily limit reached (5 posts/day)' })
+      }
+    }
+
     const { data, error } = await supabase
       .from('feedbacks')
       .insert({
