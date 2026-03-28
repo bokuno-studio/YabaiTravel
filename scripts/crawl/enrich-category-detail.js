@@ -140,7 +140,8 @@ Provide BOTH Japanese and English for text fields.
 Rules:
 - Use null for items not found on the page. Do not guess
 - entry_fee is the standard fee for 1 person, general category (NOT R.LEAGUE discount, early bird, pair/team pricing)
-- For wave start events (HYROX, Spartan, etc.): start_time should show the full wave time range
+- start_time: the actual race START time (e.g. "06:00"), NOT the overall event hours (e.g. "06:00-18:00" is likely event hours, not start time). For wave start events (HYROX, Spartan, etc.): show the full wave time range
+- reception_place: look for keywords like 受付場所, 受付会場, 会場, check-in location, venue, registration area. This is the physical location name where participants check in
 - cutoff_times is an array per checkpoint
 - For Japanese text fields, provide the original Japanese. For English, translate or use the original if already English
 - Return JSON only`
@@ -161,6 +162,24 @@ function sanitizeTime(val) {
   // Valid HH:MM or HH:MM:SS
   if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) return s
   return null
+}
+
+/**
+ * start_time の追加バリデーション
+ * 時間範囲が12時間超の場合は大会開催時間帯と判定してnullにする
+ */
+function validateStartTime(val) {
+  if (!val) return null
+  const rangeMatch = val.match(/^(\d{1,2}):(\d{2})\s*[-–~〜]\s*(\d{1,2}):(\d{2})$/)
+  if (rangeMatch) {
+    const startMin = parseInt(rangeMatch[1]) * 60 + parseInt(rangeMatch[2])
+    const endMin = parseInt(rangeMatch[3]) * 60 + parseInt(rangeMatch[4])
+    const duration = endMin >= startMin ? endMin - startMin : (24 * 60 - startMin + endMin)
+    if (duration > 12 * 60) {
+      return null // 12時間超 → 大会時間帯であり、スタート時間ではない
+    }
+  }
+  return val
 }
 
 /**
@@ -257,10 +276,11 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       }
     }
 
-    // --- ステップ2: 関連ページ補完（必須フィールドが未取得の場合） ---
-    const needsMore = !isRequiredFieldsFilled(extracted, requiredFields)
+    // --- ステップ2: 関連ページ補完（装備・受付場所等の重要フィールドが未取得の場合も探索） ---
+    const SUBPAGE_TRIGGER_FIELDS = ['mandatory_gear', 'reception_place', 'start_place', 'recommended_gear', ...requiredFields]
+    const needsMore = SUBPAGE_TRIGGER_FIELDS.some(f => extracted[f] == null)
     if (needsMore && html && fetchedUrl && !isPortalUrl(fetchedUrl)) {
-      const relatedLinks = extractRelevantLinks(html, fetchedUrl).slice(0, 1)
+      const relatedLinks = extractRelevantLinks(html, fetchedUrl).slice(0, 3)
       for (const link of relatedLinks) {
         try {
           const linkHtml = await fetchHtml(link)
@@ -272,6 +292,8 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
             if (key === '_usage') continue
             if (result[key] != null && extracted[key] == null) extracted[key] = result[key]
           }
+          // すべてのトリガーフィールドが埋まったら早期終了
+          if (SUBPAGE_TRIGGER_FIELDS.every(f => extracted[f] != null)) break
         } catch { /* ignore */ }
       }
     }
@@ -341,7 +363,7 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       categoryId,
       extracted.entry_fee != null ? parseInt(extracted.entry_fee, 10) : null,
       extracted.entry_fee_currency || null,
-      sanitizeTime(extracted.start_time),
+      validateStartTime(sanitizeTime(extracted.start_time)),
       sanitizeTime(extracted.reception_end),
       sanitizedTimeLimit,
       extracted.cutoff_times?.length > 0 ? JSON.stringify(extracted.cutoff_times) : null,

@@ -38,6 +38,15 @@ export const RELEVANT_URL_PATTERNS = [
   '/schedule', '/about', '/course', '/entry', '/rule', '/access',
   '/info', '/detail', '/category', '/distance', '/fee', '/registration',
   '/gear', '/equipment', '/transport', '/location', '/venue', '/map',
+  '/checklist', '/kit', '/guide', '/outline', '/requirement',
+]
+
+// リンクテキストから関連ページを判定するキーワード
+export const RELEVANT_LINK_TEXT_PATTERNS = [
+  '装備', '持ち物', '必携', '携行', 'アクセス', '会場', '受付',
+  '大会概要', '要項', '参加案内', 'コース',
+  'equipment', 'gear', 'checklist', 'access', 'venue', 'course',
+  'guide', 'outline', 'requirement', 'mandatory',
 ]
 
 export const VALID_RACE_TYPES = [
@@ -176,8 +185,12 @@ export function extractRelevantLinks(html, baseUrl) {
       const absolute = href.startsWith('http') ? href : new URL(href, baseUrl).href
       const parsed = new URL(absolute)
       if (parsed.hostname !== base.hostname) return
+      if (absolute === baseUrl) return
       const path = parsed.pathname.toLowerCase()
-      if (RELEVANT_URL_PATTERNS.some((p) => path.includes(p))) {
+      const linkText = $(el).text().toLowerCase().trim()
+      const matchByPath = RELEVANT_URL_PATTERNS.some((p) => path.includes(p))
+      const matchByText = RELEVANT_LINK_TEXT_PATTERNS.some((p) => linkText.includes(p.toLowerCase()))
+      if (matchByPath || matchByText) {
         if (!links.includes(absolute)) links.push(absolute)
       }
     } catch { /* ignore */ }
