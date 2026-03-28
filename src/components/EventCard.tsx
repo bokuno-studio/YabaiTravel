@@ -152,7 +152,7 @@ export function EventCard({
 
   return (
     <Card className={cn(
-      'group overflow-hidden border-t-4 bg-white shadow-sm py-0 flex flex-col',
+      'group overflow-hidden border-t-4 bg-white shadow-sm py-0 flex flex-col min-h-[220px]',
       borderColor,
       'transition-all duration-200 hover:shadow-md',
     )}>

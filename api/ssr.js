@@ -9,10 +9,9 @@ import { jsx, jsxs, Fragment } from "react/jsx-runtime";
 import { renderToString } from "react-dom/server";
 import { Link, useParams, useLocation, useSearchParams, Navigate, StaticRouter, Routes, Route, Outlet } from "react-router-dom";
 import { createContext, useState, useCallback, useEffect, useContext, Component, useRef, useMemo, lazy, Suspense } from "react";
-import { createClient } from "@supabase/supabase-js";
-import * as Sentry from "@sentry/react";
 import i18n from "i18next";
 import { initReactI18next, useTranslation } from "react-i18next";
+import { createClient } from "@supabase/supabase-js";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { cva } from "class-variance-authority";
@@ -23,18 +22,6 @@ import { useJsApiLoader, GoogleMap, Marker, Polyline } from "@react-google-maps/
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { APIProvider, Map as Map$2, Marker as Marker$1, InfoWindow } from "@vis.gl/react-google-maps";
-const url = (process.env.VITE_SUPABASE_URL || "");
-const anonKey = (process.env.VITE_SUPABASE_ANON_KEY || "");
-const schema = (process.env.VITE_SUPABASE_SCHEMA || "");
-const supabase = createClient(url, anonKey, {
-  db: {
-    schema
-  }
-});
-const supabaseClient = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-  __proto__: null,
-  supabase
-}, Symbol.toStringTag, { value: "Module" }));
 const AuthContext = createContext({
   user: null,
   profile: null,
@@ -50,8 +37,12 @@ const AuthContext = createContext({
 function useAuth() {
   return useContext(AuthContext);
 }
+function getSupabase() {
+  return Promise.resolve().then(() => supabaseClient).then((m) => m.supabase);
+}
 async function fetchProfile(userId) {
-  const { data, error } = await supabase.from("user_profiles").select("*").eq("id", userId).maybeSingle();
+  const supabase2 = await getSupabase();
+  const { data, error } = await supabase2.from("user_profiles").select("*").eq("id", userId).maybeSingle();
   if (error) {
     console.error("Failed to fetch user profile:", error.message);
     return null;
@@ -94,24 +85,29 @@ function AuthProvider({ children }) {
       setLoading(false);
       return;
     }
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      loadProfile(s?.user ?? null).finally(() => setLoading(false));
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, s) => {
+    let subscription = null;
+    getSupabase().then((supabase2) => {
+      supabase2.auth.getSession().then(({ data: { session: s } }) => {
         setSession(s);
         setUser(s?.user ?? null);
-        loadProfile(s?.user ?? null);
-      }
-    );
+        loadProfile(s?.user ?? null).finally(() => setLoading(false));
+      });
+      const { data: { subscription: sub } } = supabase2.auth.onAuthStateChange(
+        (_event, s) => {
+          setSession(s);
+          setUser(s?.user ?? null);
+          loadProfile(s?.user ?? null);
+        }
+      );
+      subscription = sub;
+    });
     return () => {
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, [loadProfile]);
   const signInWithGoogle = useCallback(async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const supabase2 = await getSupabase();
+    const { error } = await supabase2.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: window.location.href
@@ -123,7 +119,8 @@ function AuthProvider({ children }) {
   }, []);
   const signOut = useCallback(async () => {
     localStorage.removeItem("yabai_mock_auth");
-    const { error } = await supabase.auth.signOut();
+    const supabase2 = await getSupabase();
+    const { error } = await supabase2.auth.signOut();
     if (error) {
       console.error("Sign-out error:", error.message);
     }
@@ -151,7 +148,10 @@ class ErrorBoundary extends Component {
   }
   componentDidCatch(error, info) {
     console.error("ErrorBoundary caught:", error, info);
-    Sentry.captureException(error, { extra: { componentStack: info.componentStack } });
+    import("@sentry/react").then(({ captureException }) => {
+      captureException(error, { extra: { componentStack: info.componentStack } });
+    }).catch(() => {
+    });
   }
   render() {
     if (this.state.hasError) {
@@ -207,6 +207,18 @@ if (!i18n.isInitialized) {
     interpolation: { escapeValue: false }
   });
 }
+const url = (process.env.VITE_SUPABASE_URL || "https://placeholder.supabase.co");
+const anonKey = (process.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder");
+const schema = (process.env.VITE_SUPABASE_SCHEMA || "yabai_travel");
+const supabase = createClient(url, anonKey, {
+  db: {
+    schema
+  }
+});
+const supabaseClient = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  supabase
+}, Symbol.toStringTag, { value: "Module" }));
 function LazyLoadWrapper({
   children,
   placeholder,
@@ -473,7 +485,7 @@ function EventCard({
     ] }) });
   }
   return /* @__PURE__ */ jsx(Card, { className: cn(
-    "group overflow-hidden border-t-4 bg-white shadow-sm py-0 flex flex-col",
+    "group overflow-hidden border-t-4 bg-white shadow-sm py-0 flex flex-col min-h-[220px]",
     borderColor,
     "transition-all duration-200 hover:shadow-md"
   ), children: /* @__PURE__ */ jsxs(CardContent, { className: "flex flex-1 flex-col p-0", children: [
@@ -555,7 +567,7 @@ function Skeleton({ className, ...props }) {
   );
 }
 function EventCardSkeleton() {
-  return /* @__PURE__ */ jsx(Card, { className: "overflow-hidden border-t-4 border-t-gray-200 shadow-sm py-0 flex flex-col", children: /* @__PURE__ */ jsxs(CardContent, { className: "flex flex-1 flex-col p-0", children: [
+  return /* @__PURE__ */ jsx(Card, { className: "overflow-hidden border-t-4 border-t-gray-200 shadow-sm py-0 flex flex-col min-h-[220px]", children: /* @__PURE__ */ jsxs(CardContent, { className: "flex flex-1 flex-col p-0", children: [
     /* @__PURE__ */ jsxs("div", { className: "flex h-full flex-col p-4", children: [
       /* @__PURE__ */ jsx("div", { className: "mb-2", children: /* @__PURE__ */ jsx(Skeleton, { className: "h-5 w-14 rounded-md" }) }),
       /* @__PURE__ */ jsx(Skeleton, { className: "h-4 w-full mb-1" }),
@@ -6958,10 +6970,7 @@ function BlogList() {
   };
   const hasOps = articles.some((a) => a.category === "ops");
   return /* @__PURE__ */ jsxs(Fragment, { children: [
-    /* @__PURE__ */ jsxs("title", { children: [
-      isEn ? "Blog" : "ブログ",
-      " | yabai.travel"
-    ] }),
+    /* @__PURE__ */ jsx("title", { children: `${isEn ? "Blog" : "ブログ"} | yabai.travel` }),
     /* @__PURE__ */ jsx(
       "meta",
       {
@@ -7046,10 +7055,7 @@ function BlogPost() {
   const enUrl = `https://yabai.travel/en/blog/${article.slug}`;
   const markdownContent = rewriteLinks(article.content);
   return /* @__PURE__ */ jsxs(Fragment, { children: [
-    /* @__PURE__ */ jsxs("title", { children: [
-      article.title,
-      " | yabai.travel"
-    ] }),
+    /* @__PURE__ */ jsx("title", { children: `${article.title} | yabai.travel` }),
     /* @__PURE__ */ jsx("meta", { name: "description", content: article.description }),
     /* @__PURE__ */ jsx("meta", { property: "og:title", content: `${article.title} | yabai.travel` }),
     /* @__PURE__ */ jsx("meta", { property: "og:description", content: article.description }),
@@ -7538,14 +7544,12 @@ export {
 
 // --- End SSR bundle ---
 
-const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png\" />\n    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>yabai.travel</title>\n    <meta name=\"description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:title\" content=\"yabai.travel\" />\n    <meta property=\"og:description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Preconnect to critical origins -->\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link rel=\"dns-prefetch\" href=\"https://maps.googleapis.com\" />\n    <link rel=\"dns-prefetch\" href=\"https://supabase.co\" />\n    <!-- Font display swap for system font fallback during load -->\n    <style>\n      @font-face {\n        font-family: 'Inter';\n        font-display: swap;\n        src: local('Inter');\n      }\n    </style>\n    <!-- Google Search Console verification: add meta tag here after registration -->\n    <!-- Google tag (gtag.js) - deferred to reduce TBT -->\n    <script>\n      window.addEventListener('load', function() {\n        var s = document.createElement('script');\n        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';\n        s.async = true;\n        document.head.appendChild(s);\n        s.onload = function() {\n          window.dataLayer = window.dataLayer || [];\n          function gtag(){dataLayer.push(arguments);}\n          gtag('js', new Date());\n          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });\n        };\n      });\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-BR49lKOf.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-react-CEChUk-l.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-supabase-DTqiiTOY.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-sentry-DkpIJQG7.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-i18n-5xXoTvtS.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-ui-Dcu4b0I0.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-B57bONDY.css\">\n  </head>\n  <body>\n    <div id=\"root\"><!--ssr-outlet--></div>\n  </body>\n</html>\n"
+const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png\" />\n    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>yabai.travel</title>\n    <meta name=\"description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:title\" content=\"yabai.travel\" />\n    <meta property=\"og:description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Preconnect to critical origins -->\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link rel=\"dns-prefetch\" href=\"https://maps.googleapis.com\" />\n    <link rel=\"dns-prefetch\" href=\"https://supabase.co\" />\n    <!-- Font display swap for system font fallback during load -->\n    <style>\n      @font-face {\n        font-family: 'Inter';\n        font-display: swap;\n        src: local('Inter');\n      }\n    </style>\n    <!-- Google Search Console verification: add meta tag here after registration -->\n    <!-- Google tag (gtag.js) - deferred to reduce TBT -->\n    <script>\n      window.addEventListener('load', function() {\n        var s = document.createElement('script');\n        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';\n        s.async = true;\n        document.head.appendChild(s);\n        s.onload = function() {\n          window.dataLayer = window.dataLayer || [];\n          function gtag(){dataLayer.push(arguments);}\n          gtag('js', new Date());\n          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });\n        };\n      });\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-8WBheBLO.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-react-CEChUk-l.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-i18n-5xXoTvtS.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-ui-phpf8bsv.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-D6sJM6hX.css\">\n  </head>\n  <body>\n    <div id=\"root\"><!--ssr-outlet--></div>\n  </body>\n</html>\n"
 
 export default function handler(req, res) {
+  const originalUrl = req.headers["x-invoke-path"] || req.headers["x-matched-path"] || req.url || "/"
+  const url = originalUrl.startsWith("/api/ssr") ? originalUrl.replace(/^\/api\/ssr/, "") || "/" : originalUrl
   try {
-    // Vercel rewrites set x-invoke-path; use original URL from headers or req.url
-    const originalUrl = req.headers["x-invoke-path"] || req.headers["x-matched-path"] || req.url || "/"
-    // Strip /api/ssr prefix if present (rewrite artifact)
-    const url = originalUrl.startsWith("/api/ssr") ? originalUrl.replace(/^\/api\/ssr/, "") || "/" : originalUrl
     const { html: appHtml } = render(url)
 
     const lang = url.startsWith("/en") ? "en" : "ja"

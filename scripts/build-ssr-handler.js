@@ -65,27 +65,27 @@ if (fs.existsSync(assetsDir)) {
 }
 
 // Replace hardcoded env values with runtime process.env references (gitleaks avoidance)
-// Vite inlines VITE_* env vars as string literals during SSR build
-const envVarsToReplace = [
-  'VITE_SUPABASE_URL',
-  'VITE_SUPABASE_ANON_KEY',
-  'VITE_SUPABASE_SCHEMA',
-  'VITE_GOOGLE_MAPS_KEY',
-  'VITE_GOOGLE_MAPS_API_KEY',
-  'VITE_SENTRY_DSN',
-  'VITE_ENABLE_COMMENTS',
-  'VITE_RAKUTEN_APP_ID',
-  'VITE_RAKUTEN_AFFILIATE_ID',
-]
+// Vite inlines VITE_* env vars as string literals during SSR build.
+// Supabase needs valid fallbacks because createClient validates the URL at module init.
+const envVarsToReplace = {
+  'VITE_SUPABASE_URL': 'https://placeholder.supabase.co',
+  'VITE_SUPABASE_ANON_KEY': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder',
+  'VITE_SUPABASE_SCHEMA': 'yabai_travel',
+  'VITE_GOOGLE_MAPS_KEY': '',
+  'VITE_GOOGLE_MAPS_API_KEY': '',
+  'VITE_SENTRY_DSN': '',
+  'VITE_ENABLE_COMMENTS': '',
+  'VITE_RAKUTEN_APP_ID': '',
+  'VITE_RAKUTEN_AFFILIATE_ID': '',
+}
 
-for (const envVar of envVarsToReplace) {
+for (const [envVar, fallback] of Object.entries(envVarsToReplace)) {
   const value = process.env[envVar]
   if (value) {
-    // Replace the literal string value with a runtime reference
-    // Vite inlines as: "value" (with quotes in the JS source)
     const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const regex = new RegExp('"' + escaped + '"', 'g')
-    const replacement = '(process.env.' + envVar + ' || "")'
+    const fallbackEscaped = JSON.stringify(fallback)
+    const replacement = '(process.env.' + envVar + ' || ' + fallbackEscaped + ')'
     const count = (ssrBundle.match(regex) || []).length
     if (count > 0) {
       ssrBundle = ssrBundle.replace(regex, replacement)
@@ -109,11 +109,9 @@ const parts = [
   'const TEMPLATE = ' + templateLiteral,
   '',
   'export default function handler(req, res) {',
+  '  const originalUrl = req.headers["x-invoke-path"] || req.headers["x-matched-path"] || req.url || "/"',
+  '  const url = originalUrl.startsWith("/api/ssr") ? originalUrl.replace(/^\\/api\\/ssr/, "") || "/" : originalUrl',
   '  try {',
-  '    // Vercel rewrites set x-invoke-path; use original URL from headers or req.url',
-  '    const originalUrl = req.headers["x-invoke-path"] || req.headers["x-matched-path"] || req.url || "/"',
-  '    // Strip /api/ssr prefix if present (rewrite artifact)',
-  '    const url = originalUrl.startsWith("/api/ssr") ? originalUrl.replace(/^\\/api\\/ssr/, "") || "/" : originalUrl',
   '    const { html: appHtml } = render(url)',
   '',
   '    const lang = url.startsWith("/en") ? "en" : "ja"',

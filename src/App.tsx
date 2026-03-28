@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { lazy, Suspense, useEffect } from 'react'
 import { trackPageView } from './lib/analytics'
 import SideMenu from './components/SideMenu'
-import FeedbackWidget from './components/FeedbackWidget'
 import LoadingSpinner from './components/LoadingSpinner'
+
+const FeedbackWidget = lazy(() => import('./components/FeedbackWidget'))
 import { SidebarFilterProvider } from './contexts/SidebarFilterContext'
 import { SidebarStatsProvider } from './contexts/SidebarStatsContext'
 
@@ -59,7 +60,7 @@ function LangLayout() {
             <Outlet />
           </Suspense>
         </div>
-        <FeedbackWidget />
+        <Suspense fallback={null}><FeedbackWidget /></Suspense>
       </SidebarStatsProvider>
     </SidebarFilterProvider>
   )

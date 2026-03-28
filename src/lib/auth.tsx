@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
-import { supabase } from './supabaseClient'
 import type { User, Session } from '@supabase/supabase-js'
 import type { UserProfile } from '@/types/auth'
 
@@ -29,7 +28,13 @@ export function useAuth() {
   return useContext(AuthContext)
 }
 
+// Lazy-load supabase client to avoid modulepreloading vendor-supabase (172KB)
+function getSupabase() {
+  return import('./supabaseClient').then((m) => m.supabase)
+}
+
 async function fetchProfile(userId: string): Promise<UserProfile | null> {
+  const supabase = await getSupabase()
   const { data, error } = await supabase
     .from('user_profiles')
     .select('*')
@@ -86,28 +91,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s)
-      setUser(s?.user ?? null)
-      loadProfile(s?.user ?? null).finally(() => setLoading(false))
-    })
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, s) => {
+    // Get initial session (lazy-load supabase)
+    let subscription: { unsubscribe: () => void } | null = null
+    getSupabase().then((supabase) => {
+      supabase.auth.getSession().then(({ data: { session: s } }) => {
         setSession(s)
         setUser(s?.user ?? null)
-        loadProfile(s?.user ?? null)
-      },
-    )
+        loadProfile(s?.user ?? null).finally(() => setLoading(false))
+      })
+
+      // Listen for auth changes
+      const { data: { subscription: sub } } = supabase.auth.onAuthStateChange(
+        (_event, s) => {
+          setSession(s)
+          setUser(s?.user ?? null)
+          loadProfile(s?.user ?? null)
+        },
+      )
+      subscription = sub
+    })
 
     return () => {
-      subscription.unsubscribe()
+      subscription?.unsubscribe()
     }
   }, [loadProfile])
 
   const signInWithGoogle = useCallback(async () => {
+    const supabase = await getSupabase()
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -121,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     localStorage.removeItem('yabai_mock_auth')
+    const supabase = await getSupabase()
     const { error } = await supabase.auth.signOut()
     if (error) {
       console.error('Sign-out error:', error.message)

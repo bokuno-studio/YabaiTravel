@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 export function EventCardSkeleton() {
   return (
-    <Card className="overflow-hidden border-t-4 border-t-gray-200 shadow-sm py-0 flex flex-col">
+    <Card className="overflow-hidden border-t-4 border-t-gray-200 shadow-sm py-0 flex flex-col min-h-[220px]">
       <CardContent className="flex flex-1 flex-col p-0">
         <div className="flex h-full flex-col p-4">
           {/* 1. Race type badge */}
