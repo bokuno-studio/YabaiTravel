@@ -80,5 +80,14 @@
     "officialSite": "公式サイト",
     "entryPage": "申込ページ",
     "backToList": "一覧に戻る"
+  },
+  "blog": {
+    "title": "ブログ",
+    "subtitle": "エンデュランスレースのガイド・ヒント・ストーリー",
+    "backToBlog": "ブログ一覧に戻る",
+    "noArticles": "記事が見つかりません。",
+    "all": "すべて",
+    "guide": "ガイド",
+    "aiOps": "AI運営"
   }
 }

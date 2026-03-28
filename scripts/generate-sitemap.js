@@ -38,6 +38,56 @@ async function generateSitemap() {
     })
   }
 
+  // ブログ一覧ページ
+  for (const lang of LANGS) {
+    urls.push({
+      loc: `${BASE_URL}/${lang}/blog`,
+      changefreq: 'weekly',
+      priority: '0.7',
+      alternates: LANGS.map(l => ({ lang: l, href: `${BASE_URL}/${l}/blog` }))
+    })
+  }
+
+  // ブログ記事ページ（content/blog/*.md のfrontmatterから読み取り）
+  const blogDir = path.join(__dirname, '..', 'content', 'blog')
+  if (existsSync(blogDir)) {
+    const blogFiles = fs.readdirSync(blogDir).filter(f => f.endsWith('.md'))
+    const blogPosts = []
+    for (const file of blogFiles) {
+      const raw = readFileSync(path.join(blogDir, file), 'utf8')
+      const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/)
+      if (!fmMatch) continue
+      const meta = {}
+      for (const line of fmMatch[1].split('\n')) {
+        const kv = line.match(/^(\w+):\s*"?([^"]*)"?\s*$/)
+        if (kv) meta[kv[1]] = kv[2]
+      }
+      if (meta.slug && meta.lang) blogPosts.push(meta)
+    }
+
+    // Group by slug to detect JA/EN pairs
+    const slugMap = {}
+    for (const post of blogPosts) {
+      if (!slugMap[post.slug]) slugMap[post.slug] = {}
+      slugMap[post.slug][post.lang] = post
+    }
+
+    for (const [slug, langVersions] of Object.entries(slugMap)) {
+      const availableLangs = Object.keys(langVersions)
+      for (const lang of availableLangs) {
+        const post = langVersions[lang]
+        urls.push({
+          loc: `${BASE_URL}/${lang}/blog/${slug}`,
+          lastmod: post.date,
+          changefreq: 'monthly',
+          priority: '0.7',
+          alternates: availableLangs.map(l => ({ lang: l, href: `${BASE_URL}/${l}/blog/${slug}` }))
+        })
+      }
+    }
+    console.log(`sitemap: ${blogPosts.length}件のブログ記事を追加`)
+  }
+
   // DBからイベント・カテゴリを取得できる場合
   try {
     await client.connect()

@@ -1,6 +1,6 @@
 import { Link, useParams, useLocation } from 'react-router-dom'
 import { useState } from 'react'
-import { Search, Heart, MessageSquare, Info, FileText, ChevronDown, Menu, X } from 'lucide-react'
+import { Search, Heart, MessageSquare, Info, FileText, ChevronDown, Menu, X, BookOpen } from 'lucide-react'
 import AuthButton from './AuthButton'
 import { useSidebarFilter } from '@/contexts/SidebarFilterContext'
 import { useSidebarStats } from '@/contexts/SidebarStatsContext'
@@ -170,6 +170,22 @@ function SideMenuContent({
             }
           </button>
         </div>
+      </div>
+
+      {/* Blog */}
+      <div className="mb-4">
+        <Link
+          to={`${langPrefix}/blog`}
+          className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm no-underline transition-colors ${
+            isActiveIncludes('/blog')
+              ? 'bg-primary/10 text-primary'
+              : 'text-foreground/70 hover:text-foreground hover:bg-muted'
+          }`}
+          onClick={onNavigate}
+        >
+          <BookOpen className="h-4 w-4" />
+          {isEn ? 'Blog' : 'ブログ'}
+        </Link>
       </div>
 
       {/* Separator */}

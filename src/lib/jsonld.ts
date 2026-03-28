@@ -1,4 +1,5 @@
 import type { Event, Category } from '../types/event'
+import type { BlogFrontmatter } from './blog'
 
 /** Resolve currency code from entry_fee_currency field */
 function resolveCurrency(raw: string | null | undefined): string {
@@ -136,5 +137,30 @@ export function categoryToJsonLd(event: Event, category: Category, isEn = false)
   }
 
   // Remove undefined values
+  return JSON.parse(JSON.stringify(jsonLd))
+}
+
+export function blogPostToJsonLd(article: BlogFrontmatter, url: string) {
+  const jsonLd: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: article.title,
+    description: article.description,
+    datePublished: article.date,
+    dateModified: article.date,
+    url,
+    inLanguage: article.lang,
+    author: {
+      '@type': 'Organization',
+      name: 'yabai.travel',
+      url: 'https://yabai.travel',
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'yabai.travel',
+      url: 'https://yabai.travel',
+    },
+  }
+
   return JSON.parse(JSON.stringify(jsonLd))
 }

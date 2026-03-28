@@ -29,6 +29,8 @@ const Legal = lazyWithRetry(() => import('./pages/Legal'))
 const Feedback = lazyWithRetry(() => import('./pages/Feedback'))
 const PaymentSuccess = lazyWithRetry(() => import('./pages/PaymentSuccess'))
 const PaymentCancel = lazyWithRetry(() => import('./pages/PaymentCancel'))
+const BlogList = lazyWithRetry(() => import('./pages/BlogList'))
+const BlogPost = lazyWithRetry(() => import('./pages/BlogPost'))
 
 /** パスの :lang から i18n 言語を設定し、子ルートを描画 */
 function LangLayout() {
@@ -99,6 +101,8 @@ function AppRoutes() {
         <Route path="feedback" element={<Feedback />} />
         <Route path="pricing" element={<Pricing />} />
         <Route path="legal" element={<Legal />} />
+        <Route path="blog" element={<BlogList />} />
+        <Route path="blog/:slug" element={<BlogPost />} />
         <Route path="payment/success" element={<PaymentSuccess />} />
         <Route path="payment/cancel" element={<PaymentCancel />} />
       </Route>

@@ -15,6 +15,8 @@ import Legal from './pages/Legal'
 import Feedback from './pages/Feedback'
 import PaymentSuccess from './pages/PaymentSuccess'
 import PaymentCancel from './pages/PaymentCancel'
+import BlogList from './pages/BlogList'
+import BlogPost from './pages/BlogPost'
 import SideMenu from './components/SideMenu'
 import { SidebarFilterProvider } from './contexts/SidebarFilterContext'
 import { SidebarStatsProvider } from './contexts/SidebarStatsContext'
@@ -62,6 +64,8 @@ function SsrRoutes() {
         <Route path="feedback" element={<Feedback />} />
         <Route path="pricing" element={<Pricing />} />
         <Route path="legal" element={<Legal />} />
+        <Route path="blog" element={<BlogList />} />
+        <Route path="blog/:slug" element={<BlogPost />} />
         <Route path="payment/success" element={<PaymentSuccess />} />
         <Route path="payment/cancel" element={<PaymentCancel />} />
       </Route>

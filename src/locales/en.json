@@ -80,5 +80,14 @@
     "officialSite": "Official Site",
     "entryPage": "Entry Page",
     "backToList": "Back to list"
+  },
+  "blog": {
+    "title": "Blog",
+    "subtitle": "Endurance racing tips, guides, and stories",
+    "backToBlog": "Back to Blog",
+    "noArticles": "No articles found.",
+    "all": "All",
+    "guide": "Guide",
+    "aiOps": "AI Ops"
   }
 }
