@@ -39,6 +39,9 @@ function LangLayout() {
     if ((lang === 'en' || lang === 'ja') && i18n.language !== lang) {
       i18n.changeLanguage(lang)
     }
+    if (lang === 'en' || lang === 'ja') {
+      document.documentElement.lang = lang
+    }
   }, [lang, i18n])
 
   if (lang !== 'ja' && lang !== 'en') {
