@@ -4,7 +4,7 @@ name: Enrich Events (②-A)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 * * * *'  # 1時間おき
+    - cron: '0 */4 * * *'  # 4時間おき（UTC 0,4,8,12,16,20）
 
 permissions:
   issues: write
