@@ -1349,6 +1349,14 @@ function parseNumSetParam(searchParams, key) {
   if (!val) return /* @__PURE__ */ new Set();
   return new Set(val.split(",").filter(Boolean).map(Number));
 }
+function getSSREvents() {
+  if (typeof window !== "undefined" && window.__SSR_EVENTS__) {
+    const data = window.__SSR_EVENTS__;
+    delete window.__SSR_EVENTS__;
+    return data;
+  }
+  return null;
+}
 function EventList() {
   const { t } = useTranslation();
   const { lang } = useParams();
@@ -1357,9 +1365,10 @@ function EventList() {
   const langPrefix = `/${lang || "ja"}`;
   const DISTANCE_RANGES = useMemo(() => getDistanceRanges(isEn), [isEn]);
   useScrollDepth("event_list");
-  const [events, setEvents] = useState([]);
+  const ssrEvents = useMemo(() => getSSREvents(), []);
+  const [events, setEvents] = useState(ssrEvents ?? []);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!ssrEvents);
   const [error, setError] = useState(null);
   const saved = getFilterState();
   const [raceTypes, setRaceTypes] = useState(() => {
@@ -1393,7 +1402,9 @@ function EventList() {
   const [poleFilter, setPoleFilter] = useState(() => searchParams.get("poleFilter") ?? saved.poleFilter);
   const [entryStatus, setEntryStatus] = useState(() => searchParams.get("entryStatus") ?? saved.entryStatus);
   const [showPastEvents, setShowPastEvents] = useState(() => searchParams.get("showPast") === "1" || saved.showPastEvents);
-  const [showMap, setShowMap] = useState(true);
+  const [showMap, setShowMap] = useState(
+    () => typeof window !== "undefined" ? window.innerWidth >= 960 : false
+  );
   const { setLastUpdated: setSidebarLastUpdated, setWeeklyNewCount: setSidebarWeeklyNewCount } = useSidebarStats();
   useEffect(() => {
     saveFilterState({
@@ -1451,9 +1462,16 @@ function EventList() {
       const { count } = await supabase.from("events").select("id", { count: "exact", head: true }).gte("updated_at", weekAgo);
       setSidebarWeeklyNewCount(count ?? 0);
     }
+    if (ssrEvents) {
+      const timer = setTimeout(() => {
+        fetchEvents();
+      }, 100);
+      fetchStats();
+      return () => clearTimeout(timer);
+    }
     fetchEvents();
     fetchStats();
-  }, [setSidebarLastUpdated, setSidebarWeeklyNewCount]);
+  }, [setSidebarLastUpdated, setSidebarWeeklyNewCount, ssrEvents]);
   const costPrices = useMemo(() => {
     const all = events.map((e) => e.total_cost_estimate ? parseInt(e.total_cost_estimate, 10) : NaN).filter((v) => !isNaN(v) && v > 0);
     if (all.length === 0) return all;
@@ -1681,6 +1699,12 @@ function EventList() {
   }, [filterDepsKey]);
   const activeChips = getActiveFilterChips(filterProps);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const INITIAL_RENDER_COUNT = 20;
+  const LOAD_MORE_COUNT = 20;
+  const [visibleCount, setVisibleCount] = useState(INITIAL_RENDER_COUNT);
+  useEffect(() => {
+    setVisibleCount(INITIAL_RENDER_COUNT);
+  }, [raceTypes.size, selectedCategories.size, selectedMonths.size, distanceRanges.size, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents]);
   if (error) {
     return /* @__PURE__ */ jsx("div", { className: "mx-auto max-w-7xl px-4 py-12 text-center", children: /* @__PURE__ */ jsxs("p", { className: "text-destructive", children: [
       isEn ? "Error:" : "エラー:",
@@ -1785,27 +1809,38 @@ function EventList() {
       loading ? /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-h-[600px]", children: Array.from({ length: 8 }).map((_, i) => /* @__PURE__ */ jsx(EventCardSkeleton, {}, i)) }) : filtered.length === 0 ? /* @__PURE__ */ jsxs("div", { className: "flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16", children: [
         /* @__PURE__ */ jsx("p", { className: "text-base font-medium text-foreground", children: t("event.empty") }),
         /* @__PURE__ */ jsx("p", { className: "mt-1 text-sm text-muted-foreground", children: lang === "en" ? "Try adjusting your filters" : "フィルターを調整してみてください" })
-      ] }) : /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4", children: filtered.map((event2) => {
-        const matchingCats = getMatchingCategories(event2);
-        const cardLink = hasAnyFilter && matchingCats.length === 1 ? `${langPrefix}/events/${event2.id}/categories/${matchingCats[0].id}` : `${langPrefix}/events/${event2.id}`;
-        const chipsToShow = hasAnyFilter && matchingCats.length > 0 ? matchingCats : event2.categories ?? [];
-        const cats = event2.categories ?? [];
-        const isEnriched = event2.location != null && (cats.length === 0 || cats.some((c) => c.distance_km != null || c.elevation_gain != null));
-        return /* @__PURE__ */ jsx(
-          EventCard,
+      ] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
+        /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4", children: filtered.slice(0, visibleCount).map((event2) => {
+          const matchingCats = getMatchingCategories(event2);
+          const cardLink = hasAnyFilter && matchingCats.length === 1 ? `${langPrefix}/events/${event2.id}/categories/${matchingCats[0].id}` : `${langPrefix}/events/${event2.id}`;
+          const chipsToShow = hasAnyFilter && matchingCats.length > 0 ? matchingCats : event2.categories ?? [];
+          const cats = event2.categories ?? [];
+          const isEnriched = event2.location != null && (cats.length === 0 || cats.some((c) => c.distance_km != null || c.elevation_gain != null));
+          return /* @__PURE__ */ jsx(
+            EventCard,
+            {
+              event: event2,
+              langPrefix,
+              raceTypeLabel,
+              cardLink,
+              chipsToShow,
+              isEnriched,
+              t,
+              lang
+            },
+            event2.id
+          );
+        }) }),
+        filtered.length > visibleCount && /* @__PURE__ */ jsx("div", { className: "mt-6 flex justify-center", children: /* @__PURE__ */ jsx(
+          Button,
           {
-            event: event2,
-            langPrefix,
-            raceTypeLabel,
-            cardLink,
-            chipsToShow,
-            isEnriched,
-            t,
-            lang
-          },
-          event2.id
-        );
-      }) })
+            variant: "outline",
+            onClick: () => setVisibleCount((prev) => prev + LOAD_MORE_COUNT),
+            className: "px-8",
+            children: isEn ? `Show more (${filtered.length - visibleCount} remaining)` : `もっと見る（残り${filtered.length - visibleCount}件）`
+          }
+        ) })
+      ] })
     ] })
   ] });
 }
@@ -2027,7 +2062,7 @@ function EventComments({ eventId, categoryId, raceType: raceType2, isEn, limit }
   return /* @__PURE__ */ jsxs(Card, { className: "mb-4 mt-6", children: [
     /* @__PURE__ */ jsx(CardHeader, { children: /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2", children: [
       /* @__PURE__ */ jsx(CardTitle, { className: "text-base", children: isEn ? "Race Reports" : "レースレポート・口コミ" }),
-      /* @__PURE__ */ jsx(Badge, { variant: "outline", className: "text-[10px] border-amber-300 bg-amber-50 text-amber-700", children: isEn ? "Beta — This feature is in testing" : "β版 — この機能はテスト中です" })
+      /* @__PURE__ */ jsx(Badge, { variant: "outline", className: "text-[10px] border-amber-300 bg-amber-50 text-amber-700", children: isEn ? "Beta — Free during testing period" : "β版 — テスト期間中は無料" })
     ] }) }),
     /* @__PURE__ */ jsxs(CardContent, { children: [
       loading ? /* @__PURE__ */ jsx("p", { className: "text-sm text-muted-foreground", children: isEn ? "Loading..." : "読み込み中..." }) : comments.length === 0 ? /* @__PURE__ */ jsx("p", { className: "text-sm text-muted-foreground", children: isEn ? "No reports yet. Be the first!" : "まだレポートはありません。最初の投稿者になりましょう！" }) : /* @__PURE__ */ jsx("div", { className: "space-y-4", children: comments.map((c) => /* @__PURE__ */ jsxs("div", { className: "border-b border-border/40 pb-3 last:border-0", children: [
@@ -2038,7 +2073,20 @@ function EventComments({ eventId, categoryId, raceType: raceType2, isEn, limit }
         /* @__PURE__ */ jsx("p", { className: "whitespace-pre-line text-sm leading-relaxed text-muted-foreground", children: c.content })
       ] }, c.id)) }),
       canPost && user ? /* @__PURE__ */ jsxs("div", { className: "mt-6 border-t border-border pt-4", children: [
-        /* @__PURE__ */ jsx("p", { className: "mb-3 text-xs text-muted-foreground", children: isEn ? "Share your race experience or tips. Spam and abusive content will be removed." : "このレースに参加した体験や感想を共有してください。誹謗中傷・スパムは削除されます。" }),
+        /* @__PURE__ */ jsxs("div", { className: "mb-4 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground space-y-1", children: [
+          /* @__PURE__ */ jsx("p", { className: "font-medium text-foreground/80", children: isEn ? "Posting Guidelines" : "投稿ガイドライン" }),
+          isEn ? /* @__PURE__ */ jsxs("ul", { className: "list-disc pl-4 space-y-0.5", children: [
+            /* @__PURE__ */ jsx("li", { children: "Share your race experience, course tips, or logistics advice" }),
+            /* @__PURE__ */ jsx("li", { children: "Spam, abusive content, and promotional posts will be removed" }),
+            /* @__PURE__ */ jsx("li", { children: "Posts are public and cannot be edited after submission" }),
+            /* @__PURE__ */ jsx("li", { children: "This feature is free during the beta period — posting conditions may change in the future" })
+          ] }) : /* @__PURE__ */ jsxs("ul", { className: "list-disc pl-4 space-y-0.5", children: [
+            /* @__PURE__ */ jsx("li", { children: "レース体験・コース情報・ロジスティクスのアドバイスを共有してください" }),
+            /* @__PURE__ */ jsx("li", { children: "スパム・誹謗中傷・宣伝目的の投稿は削除されます" }),
+            /* @__PURE__ */ jsx("li", { children: "投稿は公開され、送信後の編集はできません" }),
+            /* @__PURE__ */ jsx("li", { children: "β版期間中は無料です — 将来、投稿条件が変更される場合があります" })
+          ] })
+        ] }),
         /* @__PURE__ */ jsxs("div", { className: "space-y-3", children: [
           /* @__PURE__ */ jsx(
             "input",
@@ -5683,7 +5731,7 @@ The Shinkansen connects Tokyo to most major cities in 1-3 hours. A Japan Rail Pa
 
 Many trail race venues require Shinkansen plus local rail or bus (30-90 minutes for the final leg). Race organizers often provide shuttle buses from the nearest station. For Hokkaido or Okinawa races, domestic flights from Haneda are the practical option — budget carriers like Peach and Jetstar offer fares from 5,000 yen.
 
-### What yabai.travel Offers
+### Planning Transport to Race Venues
 
 This is exactly the problem [yabai.travel](https://yabai.travel) was built to solve. For every endurance race in our database, we provide:
 
@@ -5795,7 +5843,7 @@ Check the mandatory equipment list carefully — Japanese races enforce gear che
 
 ## How yabai.travel Can Help
 
-[yabai.travel](https://yabai.travel) is the only platform that consolidates endurance race information with Tokyo-based travel logistics in a single view.
+[yabai.travel](https://yabai.travel) aggregates endurance race information with Tokyo-based travel logistics in a single view.
 
 For every race in our database, you get:
 
@@ -6344,7 +6392,7 @@ A HYROX event is the perfect anchor for a fitness-focused trip to Japan. The Chi
 | **Day 4** | Recovery day: day trip to Kamakura for beach and temples, or Hakone for hot springs (onsen). |
 | **Day 5** | Departure, or extend with a trip to Mount Fuji, Nikko, or Kyoto via Shinkansen. |
 
-### Plan Your Race Trip with yabai.travel
+### Planning Your Race Trip
 
 If you are traveling to Japan for HYROX or any endurance event, [yabai.travel](https://yabai.travel/en/) is built for exactly this purpose. The platform aggregates endurance race information across Japan and provides:
 
@@ -6648,7 +6696,7 @@ Running a Spartan Race in Japan is a different experience from events in the US 
 
 ## Plan Your Spartan Race Trip to Japan
 
-Combining a Spartan Race with sightseeing? [yabai.travel](https://yabai.travel) builds custom Japan itineraries for active travelers. Tell us which race you are signed up for and we will plan the transport, accommodation, and activities around it -- whether that means a hot spring recovery day in Hakone after the Mt. Fuji event, or street food in Osaka after the Oita race.
+Combining a Spartan Race with sightseeing? [yabai.travel](https://yabai.travel) lists Spartan Race venues alongside transport routes from Tokyo, nearby accommodation, and day-trip feasibility.
 
 Ready to get muddy in Japan? Your adventure starts at [yabai.travel](https://yabai.travel).
 
@@ -6890,7 +6938,7 @@ Japan's greatest post-race secret: onsen. Nearly every mountain area has natural
 
 Combining trail races with sightseeing is one of the best ways to experience Japan beyond the tourist highlights. Whether you are chasing a personal best on the ridges above Tokyo or simply want to jog through autumn forests, the races on this list deliver world-class trails with distinctly Japanese hospitality.
 
-Need help planning a trip that combines racing, sightseeing, and local experiences? [yabai.travel](https://yabai.travel) specializes in building custom Japan itineraries for active travelers -- including transport logistics, accommodation near race venues, and must-visit spots along the way.
+[yabai.travel](https://yabai.travel) lists trail races across Japan with transport access from Tokyo and nearby accommodation options.
 
 ---
 
@@ -7544,9 +7592,40 @@ export {
 
 // --- End SSR bundle ---
 
-const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png\" />\n    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>yabai.travel</title>\n    <meta name=\"description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:title\" content=\"yabai.travel\" />\n    <meta property=\"og:description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Preconnect to critical origins -->\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link rel=\"dns-prefetch\" href=\"https://maps.googleapis.com\" />\n    <link rel=\"dns-prefetch\" href=\"https://supabase.co\" />\n    <!-- Font display swap for system font fallback during load -->\n    <style>\n      @font-face {\n        font-family: 'Inter';\n        font-display: swap;\n        src: local('Inter');\n      }\n    </style>\n    <!-- Google Search Console verification: add meta tag here after registration -->\n    <!-- Google tag (gtag.js) - deferred to reduce TBT -->\n    <script>\n      window.addEventListener('load', function() {\n        var s = document.createElement('script');\n        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';\n        s.async = true;\n        document.head.appendChild(s);\n        s.onload = function() {\n          window.dataLayer = window.dataLayer || [];\n          function gtag(){dataLayer.push(arguments);}\n          gtag('js', new Date());\n          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });\n        };\n      });\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-8WBheBLO.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-react-CEChUk-l.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-i18n-5xXoTvtS.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-ui-phpf8bsv.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-D6sJM6hX.css\">\n  </head>\n  <body>\n    <div id=\"root\"><!--ssr-outlet--></div>\n  </body>\n</html>\n"
+const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png\" />\n    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>yabai.travel</title>\n    <meta name=\"description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:title\" content=\"yabai.travel\" />\n    <meta property=\"og:description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Preconnect to critical origins -->\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link rel=\"dns-prefetch\" href=\"https://maps.googleapis.com\" />\n    <link rel=\"dns-prefetch\" href=\"https://supabase.co\" />\n    <!-- Font display swap for system font fallback during load -->\n    <style>\n      @font-face {\n        font-family: 'Inter';\n        font-display: swap;\n        src: local('Inter');\n      }\n    </style>\n    <!-- Google Search Console verification: add meta tag here after registration -->\n    <!-- Google tag (gtag.js) - deferred to reduce TBT -->\n    <script>\n      window.addEventListener('load', function() {\n        var s = document.createElement('script');\n        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';\n        s.async = true;\n        document.head.appendChild(s);\n        s.onload = function() {\n          window.dataLayer = window.dataLayer || [];\n          function gtag(){dataLayer.push(arguments);}\n          gtag('js', new Date());\n          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });\n        };\n      });\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-BTM210G7.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-react-CEChUk-l.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-i18n-5xXoTvtS.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-ui-phpf8bsv.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-DdR2Zsk_.css\">\n  </head>\n  <body>\n    <div id=\"root\"><!--ssr-outlet--></div>\n  </body>\n</html>\n"
 
-export default function handler(req, res) {
+// Prefetch events from Supabase for top page SSR data injection
+// Uses AbortController timeout to avoid blocking SSR if Supabase is slow
+async function prefetchEvents() {
+  const url = process.env.VITE_SUPABASE_URL
+  const key = process.env.VITE_SUPABASE_ANON_KEY
+  const schema = process.env.VITE_SUPABASE_SCHEMA || "yabai_travel"
+  if (!url || !key) return null
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 3000)
+    const res = await fetch(
+      `${url}/rest/v1/events?select=*,categories(*)&event_date=gte.${today}&order=event_date.asc&limit=500`,
+      {
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Accept-Profile": schema,
+        },
+        signal: controller.signal,
+      }
+    )
+    clearTimeout(timeout)
+    if (!res.ok) return null
+    return await res.json()
+  } catch (e) {
+    if (e.name !== "AbortError") console.error("SSR prefetch error:", e)
+    return null
+  }
+}
+
+export default async function handler(req, res) {
   const originalUrl = req.headers["x-invoke-path"] || req.headers["x-matched-path"] || req.url || "/"
   const url = originalUrl.startsWith("/api/ssr") ? originalUrl.replace(/^\/api\/ssr/, "") || "/" : originalUrl
   try {
@@ -7556,6 +7635,17 @@ export default function handler(req, res) {
     let finalHtml = TEMPLATE
     finalHtml = finalHtml.replace(/lang="[^"]*"/, 'lang="' + lang + '"')
     finalHtml = finalHtml.replace("<!--ssr-outlet-->", appHtml)
+
+    // Prefetch events for top page to eliminate client-side fetch latency
+    const isTopPage = /^\/(ja|en)\/?$/.test(url) || /^\/(ja|en)\?/.test(url)
+    if (isTopPage) {
+      const events = await prefetchEvents()
+      if (events) {
+        const jsonStr = JSON.stringify(events).split("<").join("\\u003c")
+        const dataScript = "<script>window.__SSR_EVENTS__=" + jsonStr + "</script>"
+        finalHtml = finalHtml.replace("</head>", dataScript + "</head>")
+      }
+    }
 
     res.setHeader("Content-Type", "text/html; charset=utf-8")
     res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300")

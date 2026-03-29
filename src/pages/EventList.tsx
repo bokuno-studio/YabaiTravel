@@ -67,6 +67,22 @@ function parseNumSetParam(searchParams: URLSearchParams, key: string): Set<numbe
   return new Set(val.split(',').filter(Boolean).map(Number))
 }
 
+/** Use SSR-prefetched events if available, clear after use */
+function getSSREvents(): EventWithCategories[] | null {
+  if (typeof window !== 'undefined' && window.__SSR_EVENTS__) {
+    const data = window.__SSR_EVENTS__ as EventWithCategories[]
+    delete window.__SSR_EVENTS__
+    return data
+  }
+  return null
+}
+
+declare global {
+  interface Window {
+    __SSR_EVENTS__?: unknown
+  }
+}
+
 function EventList() {
   const { t } = useTranslation()
   const { lang } = useParams<{ lang: string }>()
@@ -76,9 +92,11 @@ function EventList() {
   const DISTANCE_RANGES = useMemo(() => getDistanceRanges(isEn), [isEn])
   useScrollDepth('event_list')
 
-  const [events, setEvents] = useState<EventWithCategories[]>([])
+  // Use SSR-prefetched data if available to eliminate client fetch latency
+  const ssrEvents = useMemo(() => getSSREvents(), [])
+  const [events, setEvents] = useState<EventWithCategories[]>(ssrEvents ?? [])
   const [searchParams, setSearchParams] = useSearchParams()
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!ssrEvents)
   const [error, setError] = useState<string | null>(null)
 
   // Restore filter state from global store (survives unmount)
@@ -115,7 +133,10 @@ function EventList() {
   const [poleFilter, setPoleFilter] = useState<string>(() => searchParams.get('poleFilter') ?? saved.poleFilter)
   const [entryStatus, setEntryStatus] = useState<string>(() => searchParams.get('entryStatus') ?? saved.entryStatus)
   const [showPastEvents, setShowPastEvents] = useState(() => searchParams.get('showPast') === '1' || saved.showPastEvents)
-  const [showMap, setShowMap] = useState(true)
+  // Default map hidden on mobile to avoid loading Google Maps API
+  const [showMap, setShowMap] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 960 : false
+  )
 
   // #5, #6: Push stats to context for sidebar
   const { setLastUpdated: setSidebarLastUpdated, setWeeklyNewCount: setSidebarWeeklyNewCount } = useSidebarStats()
@@ -200,9 +221,17 @@ function EventList() {
       setSidebarWeeklyNewCount(count ?? 0)
     }
 
+    // If SSR data is available, do a background refresh to get full dataset (including past events)
+    if (ssrEvents) {
+      // Defer full fetch to after initial render to avoid blocking
+      const timer = setTimeout(() => { fetchEvents() }, 100)
+      fetchStats()
+      return () => clearTimeout(timer)
+    }
+
     fetchEvents()
     fetchStats()
-  }, [setSidebarLastUpdated, setSidebarWeeklyNewCount])
+  }, [setSidebarLastUpdated, setSidebarWeeklyNewCount, ssrEvents])
 
   /** コスト分布データ（95パーセンタイル超の外れ値を除外してヒストグラムに渡す） */
   const costPrices = useMemo(() => {
@@ -451,6 +480,16 @@ function EventList() {
   const activeChips = getActiveFilterChips(filterProps)
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
 
+  // Progressive rendering: show limited cards initially to reduce TBT
+  const INITIAL_RENDER_COUNT = 20
+  const LOAD_MORE_COUNT = 20
+  const [visibleCount, setVisibleCount] = useState(INITIAL_RENDER_COUNT)
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(INITIAL_RENDER_COUNT)
+  }, [raceTypes.size, selectedCategories.size, selectedMonths.size, distanceRanges.size, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents])
+
   if (error) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-12 text-center">
@@ -606,37 +645,52 @@ function EventList() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.map((event) => {
-              const matchingCats = getMatchingCategories(event)
-              // フィルタで1件に絞られた場合は直接カテゴリへ、それ以外はイベント詳細へ (#33)
-              const cardLink = hasAnyFilter && matchingCats.length === 1
-                ? `${langPrefix}/events/${event.id}/categories/${matchingCats[0].id}`
-                : `${langPrefix}/events/${event.id}`
-              // フィルタ適用中は合致するカテゴリチップのみ表示 (#33)
-              const chipsToShow = hasAnyFilter && matchingCats.length > 0
-                ? matchingCats
-                : (event.categories ?? [])
-              // enrich完了判定: location + カテゴリ充足度 (#63, #71)
-              const cats = event.categories ?? []
-              const isEnriched = event.location != null && (
-                cats.length === 0 || cats.some(c => c.distance_km != null || c.elevation_gain != null)
-              )
-              return (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  langPrefix={langPrefix}
-                  raceTypeLabel={raceTypeLabel}
-                  cardLink={cardLink}
-                  chipsToShow={chipsToShow}
-                  isEnriched={isEnriched}
-                  t={t}
-                  lang={lang}
-                />
-              )
-            })}
-          </div>
+          <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filtered.slice(0, visibleCount).map((event) => {
+                const matchingCats = getMatchingCategories(event)
+                // フィルタで1件に絞られた場合は直接カテゴリへ、それ以外はイベント詳細へ (#33)
+                const cardLink = hasAnyFilter && matchingCats.length === 1
+                  ? `${langPrefix}/events/${event.id}/categories/${matchingCats[0].id}`
+                  : `${langPrefix}/events/${event.id}`
+                // フィルタ適用中は合致するカテゴリチップのみ表示 (#33)
+                const chipsToShow = hasAnyFilter && matchingCats.length > 0
+                  ? matchingCats
+                  : (event.categories ?? [])
+                // enrich完了判定: location + カテゴリ充足度 (#63, #71)
+                const cats = event.categories ?? []
+                const isEnriched = event.location != null && (
+                  cats.length === 0 || cats.some(c => c.distance_km != null || c.elevation_gain != null)
+                )
+                return (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    langPrefix={langPrefix}
+                    raceTypeLabel={raceTypeLabel}
+                    cardLink={cardLink}
+                    chipsToShow={chipsToShow}
+                    isEnriched={isEnriched}
+                    t={t}
+                    lang={lang}
+                  />
+                )
+              })}
+            </div>
+            {filtered.length > visibleCount && (
+              <div className="mt-6 flex justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => setVisibleCount((prev) => prev + LOAD_MORE_COUNT)}
+                  className="px-8"
+                >
+                  {isEn
+                    ? `Show more (${filtered.length - visibleCount} remaining)`
+                    : `もっと見る（残り${filtered.length - visibleCount}件）`}
+                </Button>
+              </div>
+            )}
+          </>
         )}
 
       </div>
