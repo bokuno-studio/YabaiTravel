@@ -40,7 +40,7 @@ async function fetchIssueStatus(url: string): Promise<'in_progress' | 'resolved'
   }
 
   const apiUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/issues/${parsed.number}`
-  const res = await fetchWithTimeout(apiUrl, { headers, timeout: 10000 })
+  const res = await fetch(apiUrl, { headers, signal: AbortSignal.timeout(10000) })
 
   if (!res.ok) {
     console.error({ url, status: res.status }, 'GitHub API error')

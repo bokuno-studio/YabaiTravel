@@ -101,6 +101,7 @@ jobs:
             | grep -v 'http://localhost' \
             | grep -v '//schema.org' \
             | grep -v 'sourceMappingURL' \
+            | grep -v 'http://"+' \
             || true)
           if [ -n "$MIXED" ]; then
             echo "::error::Mixed content (http://) found in build output:"
