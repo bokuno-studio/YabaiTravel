@@ -238,14 +238,14 @@ async function insertRace(client, race) {
          AND ($2 IS NULL OR event_date IS NULL OR event_date::text = $2::text)
        )
        OR (
-         name_en IS NOT NULL AND $8 IS NOT NULL
-         AND ${normalizeSQL('name_en')} = ${normalizeSQL('$8')}
+         name_en IS NOT NULL AND $8::text IS NOT NULL
+         AND ${normalizeSQL('name_en')} = ${normalizeSQL('$8::text')}
          AND ($2 IS NULL OR event_date IS NULL OR event_date::text = $2::text)
        )
   )`
   const result = await client.query(
     `INSERT INTO ${SCHEMA}.events (name, name_en, event_date, location, country, race_type, official_url, entry_url, collected_at)
-     SELECT $1, $8, $2::date, $3, $4, $5, $6, $7, NULL
+     SELECT $1, $8::text, $2::date, $3, $4, $5, $6, $7, NULL
      ${dupCheck}
      RETURNING id`,
     [
