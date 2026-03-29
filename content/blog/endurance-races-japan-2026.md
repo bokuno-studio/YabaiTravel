@@ -220,7 +220,7 @@ The Shinkansen connects Tokyo to most major cities in 1-3 hours. A Japan Rail Pa
 
 Many trail race venues require Shinkansen plus local rail or bus (30-90 minutes for the final leg). Race organizers often provide shuttle buses from the nearest station. For Hokkaido or Okinawa races, domestic flights from Haneda are the practical option — budget carriers like Peach and Jetstar offer fares from 5,000 yen.
 
-### What yabai.travel Offers
+### Planning Transport to Race Venues
 
 This is exactly the problem [yabai.travel](https://yabai.travel) was built to solve. For every endurance race in our database, we provide:
 
@@ -332,7 +332,7 @@ Check the mandatory equipment list carefully — Japanese races enforce gear che
 
 ## How yabai.travel Can Help
 
-[yabai.travel](https://yabai.travel) is the only platform that consolidates endurance race information with Tokyo-based travel logistics in a single view.
+[yabai.travel](https://yabai.travel) aggregates endurance race information with Tokyo-based travel logistics in a single view.
 
 For every race in our database, you get:
 

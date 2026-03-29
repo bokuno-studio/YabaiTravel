@@ -239,7 +239,7 @@ Running a Spartan Race in Japan is a different experience from events in the US 
 
 ## Plan Your Spartan Race Trip to Japan
 
-Combining a Spartan Race with sightseeing? [yabai.travel](https://yabai.travel) builds custom Japan itineraries for active travelers. Tell us which race you are signed up for and we will plan the transport, accommodation, and activities around it -- whether that means a hot spring recovery day in Hakone after the Mt. Fuji event, or street food in Osaka after the Oita race.
+Combining a Spartan Race with sightseeing? [yabai.travel](https://yabai.travel) lists Spartan Race venues alongside transport routes from Tokyo, nearby accommodation, and day-trip feasibility.
 
 Ready to get muddy in Japan? Your adventure starts at [yabai.travel](https://yabai.travel).
 

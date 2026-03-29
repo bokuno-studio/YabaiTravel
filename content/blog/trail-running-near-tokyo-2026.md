@@ -231,7 +231,7 @@ Japan's greatest post-race secret: onsen. Nearly every mountain area has natural
 
 Combining trail races with sightseeing is one of the best ways to experience Japan beyond the tourist highlights. Whether you are chasing a personal best on the ridges above Tokyo or simply want to jog through autumn forests, the races on this list deliver world-class trails with distinctly Japanese hospitality.
 
-Need help planning a trip that combines racing, sightseeing, and local experiences? [yabai.travel](https://yabai.travel) specializes in building custom Japan itineraries for active travelers -- including transport logistics, accommodation near race venues, and must-visit spots along the way.
+[yabai.travel](https://yabai.travel) lists trail races across Japan with transport access from Tokyo and nearby accommodation options.
 
 ---
 

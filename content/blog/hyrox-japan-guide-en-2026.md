@@ -283,7 +283,7 @@ A HYROX event is the perfect anchor for a fitness-focused trip to Japan. The Chi
 | **Day 4** | Recovery day: day trip to Kamakura for beach and temples, or Hakone for hot springs (onsen). |
 | **Day 5** | Departure, or extend with a trip to Mount Fuji, Nikko, or Kyoto via Shinkansen. |
 
-### Plan Your Race Trip with yabai.travel
+### Planning Your Race Trip
 
 If you are traveling to Japan for HYROX or any endurance event, [yabai.travel](https://yabai.travel/en/) is built for exactly this purpose. The platform aggregates endurance race information across Japan and provides:
 
