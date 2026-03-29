@@ -4,6 +4,7 @@
  *
  * 使い方:
  *   node scripts/crawl/orchestrator.js              # 全件
+ *   node scripts/crawl/orchestrator.js --limit 50   # 50件のみ処理
  *   node scripts/crawl/orchestrator.js --dry-run    # DB更新なし
  *   node scripts/crawl/orchestrator.js --once       # 1バッチのみ
  *   node scripts/crawl/orchestrator.js --concurrency 10
@@ -33,6 +34,8 @@ const EVENT_ONLY = args.includes('--event-only')    // ②-A + ③ のみ（②-
 const CATEGORY_ONLY = args.includes('--category-only') // ②-B のみ（②-A スキップ）
 const concurrencyIdx = args.indexOf('--concurrency')
 const CONCURRENCY = concurrencyIdx >= 0 ? parseInt(args[concurrencyIdx + 1], 10) : 20
+const limitIdx = args.indexOf('--limit')
+const LIMIT = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : null
 
 const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
 
@@ -46,12 +49,13 @@ function chunkArray(arr, size) {
 }
 
 async function run() {
-  console.log(`=== オーケストレータ開始 (DRY_RUN: ${DRY_RUN}, CONCURRENCY: ${CONCURRENCY}, ONCE: ${ONCE}) ===\n`)
+  console.log(`=== オーケストレータ開始 (DRY_RUN: ${DRY_RUN}, CONCURRENCY: ${CONCURRENCY}, ONCE: ${ONCE}, LIMIT: ${LIMIT ?? 'なし'}) ===\n`)
 
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
   await client.connect()
 
   // ②-A 未処理イベント（統一リトライ: collected_at IS NULL AND attempt_count < 3）
+  const limitClause = LIMIT ? ` LIMIT ${LIMIT}` : ''
   const { rows: needsEventEnrich } = await client.query(
     `SELECT id, name, official_url, location, country, country_en, race_type, FALSE as event_done
      FROM ${SCHEMA}.events
@@ -59,7 +63,7 @@ async function run() {
        AND attempt_count < 3
      ORDER BY
        CASE WHEN attempt_count = 0 THEN 0 ELSE 1 END,
-       updated_at ASC`
+       updated_at ASC${limitClause}`
   )
 
   // ②-B のみ必要（②-A 完了だがカテゴリ詳細未収集）
@@ -71,7 +75,7 @@ async function run() {
          SELECT 1 FROM ${SCHEMA}.categories c
          WHERE c.event_id = e.id AND c.collected_at IS NULL AND c.attempt_count < 3
        )
-     ORDER BY e.updated_at ASC`
+     ORDER BY e.updated_at ASC${limitClause}`
   )
 
   await client.end()

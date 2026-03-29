@@ -3,6 +3,11 @@ name: Enrich Categories (②-B)
 
 on:
   workflow_dispatch:
+    inputs:
+      limit:
+        description: 'バッチサイズ（処理件数上限）'
+        required: false
+        default: '50'
   schedule:
     - cron: '30 */4 * * *'  # 4時間おき（UTC 0:30,4:30,8:30,...）
 
@@ -21,7 +26,7 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - name: カテゴリ詳細収集（Batch API）
-        run: node scripts/crawl/enrich-category-detail.js --batch
+        run: node scripts/crawl/enrich-category-detail.js --batch --limit ${{ github.event.inputs.limit || '50' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_SCHEMA: yabai_travel
