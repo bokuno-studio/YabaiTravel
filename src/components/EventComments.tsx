@@ -157,7 +157,7 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
             {isEn ? 'Race Reports' : 'レースレポート・口コミ'}
           </CardTitle>
           <Badge variant="outline" className="text-[10px] border-amber-300 bg-amber-50 text-amber-700">
-            {isEn ? 'Beta — This feature is in testing' : 'β版 — この機能はテスト中です'}
+            {isEn ? 'Beta — Free during testing period' : 'β版 — テスト期間中は無料'}
           </Badge>
         </div>
       </CardHeader>
@@ -190,12 +190,27 @@ function EventComments({ eventId, categoryId, raceType, isEn, limit }: EventComm
 
         {canPost && user ? (
           <div className="mt-6 border-t border-border pt-4">
-            {/* Guideline */}
-            <p className="mb-3 text-xs text-muted-foreground">
-              {isEn
-                ? 'Share your race experience or tips. Spam and abusive content will be removed.'
-                : 'このレースに参加した体験や感想を共有してください。誹謗中傷・スパムは削除されます。'}
-            </p>
+            {/* Posting Guidelines */}
+            <div className="mb-4 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground/80">
+                {isEn ? 'Posting Guidelines' : '投稿ガイドライン'}
+              </p>
+              {isEn ? (
+                <ul className="list-disc pl-4 space-y-0.5">
+                  <li>Share your race experience, course tips, or logistics advice</li>
+                  <li>Spam, abusive content, and promotional posts will be removed</li>
+                  <li>Posts are public and cannot be edited after submission</li>
+                  <li>This feature is free during the beta period — posting conditions may change in the future</li>
+                </ul>
+              ) : (
+                <ul className="list-disc pl-4 space-y-0.5">
+                  <li>レース体験・コース情報・ロジスティクスのアドバイスを共有してください</li>
+                  <li>スパム・誹謗中傷・宣伝目的の投稿は削除されます</li>
+                  <li>投稿は公開され、送信後の編集はできません</li>
+                  <li>β版期間中は無料です — 将来、投稿条件が変更される場合があります</li>
+                </ul>
+              )}
+            </div>
             <div className="space-y-3">
               <input
                 type="text"
