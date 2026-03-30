@@ -351,12 +351,15 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
     }
 
     // #339: 国→通貨マッピングで entry_fee_currency を検証・補正
-    const expectedCurrency = getCurrencyForCountry(countryEn)
-    if (expectedCurrency && extracted.entry_fee_currency && extracted.entry_fee_currency !== expectedCurrency) {
-      console.log(`  [currency] ${eventName?.slice(0, 30)} | ${extracted.entry_fee_currency} → ${expectedCurrency} (country: ${countryEn})`)
-      extracted.entry_fee_currency = expectedCurrency
-    } else if (expectedCurrency && !extracted.entry_fee_currency) {
-      extracted.entry_fee_currency = expectedCurrency
+    // entry_fee がある場合のみ通貨コードを設定（fee なしで通貨だけ設定しても無意味）
+    if (extracted.entry_fee != null) {
+      const expectedCurrency = getCurrencyForCountry(countryEn)
+      if (expectedCurrency && extracted.entry_fee_currency && extracted.entry_fee_currency !== expectedCurrency) {
+        console.log(`  [currency] ${eventName?.slice(0, 30)} | ${extracted.entry_fee_currency} → ${expectedCurrency} | fee: ${extracted.entry_fee}`)
+        extracted.entry_fee_currency = expectedCurrency
+      } else if (expectedCurrency && !extracted.entry_fee_currency) {
+        extracted.entry_fee_currency = expectedCurrency
+      }
     }
 
     if (dryRun) {
