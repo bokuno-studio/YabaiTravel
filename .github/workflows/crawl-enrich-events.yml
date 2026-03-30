@@ -26,7 +26,7 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - name: イベント基本情報 + ロジ収集
-        run: node scripts/crawl/orchestrator.js --event-only --limit ${{ github.event.inputs.limit || '50' }}
+        run: node scripts/crawl/orchestrator.js --event-only --batch --limit ${{ github.event.inputs.limit || '50' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_SCHEMA: yabai_travel

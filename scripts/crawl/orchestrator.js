@@ -3,7 +3,8 @@
  * ②-A enrichEvent → ②-B enrichCategoryDetail × N → ③ enrichLogi の順で処理
  *
  * 使い方:
- *   node scripts/crawl/orchestrator.js              # 全件
+ *   node scripts/crawl/orchestrator.js              # 全件（従来モード）
+ *   node scripts/crawl/orchestrator.js --batch      # Batch API モード（②-A で 50% コスト削減）
  *   node scripts/crawl/orchestrator.js --limit 50   # 50件のみ処理
  *   node scripts/crawl/orchestrator.js --dry-run    # DB更新なし
  *   node scripts/crawl/orchestrator.js --once       # 1バッチのみ
@@ -12,7 +13,7 @@
 import pg from 'pg'
 import { existsSync, readFileSync } from 'fs'
 import { resolve } from 'path'
-import { enrichEvent } from './enrich-event.js'
+import { enrichEvent, runOrchestratedEventBatch } from './enrich-event.js'
 import { InsufficientBalanceError } from './lib/enrich-utils.js'
 import { enrichCategoryDetail } from './enrich-category-detail.js'
 import { enrichLogi } from './enrich-logi-ja.js'
@@ -30,6 +31,7 @@ if (existsSync(envPath)) {
 const args = process.argv.slice(2)
 const DRY_RUN = args.includes('--dry-run')
 const ONCE = args.includes('--once')
+const BATCH = args.includes('--batch')                // Batch API モード（②-A で使用）
 const EVENT_ONLY = args.includes('--event-only')    // ②-A + ③ のみ（②-B スキップ）
 const CATEGORY_ONLY = args.includes('--category-only') // ②-B のみ（②-A スキップ）
 const concurrencyIdx = args.indexOf('--concurrency')
@@ -49,7 +51,7 @@ function chunkArray(arr, size) {
 }
 
 async function run() {
-  console.log(`=== オーケストレータ開始 (DRY_RUN: ${DRY_RUN}, CONCURRENCY: ${CONCURRENCY}, ONCE: ${ONCE}, LIMIT: ${LIMIT ?? 'なし'}) ===\n`)
+  console.log(`=== オーケストレータ開始 (DRY_RUN: ${DRY_RUN}, BATCH: ${BATCH}, CONCURRENCY: ${CONCURRENCY}, ONCE: ${ONCE}, LIMIT: ${LIMIT ?? 'なし'}) ===\n`)
 
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
   await client.connect()
@@ -80,6 +82,9 @@ async function run() {
 
   await client.end()
 
+  // Batch モード判定: BATCH フラグが有効でかつ ②-A を処理する場合
+  const useBatchMode = BATCH && !CATEGORY_ONLY
+
   // マージ（モードに応じてフィルタ）
   const seenIds = new Set()
   const pendingEvents = []
@@ -94,14 +99,13 @@ async function run() {
     pendingEvents.push(ev)
   }
 
-  console.log(`処理対象: ${pendingEvents.length} 件（②-A未処理: ${needsEventEnrich.length}, ②-Bのみ: ${needsCatDetail.length}, モード: ${CATEGORY_ONLY ? 'category-only' : EVENT_ONLY ? 'event-only' : 'all'}）\n`)
+  console.log(`処理対象: ${pendingEvents.length} 件（②-A未処理: ${needsEventEnrich.length}, ②-Bのみ: ${needsCatDetail.length}, モード: ${CATEGORY_ONLY ? 'category-only' : EVENT_ONLY ? 'event-only' : 'all'}, Batch: ${useBatchMode}）\n`)
 
   if (pendingEvents.length === 0) {
     console.log('処理対象なし。終了します。')
     return
   }
 
-  const batches = chunkArray(pendingEvents, CONCURRENCY)
   let totalEventOk = 0
   let totalEventErr = 0
   let totalCatOk = 0
@@ -111,48 +115,160 @@ async function run() {
   let totalLogiEnOk = 0
   let totalLogiEnErr = 0
 
-  for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
-    const batch = batches[batchIdx]
-    const batchNum = batchIdx + 1
+  // ②-A: Batch モード時の一括処理（Batch API で 50% コスト削減）
+  if (useBatchMode) {
+    // Batch モード: needsEventEnrich 全件を一度に処理
+    const batchEventResult = await runOrchestratedEventBatch(needsEventEnrich, { dryRun: DRY_RUN })
+    totalEventOk = batchEventResult.ok
+    totalEventErr = batchEventResult.err
 
-    console.log(`--- バッチ ${batchNum}/${batches.length} (${batch.length} 件) ---`)
+    // ②-B と ③ は従来の並列処理で実行（Batch API 対象外）
+    const remainingEvents = [...needsEventEnrich.map(e => ({ ...e, event_done: true })), ...needsCatDetail]
+    const batches = chunkArray(remainingEvents, CONCURRENCY)
 
-    const batchResults = await Promise.allSettled(
-      batch.map(async (event) => {
-        // ②-A: イベント情報 + コース特定（--category-only 時はスキップ）
-        let eventOk = !!event.event_done  // 既に ②-A 完了済みならスキップ
-        let eventResultLocation = null
-        if (!event.event_done && !CATEGORY_ONLY) {
-          const eventResult = await enrichEvent(event, { dryRun: DRY_RUN }).catch(async (e) => {
-            if (e instanceof InsufficientBalanceError) throw e
-            // enrichEvent が throw した場合でも last_error_type を設定
+    for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
+      const batch = batches[batchIdx]
+      const batchNum = batchIdx + 1
+
+      console.log(`--- バッチ ${batchNum}/${batches.length} (②-B/③ 並列処理: ${batch.length} 件) ---`)
+
+      const batchResults = await Promise.allSettled(
+        batch.map(async (event) => {
+          // ②-A は既に Batch モードで完了済み
+          let eventOk = !!event.event_done
+          let eventResultLocation = null
+
+          // ②-B: カテゴリ詳細収集（--event-only 時はスキップ）
+          if (eventOk && !EVENT_ONLY) {
             try {
-              const errClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
-              await errClient.connect()
-              const msg = e.message || ''
-              let errorType = 'temporary'
-              if (msg.includes('JSON') || msg.includes('parse') || e instanceof SyntaxError) errorType = 'parse_error'
-              else if (msg.includes('timeout') || msg.includes('ETIMEDOUT')) errorType = 'timeout'
-              else if (msg.includes('empty') || msg.includes('no JSON found')) errorType = 'empty_response'
-              else if (msg.includes('ECONNREFUSED') || msg.includes('relation') || msg.includes('duplicate key')) errorType = 'db_error'
-              await errClient.query(
-                `UPDATE ${SCHEMA}.events SET last_error_type = $2, last_error_message = $3, attempt_count = attempt_count + 1 WHERE id = $1`,
-                [event.id, errorType, msg.slice(0, 200)]
+              const catClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
+              await catClient.connect()
+              const { rows: pendingCats } = await catClient.query(
+                `SELECT id, name, distance_km FROM ${SCHEMA}.categories
+                 WHERE event_id = $1 AND collected_at IS NULL AND attempt_count < 3`,
+                [event.id]
               )
-              await errClient.end()
-            } catch { /* ignore */ }
+              await catClient.end()
+
+              for (const cat of pendingCats) {
+                const catResult = await enrichCategoryDetail(
+                  { id: event.id, name: event.name, official_url: event.official_url, race_type: event.race_type, country_en: event.country_en },
+                  cat,
+                  { dryRun: DRY_RUN }
+                ).catch((e) => {
+                  if (e instanceof InsufficientBalanceError) throw e
+                  return { success: false, error: e.message }
+                })
+
+                if (catResult.success) {
+                  totalCatOk++
+                  console.log(`  [cat]    OK  ${event.name?.slice(0, 25)} / ${cat.name?.slice(0, 20)}`)
+                } else {
+                  totalCatErr++
+                  console.log(`  [cat]    ERR ${event.name?.slice(0, 25)} / ${cat.name?.slice(0, 20)} | ${catResult.error?.slice(0, 40)}`)
+                }
+              }
+            } catch (e) {
+              if (e instanceof InsufficientBalanceError) throw e
+              console.log(`  [cat]    ERR ${event.name?.slice(0, 40)} | カテゴリ取得失敗: ${e.message?.slice(0, 40)}`)
+            }
+          }
+
+          // ③: ロジ収集（--category-only 時はスキップ）
+          if (CATEGORY_ONLY) return
+          const enrichedEvent = event  // Batch モード後はlocationが既に入っている
+          const logiResult = await enrichLogi(enrichedEvent, { dryRun: DRY_RUN }).catch((e) => {
+            if (e instanceof InsufficientBalanceError) throw e
             return { success: false, error: e.message }
           })
-          if (eventResult.success) {
-            totalEventOk++
-            eventOk = true
-            eventResultLocation = eventResult.location || null
-            console.log(`  [event]  OK  ${event.name?.slice(0, 40)} | courses:${eventResult.categoriesCount ?? '?'}`)
+          if (logiResult.success) {
+            totalLogiOk++
+            console.log(`  [logi-ja] OK  ${event.name?.slice(0, 40)}`)
           } else {
-            totalEventErr++
-            console.log(`  [event]  ERR ${event.name?.slice(0, 40)} | ${eventResult.error?.slice(0, 50)}`)
+            totalLogiErr++
+            console.log(`  [logi-ja] ERR ${event.name?.slice(0, 40)} | ${logiResult.error?.slice(0, 50)}`)
           }
-        }
+
+          // ③-en: 英語版ロジ（会場アクセスポイント）
+          const logiEnResult = await enrichLogiEn(enrichedEvent, { dryRun: DRY_RUN }).catch((e) => {
+            if (e instanceof InsufficientBalanceError) throw e
+            return { success: false, error: e.message }
+          })
+          if (logiEnResult.success) {
+            totalLogiEnOk++
+            console.log(`  [logi-en] OK  ${event.name?.slice(0, 40)}`)
+          } else {
+            totalLogiEnErr++
+            console.log(`  [logi-en] ERR ${event.name?.slice(0, 40)} | ${logiEnResult.error?.slice(0, 50)}`)
+          }
+        })
+      )
+
+      // 残高不足チェック → 即時停止
+      const balanceError = batchResults.find((r) => r.status === 'rejected' && r.reason instanceof InsufficientBalanceError)
+      if (balanceError) {
+        console.log('\n=== API 残高不足により処理を中断します ===')
+        break
+      }
+
+      console.log()
+
+      if (ONCE) {
+        console.log('--once フラグにより1バッチで終了します。')
+        break
+      }
+
+      // バッチ間ウェイト: Anthropic API レートリミット対策 (#69)
+      if (batchIdx < batches.length - 1) {
+        await new Promise((r) => setTimeout(r, 3000))
+      }
+    }
+  } else {
+    // ②-A/②-B/③ の従来の並列処理モード
+    const batches = chunkArray(pendingEvents, CONCURRENCY)
+
+    for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
+      const batch = batches[batchIdx]
+      const batchNum = batchIdx + 1
+
+      console.log(`--- バッチ ${batchNum}/${batches.length} (${batch.length} 件) ---`)
+
+      const batchResults = await Promise.allSettled(
+        batch.map(async (event) => {
+          // ②-A: イベント情報 + コース特定（--category-only 時はスキップ）
+          let eventOk = !!event.event_done  // 既に ②-A 完了済みならスキップ
+          let eventResultLocation = null
+          if (!event.event_done && !CATEGORY_ONLY) {
+            const eventResult = await enrichEvent(event, { dryRun: DRY_RUN }).catch(async (e) => {
+              if (e instanceof InsufficientBalanceError) throw e
+              // enrichEvent が throw した場合でも last_error_type を設定
+              try {
+                const errClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
+                await errClient.connect()
+                const msg = e.message || ''
+                let errorType = 'temporary'
+                if (msg.includes('JSON') || msg.includes('parse') || e instanceof SyntaxError) errorType = 'parse_error'
+                else if (msg.includes('timeout') || msg.includes('ETIMEDOUT')) errorType = 'timeout'
+                else if (msg.includes('empty') || msg.includes('no JSON found')) errorType = 'empty_response'
+                else if (msg.includes('ECONNREFUSED') || msg.includes('relation') || msg.includes('duplicate key')) errorType = 'db_error'
+                await errClient.query(
+                  `UPDATE ${SCHEMA}.events SET last_error_type = $2, last_error_message = $3, attempt_count = attempt_count + 1 WHERE id = $1`,
+                  [event.id, errorType, msg.slice(0, 200)]
+                )
+                await errClient.end()
+              } catch { /* ignore */ }
+              return { success: false, error: e.message }
+            })
+            if (eventResult.success) {
+              totalEventOk++
+              eventOk = true
+              eventResultLocation = eventResult.location || null
+              console.log(`  [event]  OK  ${event.name?.slice(0, 40)} | courses:${eventResult.categoriesCount ?? '?'}`)
+            } else {
+              totalEventErr++
+              console.log(`  [event]  ERR ${event.name?.slice(0, 40)} | ${eventResult.error?.slice(0, 50)}`)
+            }
+          }
 
         // ②-B: 各カテゴリの詳細収集（--event-only 時はスキップ）
         if (eventOk && !EVENT_ONLY) {
@@ -239,6 +355,7 @@ async function run() {
     // バッチ間ウェイト: Anthropic API レートリミット対策 (#69)
     if (batchIdx < batches.length - 1) {
       await new Promise((r) => setTimeout(r, 3000))
+    }
     }
   }
 

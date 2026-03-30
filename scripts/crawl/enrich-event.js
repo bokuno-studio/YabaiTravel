@@ -842,6 +842,115 @@ async function runBatchCli() {
   console.log(`\n完了: OK ${ok} / ERR ${err}`)
 }
 
+/**
+ * orchestrator.js から呼び出される Batch モード処理
+ * runBatchCli() の内部ロジックを再利用し、イベント配列を直接受け取る
+ */
+export async function runOrchestratedEventBatch(events, { dryRun = false } = {}) {
+  if (events.length === 0) {
+    console.log('[orchestrator-batch] 対象イベントなし')
+    return { ok: 0, err: 0 }
+  }
+
+  console.log(`\n[orchestrator-batch] イベント処理開始: ${events.length} 件 (DRY_RUN: ${dryRun})\n`)
+
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+  // --- パス1: HTML 事前取得 + バッチリクエスト構築 ---
+  const batchRequests = []
+  const eventMeta = new Map()  // custom_id → { event, html, fetchedUrl }
+  const syncFallbackEvents = []  // バッチに含められないイベント
+
+  for (const event of events) {
+    const { id: eventId, name, official_url: officialUrl } = event
+    const needsTavilyLookup = !officialUrl || isPortalUrl(officialUrl)
+
+    if (needsTavilyLookup) {
+      syncFallbackEvents.push(event)
+      console.log(`  [orchestrator-batch] ${name?.slice(0, 40)} → 同期フォールバック（ポータルURL / URL なし）`)
+      continue
+    }
+
+    let html = null
+    try {
+      html = await fetchHtml(officialUrl)
+    } catch (e) {
+      syncFallbackEvents.push(event)
+      console.log(`  [orchestrator-batch] ${name?.slice(0, 40)} → 同期フォールバック（fetch失敗: ${e.message?.slice(0, 30)}）`)
+      continue
+    }
+
+    const content = extractRelevantContent(html)
+    if (content.length < 50) {
+      syncFallbackEvents.push(event)
+      console.log(`  [orchestrator-batch] ${name?.slice(0, 40)} → 同期フォールバック（コンテンツ短い）`)
+      continue
+    }
+
+    const customId = `event_${eventId}`
+    const userMsg = `Page content for "${name}":\n\n${content}`
+    batchRequests.push({
+      custom_id: customId,
+      systemPrompt: EVENT_SYSTEM_PROMPT,
+      userContent: userMsg,
+    })
+    eventMeta.set(customId, { event, html, fetchedUrl: officialUrl })
+  }
+
+  console.log(`[orchestrator-batch] ${batchRequests.length} 件をバッチ送信、${syncFallbackEvents.length} 件は同期フォールバック\n`)
+
+  // --- パス2: バッチ送信 + 待機 ---
+  let batchResults = new Map()
+  if (batchRequests.length > 0 && !dryRun) {
+    batchResults = await runBatch(anthropic, batchRequests)
+  } else if (dryRun) {
+    console.log(`[orchestrator-batch] DRY_RUN: バッチ送信スキップ`)
+  }
+
+  // --- パス3: バッチ結果を使って enrichEvent を実行 ---
+  let ok = 0, err = 0
+
+  for (const [customId, meta] of eventMeta) {
+    const { event } = meta
+
+    if (dryRun) {
+      console.log(`  DRY (orchestrator-batch) ${event.name?.slice(0, 50)}`)
+      ok++
+      continue
+    }
+
+    const batchResult = batchResults.get(customId)
+    if (batchResult && batchResult.success) {
+      // バッチ結果を使って enrichEvent を実行（_batchResult で初回 LLM をスキップ）
+      const result = await enrichEvent(event, {
+        dryRun: false,
+        _batchResult: batchResult.parsed,
+        _html: meta.html,
+        _fetchedUrl: meta.fetchedUrl,
+      })
+      if (result.success) { ok++; console.log(`  OK  (orchestrator-batch) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
+      else { err++; console.log(`  ERR (orchestrator-batch) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
+    } else {
+      // バッチ失敗 → 同期フォールバック
+      const errorMsg = batchResult?.error || 'No batch result'
+      console.log(`  [orchestrator-batch] ${event.name?.slice(0, 40)} | バッチ失敗: ${errorMsg.slice(0, 40)} → 同期フォールバック`)
+      const result = await enrichEvent(event, { dryRun: false })
+      if (result.success) { ok++; console.log(`  OK  (orchestrator-sync-fallback) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
+      else { err++; console.log(`  ERR (orchestrator-sync-fallback) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
+    }
+  }
+
+  // 同期フォールバック分
+  for (const event of syncFallbackEvents) {
+    const result = await enrichEvent(event, { dryRun })
+    if (result.success) { ok++; console.log(`  OK  (orchestrator-sync) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
+    else { err++; console.log(`  ERR (orchestrator-sync) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
+  }
+
+  console.log(`\n[orchestrator-batch] 完了: OK ${ok} / ERR ${err}`)
+  return { ok, err }
+}
+
 // CLI 実行判定
 const isDirectRun = process.argv[1]?.includes('enrich-event')
 if (isDirectRun) {
