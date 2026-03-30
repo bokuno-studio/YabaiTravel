@@ -115,9 +115,42 @@ export async function fetchHtml(url, timeoutMs = 15000) {
 
 export function extractRelevantContent(html, maxChars = 6000) {
   const $ = cheerio.load(html)
+
+  // Extract pricing data from script tags before removal
+  const jsonData = []
+
+  // 1. JSON-LD (構造化データ) を抽出
+  $('script[type="application/ld+json"]').each((_, el) => {
+    try {
+      const text = $(el).text().trim()
+      if (text && (text.includes('price') || text.includes('offer') || text.includes('cost'))) {
+        jsonData.push(text.slice(0, 1000))
+      }
+    } catch {}
+  })
+
+  // 2. script 内の料金関連 JSON を正規表現で抽出
+  $('script:not([src])').each((_, el) => {
+    const text = $(el).text()
+    if (!text) return
+    // price/fee/cost を含む JSON オブジェクトを抽出
+    const pricePatterns = text.match(/"price"\s*:\s*["{}\[\]0-9.]+/g)
+    if (pricePatterns) {
+      jsonData.push(...pricePatterns.slice(0, 5))
+    }
+    // WooCommerce / vivenu 等の決済データ
+    const wcMatch = text.match(/var\s+\w+(?:params|data|config)\s*=\s*(\{[^;]{10,500})/i)
+    if (wcMatch && (wcMatch[1].includes('price') || wcMatch[1].includes('amount'))) {
+      jsonData.push(wcMatch[1].slice(0, 500))
+    }
+  })
+
   // Remove non-content elements
   $('script, style, svg, iframe, noscript').remove()
-  $('nav, footer, header').remove()
+  $('nav, header').remove()
+  // footer は残す（myraceland.com 等で料金情報が footer 内にある）
+  // footer 内の不要要素のみ削除
+  $('footer [class*="cookie"], footer [class*="newsletter"], footer [class*="subscribe"]').remove()
   $('[class*="cookie"], [class*="banner"], [class*="popup"], [class*="modal"]').remove()
   $('[class*="newsletter"], [class*="subscribe"]').remove()
   $('[class*="sidebar"], [class*="widget"], [class*="breadcrumb"], [class*="pagination"]').remove()
@@ -152,7 +185,14 @@ export function extractRelevantContent(html, maxChars = 6000) {
     $(el).prepend('- ')
   })
 
-  const text = $content.text().replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+  let text = $content.text().replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+
+  // Append extracted JSON pricing data
+  if (jsonData.length) {
+    const jsonSection = '\n\n[Extracted pricing data from page scripts]\n' + jsonData.join('\n')
+    text = text + jsonSection
+  }
+
   return text.length <= maxChars ? text : text.slice(0, maxChars) + '\n[...truncated]'
 }
 
