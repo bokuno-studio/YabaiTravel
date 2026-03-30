@@ -237,11 +237,15 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
     // --- ステップ1: ページ取得 ---
     let html = opts.html || null
     let fetchedUrl = officialUrl
+    let htmlFetchAttempted = false
 
     if (!_batchResult && !html && officialUrl && !isPortalUrl(officialUrl)) {
+      htmlFetchAttempted = true
       try {
         html = await fetchHtml(officialUrl)
-      } catch { /* fallback to Tavily */ }
+      } catch (e) {
+        console.log(`  [html-fetch] WARN ${eventName?.slice(0, 30)} | HTML取得失敗: ${e.message?.slice(0, 50)}`)
+      }
     }
 
     let extracted = {}
@@ -258,8 +262,10 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
         totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
         extracted = result
       }
-    } else {
-      // Tavily フォールバック
+    }
+
+    // Tavily フォールバック: HTML取得失敗または HTML が不十分な場合
+    if (Object.keys(extracted).filter(k => k !== '_usage').length === 0 && process.env.TAVILY_API_KEY) {
       const query = `${eventName} ${catName} ${distKm || ''}km entry fee time limit mandatory gear 参加費 制限時間 必携品`
       const searchResults = await fetchTavilySearch(query)
       for (const content of searchResults) {
@@ -324,6 +330,12 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       } catch { /* ignore Tavily search failure entirely */ }
     }
 
+    // --- ステップ2.6: extracted が空でないか確認（ログ） ---
+    const hasAnyExtracted = Object.keys(extracted).some(k => k !== '_usage' && extracted[k] != null)
+    if (!hasAnyExtracted && htmlFetchAttempted) {
+      console.log(`  [empty] ${eventName?.slice(0, 30)} / ${catLabel} | HTML取得失敗 & Tavily結果なし`)
+    }
+
     // #339: 国→通貨マッピングで entry_fee_currency を検証・補正
     const expectedCurrency = getCurrencyForCountry(countryEn)
     if (expectedCurrency && extracted.entry_fee_currency && extracted.entry_fee_currency !== expectedCurrency) {
@@ -383,14 +395,19 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       extracted.finish_rate ?? null,
     ]
 
-    // エラー分類
+    // エラー分類: 必須フィールド未充足 or LLM応答が空
     const hasAnyData = Object.keys(extracted).some(k => k !== '_usage' && extracted[k] != null)
     let errorType = null
     let errorMessage = null
-    if (!allRequiredFilled) {
+    if (!hasAnyData) {
+      // extracted が完全に空 → LLM/Tavily からデータが取得できなかった
+      errorType = 'empty_response'
+      errorMessage = 'No data extracted from any source (HTML/Tavily)'
+    } else if (!allRequiredFilled) {
+      // 一部データはあるが必須フィールドが不足
       const missing = requiredFields.filter(f => extracted[f] == null)
       errorMessage = `Missing required: ${missing.join(', ')}`
-      errorType = hasAnyData ? 'partial' : 'empty_response'
+      errorType = 'partial'
     }
 
     // force モードでは COALESCE を外して上書き
@@ -551,8 +568,14 @@ async function runCli() {
   let ok = 0, err = 0
   for (const { event, category } of targets) {
     const result = await enrichCategoryDetail(event, category, { dryRun: DRY_RUN, force: FORCE })
-    if (result.success) { ok++; console.log(`  OK  ${event.name?.slice(0, 30)} / ${category.name}`) }
-    else { err++; console.log(`  ERR ${event.name?.slice(0, 30)} / ${category.name} | ${result.error?.slice(0, 50)}`) }
+    if (result.success) {
+      ok++
+      console.log(`  OK  ${event.name?.slice(0, 30)} / ${category.name}`)
+    } else {
+      err++
+      const errorInfo = result.error ? `| ${result.error?.slice(0, 60)}` : '| (no error detail)'
+      console.log(`  ERR ${event.name?.slice(0, 30)} / ${category.name} ${errorInfo}`)
+    }
   }
   console.log(`\n完了: OK ${ok} / ERR ${err}`)
 }
