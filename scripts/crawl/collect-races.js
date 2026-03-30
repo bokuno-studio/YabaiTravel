@@ -94,9 +94,22 @@ const JUNK_URL_PATTERNS = [
   /\/(archives?|page\/\d+)(\/|$|\?)/i,
 ]
 
+/** ドメイン別ノイズパターン */
+const DOMAIN_JUNK_PATTERNS = [
+  { domain: 'vts-photo.vietnamtrailseries.com', paths: [''] }, // 全パスを除外
+  { domain: 'marathon.tokyo', paths: ['/about/', '/program/', '/course/'] },
+  { domain: 'info.runsignup.com', paths: ['/about-us/', '/products/'] },
+  { domain: 'event-organizer.jp', paths: ['/faq/'] },
+]
+
 function isJunkUrl(url) {
   if (!url) return false
-  return JUNK_URL_PATTERNS.some((p) => p.test(url))
+  if (JUNK_URL_PATTERNS.some((p) => p.test(url))) return true
+  // ドメイン別ノイズパターンチェック
+  if (DOMAIN_JUNK_PATTERNS.some(({ domain, paths }) =>
+    url.includes(domain) && (paths[0] === '' || paths.some(path => url.includes(path)))
+  )) return true
+  return false
 }
 
 /** ホームページURL（パスなし or /のみ）はnullに変換 */
