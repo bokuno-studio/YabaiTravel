@@ -271,7 +271,7 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       try {
         const searchResults = await fetchTavilySearch(query)
         console.log(`  [tavily-1] search results: ${searchResults.length} items`)
-        const tavilyPrefix = `Search Result: Extract race information and return ONLY a JSON object. Return valid JSON even if information is incomplete. If you cannot extract data, return empty object {}.\n\n`
+        const tavilyPrefix = `The following is search result text (not a webpage). Extract information and return ONLY valid JSON. If no relevant information found, return {"entry_fee": null}.\n\n`
         for (const content of searchResults) {
           if (content.length < 50) continue
           try {
@@ -331,7 +331,7 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
             }).join(' ')}`
         const searchResults = await fetchTavilySearch(searchQuery)
         console.log(`  [tavily-2] results: ${searchResults.length} items`)
-        const tavilyPrefix = `Search Result: Extract race information and return ONLY a JSON object. Return valid JSON even if information is incomplete. If you cannot extract data, return empty object {}.\n\n`
+        const tavilyPrefix = `The following is search result text (not a webpage). Extract information and return ONLY valid JSON. If no relevant information found, return {"entry_fee": null}.\n\n`
         for (const content of searchResults) {
           if (content.length < 30) continue
           try {
