@@ -185,17 +185,63 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
     } else if (!fetchFailed && html) {
       // 直接取得成功 → LLM 抽出
       const content = extractRelevantContent(html)
-      if (content.length < 50) {
-        await client.query(
-          `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), attempt_count = attempt_count + 1, last_error_type = 'not_available' WHERE id = $1`,
-          [eventId]
-        )
-        return { success: false, eventId, error: 'page content too short' }
+      if (content.length < 30) {
+        // 閾値30文字未満 → Tavily フォールバック
+        console.log(`  [fallback-tavily] ${name?.slice(0, 40)} | content too short (${content.length} chars)`)
+        const query = `${name} 公式サイト エントリー 開催日 距離`
+        const searchResults = await fetchTavilySearch(query, { includeUrls: true })
+        if (searchResults.length === 0) {
+          await client.query(
+            `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), attempt_count = attempt_count + 1, last_error_type = 'not_available' WHERE id = $1`,
+            [eventId]
+          )
+          return { success: false, eventId, error: 'page content too short + no search results' }
+        }
+        // Tavily結果から LLM 抽出してマージ
+        for (const result of searchResults) {
+          if (result.content.length < 30) continue
+          try {
+            const searchUserMsg = `Information about "${name}":\n\n${result.content}`
+            const searchExtracted = await callLlm(anthropic, EVENT_SYSTEM_PROMPT, searchUserMsg)
+            totalTokens += (searchExtracted._usage?.input_tokens || 0) + (searchExtracted._usage?.output_tokens || 0)
+            if (!extracted.event) extracted = { event: {}, courses: [] }
+            const ae = searchExtracted.event || {}
+            const e = extracted.event || {}
+            extracted.event = {
+              official_url:    e.official_url    ?? ae.official_url,
+              name:            e.name            ?? ae.name,
+              name_en:         e.name_en         ?? ae.name_en,
+              event_date:      e.event_date      ?? ae.event_date,
+              event_date_end:  e.event_date_end  ?? ae.event_date_end,
+              location:        e.location        ?? ae.location,
+              location_en:     e.location_en     ?? ae.location_en,
+              country:         e.country         ?? ae.country,
+              country_en:      e.country_en      ?? ae.country_en,
+              race_type:       e.race_type       ?? ae.race_type,
+              entry_url:       e.entry_url       ?? ae.entry_url,
+              entry_start:     e.entry_start     ?? ae.entry_start,
+              entry_end:       e.entry_end       ?? ae.entry_end,
+              description:     e.description     ?? ae.description,
+              description_en:  e.description_en  ?? ae.description_en,
+              weather_forecast: e.weather_forecast ?? ae.weather_forecast,
+              weather_forecast_en: e.weather_forecast_en ?? ae.weather_forecast_en,
+              latitude:        e.latitude        ?? ae.latitude,
+              longitude:       e.longitude       ?? ae.longitude,
+            }
+            if (searchExtracted.courses?.length) {
+              extracted.courses = [...(extracted.courses || []), ...searchExtracted.courses]
+            }
+          } catch (e) {
+            console.log(`    [fallback-error] ${name?.slice(0, 40)} | ${e.message?.slice(0, 60)}`)
+          }
+        }
+      } else {
+        // 通常処理（30文字以上）
+        const userMsg = `Page content for "${name}":\n\n${content}`
+        const result = await callLlm(anthropic, EVENT_SYSTEM_PROMPT, userMsg)
+        totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
+        extracted = result
       }
-      const userMsg = `Page content for "${name}":\n\n${content}`
-      const result = await callLlm(anthropic, EVENT_SYSTEM_PROMPT, userMsg)
-      totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
-      extracted = result
     } else {
       // Tavily フォールバック
       const query = `${name} 公式サイト エントリー 開催日 距離`
@@ -325,6 +371,13 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
 
     // --- race_type 再分類（パス0） ---
     let finalRaceType = extracted.event?.race_type || null
+
+    // obstacle → ocr に統合（#448: obstacle カテゴリ削除予定）
+    if (finalRaceType === 'obstacle') {
+      finalRaceType = 'ocr'
+      console.log(`  [reclassify] ${name?.slice(0, 40)} | obstacle → ocr`)
+    }
+
     if (!finalRaceType || finalRaceType === 'other') {
       const reclassified = await reclassifyRaceType(anthropic, name)
       if (reclassified) {
