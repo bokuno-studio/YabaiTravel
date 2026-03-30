@@ -113,7 +113,7 @@ export async function fetchHtml(url, timeoutMs = 15000) {
   }
 }
 
-export function extractRelevantContent(html, maxChars = 6000) {
+export function extractRelevantContent(html, maxChars = 10000) {
   const $ = cheerio.load(html)
 
   // Extract pricing data from script tags before removal
@@ -133,17 +133,47 @@ export function extractRelevantContent(html, maxChars = 6000) {
   $('script:not([src])').each((_, el) => {
     const text = $(el).text()
     if (!text) return
-    // price/fee/cost を含む JSON オブジェクトを抽出
-    const pricePatterns = text.match(/"price"\s*:\s*["{}\[\]0-9.]+/g)
+    // woocommerce_params, vivenu, price, cost, fee 等を含む JSON を抽出
+    const jsonPatterns = text.match(/\{[^{}]*(?:woocommerce_params|vivenu|price|cost|fee)[^{}]*\}/gi)
+    if (jsonPatterns) {
+      jsonData.push(...jsonPatterns.slice(0, 5).map(p => p.slice(0, 500)))
+    }
+    // price/fee/cost を含む JSON オブジェクトを抽出（quoted keys）
+    const pricePatterns = text.match(/"(?:price|cost|fee)"\s*:\s*["{}\[\]0-9.]+/g)
     if (pricePatterns) {
       jsonData.push(...pricePatterns.slice(0, 5))
     }
+    // unquoted keys（Nuxt/minified JS: price:92, name:"ELITE",price:92）
+    const unquotedPrices = text.match(/(?:name|label):\s*"[^"]{1,60}"\s*,\s*price:\s*\d+/g)
+    if (unquotedPrices) {
+      jsonData.push(...unquotedPrices.slice(0, 10))
+    }
+    // registration_choices 配列から pricing を抽出
+    const regChoices = text.match(/registration_choices:\[([^\]]{1,2000})\]/g)
+    if (regChoices) {
+      jsonData.push(...regChoices.slice(0, 3).map(p => p.slice(0, 800)))
+    }
     // WooCommerce / vivenu 等の決済データ
-    const wcMatch = text.match(/var\s+\w+(?:params|data|config)\s*=\s*(\{[^;]{10,500})/i)
-    if (wcMatch && (wcMatch[1].includes('price') || wcMatch[1].includes('amount'))) {
+    const wcMatch = text.match(/(?:var\s+\w+(?:params|data|config)|window\.\w+)\s*=\s*(\{[^;]{10,500})/i)
+    if (wcMatch && (wcMatch[1].includes('price') || wcMatch[1].includes('amount') || wcMatch[1].includes('woocommerce') || wcMatch[1].includes('vivenu'))) {
       jsonData.push(wcMatch[1].slice(0, 500))
     }
   })
+
+  // 3. DOM内の料金要素を直接抽出（truncation対策）
+  // ultrasignup: .summary-fee-calculation, 一般的な price/fee クラスやテキスト
+  const pricingSelectors = [
+    '[class*="fee-calculation"], [class*="price-box"], [class*="pricing"]',
+    '[class*="entry-fee"], [class*="registration-fee"], [class*="ticket-price"]',
+  ]
+  for (const sel of pricingSelectors) {
+    $(sel).each((_, el) => {
+      const text = $(el).text().trim().replace(/\s+/g, ' ')
+      if (text && /[\$€£¥₹]\s*[\d,.]+|[\d,.]+\s*(?:円|€|USD|EUR|GBP)/.test(text)) {
+        jsonData.push('[DOM pricing] ' + text.slice(0, 200))
+      }
+    })
+  }
 
   // Remove non-content elements
   $('script, style, svg, iframe, noscript').remove()
@@ -187,9 +217,14 @@ export function extractRelevantContent(html, maxChars = 6000) {
 
   let text = $content.text().replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
 
-  // Append extracted JSON pricing data
+  // Append extracted JSON pricing data (reserve space within maxChars budget)
   if (jsonData.length) {
-    const jsonSection = '\n\n[Extracted pricing data from page scripts]\n' + jsonData.join('\n')
+    const jsonSection = '\n\n[Extracted pricing data]\n' + jsonData.join('\n')
+    const reserved = Math.min(jsonSection.length, 2000)
+    const textBudget = maxChars - reserved
+    if (text.length > textBudget) {
+      text = text.slice(0, textBudget) + '\n[...truncated]'
+    }
     text = text + jsonSection
   }
 
