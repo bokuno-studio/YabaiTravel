@@ -35,13 +35,11 @@
     "hyrox": "HYROX",
     "devils_circuit": "Devils Circuit",
     "strong_viking": "Strong Viking",
-    "obstacle": "OCR",
     "tough_mudder": "Tough Mudder",
     "triathlon": "Triathlon",
     "aquathlon": "Aquathlon",
     "bike": "Bike",
     "duathlon": "Duathlon",
-    "rogaining": "Rogaining",
     "other": "Other"
   },
   "event": {

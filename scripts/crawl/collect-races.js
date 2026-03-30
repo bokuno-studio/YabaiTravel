@@ -99,6 +99,18 @@ function isJunkUrl(url) {
   return JUNK_URL_PATTERNS.some((p) => p.test(url))
 }
 
+/** ホームページURL（パスなし or /のみ）はnullに変換 */
+function sanitizeUrl(url) {
+  if (!url) return null
+  try {
+    const u = new URL(url)
+    if (u.pathname === '/' || u.pathname === '') return null
+    return url
+  } catch {
+    return null
+  }
+}
+
 /** 全角英数→半角変換 */
 function fullwidthToHalfwidth(str) {
   return str.replace(/[\uFF01-\uFF5E]/g, (ch) =>
@@ -254,8 +266,8 @@ async function insertRace(client, race) {
       race.location || null,
       race.country || null,
       race.race_type || 'other',
-      race.official_url || null,
-      race.entry_url || race.official_url || null,
+      sanitizeUrl(race.official_url),
+      sanitizeUrl(race.entry_url) || sanitizeUrl(race.official_url) || null,
       race.name_en || null,
     ]
   )

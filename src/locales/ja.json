@@ -35,13 +35,11 @@
     "hyrox": "HYROX",
     "devils_circuit": "Devils Circuit",
     "strong_viking": "Strong Viking",
-    "obstacle": "オブスタクル",
     "tough_mudder": "タフマダー",
     "triathlon": "トライアスロン",
     "aquathlon": "アクアスロン",
     "bike": "バイク",
     "duathlon": "デュアスロン",
-    "rogaining": "ロゲイニング",
     "other": "その他"
   },
   "event": {

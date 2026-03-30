@@ -253,9 +253,9 @@ function EventList() {
   const RACE_TYPE_ORDER = [
     'marathon', 'trail',
     'triathlon', 'duathlon',
-    'spartan', 'hyrox', 'tough_mudder', 'obstacle',
+    'spartan', 'hyrox', 'tough_mudder',
     'cycling',
-    'rogaining', 'adventure',
+    'adventure',
     'devils_circuit', 'strong_viking',
     'other',
   ]

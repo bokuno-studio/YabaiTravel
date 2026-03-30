@@ -5,17 +5,19 @@ export const SOURCE_NAME = 'vietnam-trail'
 export const SOURCE_URLS = ['https://vietnamtrailseries.com/']
 export const RACE_TYPE = 'trail'
 
+const RACE_URLS = [
+  'https://vietnamtrailseries.com/trail-marathon/',
+  'https://vietnamtrailseries.com/mountain-marathon/',
+  'https://vietnamtrailseries.com/jungle-marathon/'
+]
+
 export function parse(html, url, cheerioLoad, ctx) {
-  const $ = cheerioLoad(html)
-  const races = []
-  $('a[href]').each((_, el) => {
-    const href = $(el).attr('href')
-    const text = $(el).text().trim()
-    if (!href || !text || text.length < 5 || text.length > 120) return
-    if (!/race|event|trail|ultra|run/i.test(href + ' ' + text)) return
-    const fullUrl = href.startsWith('http') ? href : new URL(href, url).href
-    if (races.find((r) => r.official_url === fullUrl)) return
-    races.push({ name: text, official_url: fullUrl, entry_url: fullUrl, race_type: RACE_TYPE, country: 'Vietnam', source: SOURCE_NAME })
-  })
-  return ctx.limitForEnv(races, 5)
+  return RACE_URLS.map(raceUrl => ({
+    name: raceUrl.match(/\/([^\/]+)\/$/)[1].replace(/-/g, ' ').toUpperCase(),
+    official_url: raceUrl,
+    entry_url: raceUrl,
+    race_type: RACE_TYPE,
+    country: 'Vietnam',
+    source: SOURCE_NAME
+  }))
 }
