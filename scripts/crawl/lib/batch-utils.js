@@ -42,9 +42,11 @@ export async function createBatch(anthropic, requests) {
 export async function waitForBatch(anthropic, batchId, pollIntervalMs = 30000, maxWaitMs = 2 * 60 * 60 * 1000) {
   const startTime = Date.now()
   let lastStatus = ''
+  console.log(`[batch] waitForBatch starting for ${batchId}, polling every ${pollIntervalMs}ms, max wait ${maxWaitMs / 1000}s`)
 
   while (true) {
-    const batch = await anthropic.messages.batches.retrieve(batchId)
+    try {
+      const batch = await anthropic.messages.batches.retrieve(batchId)
 
     if (batch.processing_status !== lastStatus) {
       lastStatus = batch.processing_status
@@ -58,15 +60,20 @@ export async function waitForBatch(anthropic, batchId, pollIntervalMs = 30000, m
       )
     }
 
-    if (batch.processing_status === 'ended') {
-      return batch
-    }
+      if (batch.processing_status === 'ended') {
+        console.log(`[batch] Batch ${batchId} ended, returning results`)
+        return batch
+      }
 
-    if (Date.now() - startTime > maxWaitMs) {
-      throw new Error(`Batch ${batchId} timed out after ${maxWaitMs / 1000}s`)
-    }
+      if (Date.now() - startTime > maxWaitMs) {
+        throw new Error(`Batch ${batchId} timed out after ${maxWaitMs / 1000}s`)
+      }
 
-    await new Promise((r) => setTimeout(r, pollIntervalMs))
+      await new Promise((r) => setTimeout(r, pollIntervalMs))
+    } catch (err) {
+      console.error(`[batch] Error polling batch ${batchId}:`, err.message)
+      throw err
+    }
   }
 }
 
