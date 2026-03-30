@@ -361,13 +361,15 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
     }
 
     // #339: 国→通貨マッピングで entry_fee_currency を検証・補正
+    // A-case: LLMが返した通貨を信頼。国マッピングはフォールバックのみ
     // entry_fee がある場合のみ通貨コードを設定（fee なしで通貨だけ設定しても無意味）
     if (extracted.entry_fee != null) {
       const expectedCurrency = getCurrencyForCountry(countryEn)
       if (expectedCurrency && extracted.entry_fee_currency && extracted.entry_fee_currency !== expectedCurrency) {
-        console.log(`  [currency] ${eventName?.slice(0, 30)} | ${extracted.entry_fee_currency} → ${expectedCurrency} | fee: ${extracted.entry_fee}`)
-        extracted.entry_fee_currency = expectedCurrency
+        // 警告のみ。LLMが返した通貨を信頼し、上書きしない
+        console.log(`  [currency-warn] ${eventName?.slice(0, 30)} | LLM: ${extracted.entry_fee_currency}, expected: ${expectedCurrency} | fee: ${extracted.entry_fee}`)
       } else if (expectedCurrency && !extracted.entry_fee_currency) {
+        // LLMが通貨を返さなかった場合のみ、国から推定
         extracted.entry_fee_currency = expectedCurrency
       }
     }
