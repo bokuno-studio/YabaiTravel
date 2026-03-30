@@ -59,6 +59,7 @@ async function main() {
     SELECT id, name, location FROM ${SCHEMA}.events
     WHERE location IS NOT NULL
       AND (latitude IS NULL OR longitude IS NULL)
+      AND status != 'archived'
     ORDER BY updated_at DESC
   `)
 
