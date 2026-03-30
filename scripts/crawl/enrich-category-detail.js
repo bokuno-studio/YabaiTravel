@@ -267,14 +267,18 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
     // Tavily フォールバック: HTML取得失敗または HTML が不十分な場合
     if (Object.keys(extracted).filter(k => k !== '_usage').length === 0 && process.env.TAVILY_API_KEY) {
       console.log(`  [tavily-1] ${eventName?.slice(0, 30)} / ${catLabel} | extracted empty, starting Tavily search`)
-      const query = `${eventName} ${catName} ${distKm || ''}km entry fee time limit mandatory gear 参加費 制限時間 必携品`
+      const query = `${eventName} ${catName} entry fee registration price 参加費 料金`
       try {
         const searchResults = await fetchTavilySearch(query)
         console.log(`  [tavily-1] search results: ${searchResults.length} items`)
+        const tavilyPrefix = `Search Result: Extract race information and return ONLY a JSON object. Return valid JSON even if information is incomplete. If you cannot extract data, return empty object {}.\n\n`
         for (const content of searchResults) {
           if (content.length < 50) continue
           try {
-            const result = await callLlm(anthropic, CATEGORY_DETAIL_PROMPT, userMessage + content)
+            const result = await callLlm(anthropic, CATEGORY_DETAIL_PROMPT, tavilyPrefix + userMessage + content, { allowEmpty: true })
+            if (Object.keys(result).some(k => k !== '_usage' && result[k] != null)) {
+              console.log(`  [tavily-1] extracted: ${Object.keys(result).filter(k => k !== '_usage').length} fields`)
+            }
             totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
             // マージ
             for (const key of Object.keys(result)) {
@@ -318,17 +322,23 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       try {
         const missingFields = requiredFields.filter(f => extracted[f] == null)
         console.log(`  [tavily-2] ${eventName?.slice(0, 30)} / ${catLabel} | missing: ${missingFields.join(',')}`)
-        const fieldKeywords = missingFields.map(f => {
-          const map = { entry_fee: 'entry fee 参加費', time_limit: '制限時間 time limit', elevation_gain: '累積標高 elevation', mandatory_gear: '必携品 mandatory gear', start_time: 'start time スタート時間' }
-          return map[f] || f
-        }).join(' ')
-        const searchQuery = `${eventName} ${catName} ${fieldKeywords}`
+        // entry_fee が不足している場合はより具体的なクエリで検索
+        const searchQuery = missingFields.includes('entry_fee')
+          ? `${eventName} ${catName} entry fee registration price 参加費 料金`
+          : `${eventName} ${catName} ${missingFields.map(f => {
+              const map = { entry_fee: 'entry fee 参加費', time_limit: '制限時間 time limit', elevation_gain: '累積標高 elevation', mandatory_gear: '必携品 mandatory gear', start_time: 'start time スタート時間' }
+              return map[f] || f
+            }).join(' ')}`
         const searchResults = await fetchTavilySearch(searchQuery)
         console.log(`  [tavily-2] results: ${searchResults.length} items`)
+        const tavilyPrefix = `Search Result: Extract race information and return ONLY a JSON object. Return valid JSON even if information is incomplete. If you cannot extract data, return empty object {}.\n\n`
         for (const content of searchResults) {
           if (content.length < 30) continue
           try {
-            const result = await callLlm(anthropic, CATEGORY_DETAIL_PROMPT, userMessage + content)
+            const result = await callLlm(anthropic, CATEGORY_DETAIL_PROMPT, tavilyPrefix + userMessage + content, { allowEmpty: true })
+            if (Object.keys(result).some(k => k !== '_usage' && result[k] != null)) {
+              console.log(`  [tavily-2] extracted: ${Object.keys(result).filter(k => k !== '_usage').length} fields`)
+            }
             totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
             for (const key of Object.keys(result)) {
               if (key === '_usage') continue

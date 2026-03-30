@@ -209,7 +209,7 @@ export class InsufficientBalanceError extends Error {
 
 // --- LLM ---
 
-export async function callLlm(anthropic, systemPrompt, userContent, { maxTokens = 2048 } = {}) {
+export async function callLlm(anthropic, systemPrompt, userContent, { maxTokens = 2048, allowEmpty = false } = {}) {
   let lastError
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
@@ -221,7 +221,13 @@ export async function callLlm(anthropic, systemPrompt, userContent, { maxTokens 
       })
       const text = msg.content[0].type === 'text' ? msg.content[0].text : ''
       const jsonMatch = text.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) throw new Error('LLM JSON parse error: no JSON found')
+      if (!jsonMatch) {
+        if (allowEmpty) {
+          console.warn(`  [LLM] no JSON found in Tavily result, returning empty result`)
+          return { _usage: msg.usage }
+        }
+        throw new Error('LLM JSON parse error: no JSON found')
+      }
       return { ...JSON.parse(jsonMatch[0]), _usage: msg.usage }
     } catch (e) {
       lastError = e
