@@ -100,6 +100,9 @@ const DOMAIN_JUNK_PATTERNS = [
   { domain: 'marathon.tokyo', paths: ['/about/', '/program/', '/course/'] },
   { domain: 'info.runsignup.com', paths: ['/about-us/', '/products/'] },
   { domain: 'event-organizer.jp', paths: ['/faq/'] },
+  { domain: 'facebook.com', paths: [''] }, // SNS団体ページ
+  { domain: 'events.zoom.us', paths: [''] }, // Zoomウェビナーページ
+  { domain: 'connect.justrunlah.com', paths: [''] }, // JustRunLahチケットHP
 ]
 
 function isJunkUrl(url) {
