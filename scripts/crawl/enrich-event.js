@@ -642,7 +642,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
     } else {
       // 品質不足 → 次回再試行
       await client.query(
-        `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), attempt_count = $2, last_error_type = 'empty_response' WHERE id = $1`,
+        `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), attempt_count = $2, last_error_type = 'temporary' WHERE id = $1`,
         [eventId, attemptCount]
       )
       console.log(`  [quality-gate] FAIL ${name?.slice(0, 40)} | cats:${cats.length} | attempt:${attemptCount}`)
