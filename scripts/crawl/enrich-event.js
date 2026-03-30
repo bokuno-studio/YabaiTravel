@@ -32,7 +32,10 @@ async function geocodeLocation(location, apiKey) {
   )
   const data = await res.json()
   if (data.status !== 'OK' || !data.results?.length) return null
-  return data.results[0].geometry.location // { lat, lng }
+  const result = data.results[0]
+  const locationType = result.geometry.location_type
+  if (locationType === 'GEOMETRIC_CENTER' || locationType === 'APPROXIMATE') return null
+  return result.geometry.location // { lat, lng }
 }
 
 async function searchNearbyLodging(lat, lng, apiKey) {
