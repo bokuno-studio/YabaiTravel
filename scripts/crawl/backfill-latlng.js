@@ -22,11 +22,11 @@ const args = process.argv.slice(2)
 const DRY_RUN = args.includes('--dry-run')
 
 const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY
+const GOOGLE_API_KEY = process.env.GOOGLE_DIRECTIONS_API_KEY || process.env.GOOGLE_API_KEY
 const SLEEP_MS = 200
 
 if (!GOOGLE_API_KEY) {
-  console.error('エラー: GOOGLE_API_KEY が設定されていません')
+  console.error('エラー: GOOGLE_DIRECTIONS_API_KEY が設定されていません')
   process.exit(1)
 }
 
@@ -59,7 +59,6 @@ async function main() {
     SELECT id, name, location FROM ${SCHEMA}.events
     WHERE location IS NOT NULL
       AND (latitude IS NULL OR longitude IS NULL)
-      AND status != 'archived'
     ORDER BY updated_at DESC
   `)
 
