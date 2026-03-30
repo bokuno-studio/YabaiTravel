@@ -650,17 +650,19 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
 
     return { success: true, eventId, location: e.location || null, categoriesCount: cats.length }
   } catch (e) {
-    // エラー分類
+    // エラー分類（last_error_type の許可値: 'temporary', 'not_available', 'bug' のみ）
     let errorType = 'temporary'
     const msg = e.message || ''
     if (msg.includes('JSON') || msg.includes('parse') || e instanceof SyntaxError) {
-      errorType = 'parse_error'
+      errorType = 'temporary'  // parse エラーは retry 対象
     } else if (msg.includes('timeout') || msg.includes('ETIMEDOUT') || msg.includes('ECONNABORTED') || e.code === 'ETIMEDOUT') {
-      errorType = 'timeout'
+      errorType = 'temporary'  // timeout は retry 対象
     } else if (msg.includes('empty') || msg.includes('no JSON found')) {
-      errorType = 'empty_response'
+      errorType = 'not_available'
     } else if (msg.includes('ECONNREFUSED') || msg.includes('relation') || msg.includes('column') || msg.includes('duplicate key') || msg.includes('violates')) {
-      errorType = 'db_error'
+      errorType = 'temporary'  // DB constraint エラーは retry 対象
+      // DB constraint 違反はログに完全なエラーを出す
+      console.log(`  [db-constraint] ${event.name?.slice(0, 40)} | ${msg}`)
     }
     try {
       await client.query(
