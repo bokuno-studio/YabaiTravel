@@ -41,3 +41,13 @@ scripts/crawl/evaluation-result.json
 !public/course-maps/README.md
 .vercel
 coverage/
+
+# 調査用スクリプト（開発時のデバッグ・分析用）
+analyze-*.js
+analyze-*.mjs
+check-*.js
+check-*.mjs
+error-analysis.js
+run-*.sh
+dev.db
+*.db

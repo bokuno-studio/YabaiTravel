@@ -256,7 +256,7 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       extracted = _batchResult
       totalTokens += (_batchResult._usage?.input_tokens || 0) + (_batchResult._usage?.output_tokens || 0)
     } else if (html) {
-      const content = extractRelevantContent(html)
+      const content = extractRelevantContent(html) || ''
       if (content.length >= 50) {
         const result = await callLlm(anthropic, CATEGORY_DETAIL_PROMPT, userMessage + content)
         totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
@@ -302,7 +302,7 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       for (const link of relatedLinks) {
         try {
           const linkHtml = await fetchHtml(link)
-          const linkContent = extractRelevantContent(linkHtml, 5000)
+          const linkContent = extractRelevantContent(linkHtml, 5000) || ''
           if (linkContent.length < 50) continue
           const result = await callLlm(anthropic, CATEGORY_DETAIL_PROMPT, userMessage + linkContent)
           totalTokens += (result._usage?.input_tokens || 0) + (result._usage?.output_tokens || 0)
@@ -652,7 +652,7 @@ async function runBatchCli() {
     }
 
     if (html) {
-      const content = extractRelevantContent(html)
+      const content = extractRelevantContent(html) || ''
       if (content.length >= 50) {
         const customId = `cat_${categoryId}`
         batchRequests.push({

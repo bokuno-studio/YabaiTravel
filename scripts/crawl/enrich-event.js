@@ -187,7 +187,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
       totalTokens += (_batchResult._usage?.input_tokens || 0) + (_batchResult._usage?.output_tokens || 0)
     } else if (!fetchFailed && html) {
       // 直接取得成功 → LLM 抽出
-      const content = extractRelevantContent(html)
+      const content = extractRelevantContent(html) || ''
       if (content.length < 30) {
         // 閾値30文字未満 → Tavily フォールバック
         console.log(`  [fallback-tavily] ${name?.slice(0, 40)} | content too short (${content.length} chars)`)
@@ -324,7 +324,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
           html = await fetchHtml(officialUrlToFetch)
           fetchedUrl = officialUrlToFetch
           fetchFailed = false
-          const content = extractRelevantContent(html)
+          const content = extractRelevantContent(html) || ''
           if (content.length >= 50) {
             const directUserMsg = `Official page content for "${name}":\n\n${content}`
             const directResult = await callLlm(anthropic, EVENT_SYSTEM_PROMPT, directUserMsg)
@@ -355,7 +355,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
       for (const link of allLinks) {
         try {
           const linkHtml = await fetchHtml(link)
-          const linkContent = extractRelevantContent(linkHtml, 5000)
+          const linkContent = extractRelevantContent(linkHtml, 5000) || ''
           if (linkContent.length < 50) continue
           const linkUserMsg = `Related page content for "${name}":\n\n${linkContent}`
           const linkResult = await callLlm(anthropic, EVENT_SYSTEM_PROMPT, linkUserMsg)
@@ -772,7 +772,7 @@ async function runBatchCli() {
       continue
     }
 
-    const content = extractRelevantContent(html)
+    const content = extractRelevantContent(html) || ''
     if (content.length < 50) {
       syncFallbackEvents.push(event)
       console.log(`  [batch] ${name?.slice(0, 40)} → 同期フォールバック（コンテンツ短い）`)
@@ -880,7 +880,7 @@ export async function runOrchestratedEventBatch(events, { dryRun = false } = {})
       continue
     }
 
-    const content = extractRelevantContent(html)
+    const content = extractRelevantContent(html) || ''
     if (content.length < 50) {
       syncFallbackEvents.push(event)
       console.log(`  [orchestrator-batch] ${name?.slice(0, 40)} → 同期フォールバック（コンテンツ短い）`)
