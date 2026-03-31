@@ -35,7 +35,7 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-/** geocodeLocation 関数（enrich-event.js と同じロジック） */
+/** geocodeLocation 関数（精度フィルタ緩和: GEOMETRIC_CENTER / APPROXIMATE も許容） */
 async function geocodeLocation(location, apiKey) {
   const res = await fetch(
     `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&key=${apiKey}`
@@ -43,8 +43,6 @@ async function geocodeLocation(location, apiKey) {
   const data = await res.json()
   if (data.status !== 'OK' || !data.results?.length) return null
   const result = data.results[0]
-  const locationType = result.geometry.location_type
-  if (locationType === 'GEOMETRIC_CENTER' || locationType === 'APPROXIMATE') return null
   return result.geometry.location // { lat, lng }
 }
 
