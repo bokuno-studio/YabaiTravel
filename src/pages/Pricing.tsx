@@ -106,13 +106,24 @@ function Pricing() {
     <div className="mx-auto max-w-4xl px-4 py-12">
       <div className="mb-10 text-center">
         <h1 className="text-3xl font-bold tracking-tight">
-          {isEn ? 'Support yabai.travel' : 'yabai.travel を応援'}
+          {isEn ? 'Plans' : 'プラン'}
         </h1>
         <p className="mt-3 text-muted-foreground">
           {isEn
-            ? 'Help us keep improving race information for endurance athletes.'
-            : 'エンデュランス系大会の情報を、みんなでもっと良くしていきましょう。'}
+            ? 'Find races, plan trips — smarter.'
+            : 'レース探しと遠征計画を、もっとスマートに。'}
         </p>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <Badge variant="secondary">
+            {isEn ? '39+ Sources Auto-Collected' : '39+ ソース自動収集'}
+          </Badge>
+          <Badge variant="secondary">
+            {isEn ? 'Tokyo-based Access Time' : '東京起点アクセス時間計算'}
+          </Badge>
+          <Badge variant="secondary">
+            {isEn ? 'Day-trip Feasibility' : '日帰り判定'}
+          </Badge>
+        </div>
       </div>
 
       {error && (
@@ -120,6 +131,73 @@ function Pricing() {
           <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
+
+      {/* Free/Crew Comparison Table */}
+      <div className="mb-10 overflow-x-auto">
+        <table className="w-full border-collapse border border-border rounded-lg">
+          <thead>
+            <tr className="bg-muted">
+              <th className="border border-border px-4 py-3 text-left font-medium">
+                {isEn ? 'Features' : '機能'}
+              </th>
+              <th className="border border-border px-4 py-3 text-center font-medium">
+                Free
+              </th>
+              <th className="border border-border px-4 py-3 text-center font-medium">
+                Crew <span className="text-sm">(¥500/月)</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="border border-border px-4 py-3">
+                {isEn ? 'Race search and list viewing' : 'レース検索・一覧閲覧'}
+              </td>
+              <td className="border border-border px-4 py-3 text-center">○</td>
+              <td className="border border-border px-4 py-3 text-center">○</td>
+            </tr>
+            <tr className="bg-muted/30">
+              <td className="border border-border px-4 py-3">
+                {isEn ? 'Access time and day-trip feasibility' : '交通アクセス・日帰り判定'}
+              </td>
+              <td className="border border-border px-4 py-3 text-center">○</td>
+              <td className="border border-border px-4 py-3 text-center">○</td>
+            </tr>
+            <tr>
+              <td className="border border-border px-4 py-3">
+                {isEn ? 'Unlimited race detail viewing' : 'レース詳細閲覧'}
+              </td>
+              <td className="border border-border px-4 py-3 text-center text-muted-foreground">
+                {isEn ? 'Limited' : '制限あり'}
+              </td>
+              <td className="border border-border px-4 py-3 text-center">
+                {isEn ? 'Unlimited' : '無制限'}
+              </td>
+            </tr>
+            <tr className="bg-muted/30">
+              <td className="border border-border px-4 py-3">
+                {isEn ? 'Save favorite races' : 'お気に入り保存'}
+              </td>
+              <td className="border border-border px-4 py-3 text-center">—</td>
+              <td className="border border-border px-4 py-3 text-center">○</td>
+            </tr>
+            <tr>
+              <td className="border border-border px-4 py-3">
+                {isEn ? 'Feedback board comments' : '要望掲示板コメント'}
+              </td>
+              <td className="border border-border px-4 py-3 text-center">—</td>
+              <td className="border border-border px-4 py-3 text-center">○</td>
+            </tr>
+            <tr className="bg-muted/30">
+              <td className="border border-border px-4 py-3">
+                {isEn ? 'Crew badge' : 'Crewバッジ'}
+              </td>
+              <td className="border border-border px-4 py-3 text-center">—</td>
+              <td className="border border-border px-4 py-3 text-center">○</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* One-time Donation Card */}
@@ -191,7 +269,7 @@ function Pricing() {
 
           <CardContent className="flex-1">
             <div className="mb-6">
-              <span className="text-4xl font-bold">¥1,500</span>
+              <span className="text-4xl font-bold">¥500</span>
               <span className="text-muted-foreground">
                 {isEn ? ' /month (tax included)' : ' /月（税込）'}
               </span>

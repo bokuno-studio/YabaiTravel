@@ -37,13 +37,13 @@ describe('Pricing', () => {
   it('renders page title in Japanese', () => {
     mockAuthState = { ...mockAuthState, user: null, isSupporter: false }
     renderPricing()
-    expect(screen.getByText('yabai.travel を応援')).toBeInTheDocument()
+    expect(screen.getByText('プラン')).toBeInTheDocument()
   })
 
   it('renders page title in English', () => {
     mockAuthState = { ...mockAuthState, user: null, isSupporter: false }
     renderPricing('en')
-    expect(screen.getByText('Support yabai.travel')).toBeInTheDocument()
+    expect(screen.getByText('Plans')).toBeInTheDocument()
   })
 
   it('renders donation card', () => {
@@ -56,7 +56,7 @@ describe('Pricing', () => {
   it('renders crew membership card', () => {
     mockAuthState = { ...mockAuthState, user: null, isSupporter: false }
     renderPricing()
-    expect(screen.getByText('Crew')).toBeInTheDocument()
+    expect(screen.getByText('月額プラン')).toBeInTheDocument()
     expect(screen.getByText('おすすめ')).toBeInTheDocument()
   })
 
