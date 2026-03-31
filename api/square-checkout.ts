@@ -86,15 +86,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (mode === 'subscription') {
-      // Crew Membership: ¥1,500/month as one-time payment
+      // Crew Membership: ¥500/month as one-time payment
       // Subscription management is handled via webhook (payment.updated)
       const note = JSON.stringify({ type: 'crew_subscription', userId: userId || '' })
       const data = await squareRequest('/v2/online-checkout/payment-links', {
         idempotency_key: idempotencyKey,
         quick_pay: {
-          name: 'yabai.travel Crew Membership (¥1,500/月)',
+          name: 'yabai.travel Crew Membership (¥500/月)',
           price_money: {
-            amount: 1500,
+            amount: 500,
             currency: 'JPY',
           },
           location_id: locationId,
