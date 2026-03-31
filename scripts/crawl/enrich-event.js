@@ -11,6 +11,7 @@
  *   node scripts/crawl/enrich-event.js --batch --limit 50     # Batch API + 件数制限
  */
 import pg from 'pg'
+const { Pool } = pg
 import Anthropic from '@anthropic-ai/sdk'
 import {
   loadEnv, fetchHtml, extractRelevantContent, extractExternalOfficialLinks,
@@ -136,25 +137,40 @@ Other:
  * @param {object} opts
  * @param {boolean} opts.dryRun
  * @param {object} opts._batchResult - バッチモード: 初回 LLM の結果を注入（内部用）
- * @param {string} opts._html - バッチモード: 事前取得済み HTML（内部用）
+ * @param {string} opts._compressedHtml - バッチモード: 抽出済みHTML（圧縮版）（内部用）
+ * @param {array} opts._relatedLinks - バッチモード: 関連リンク配列（内部用）
+ * @param {array} opts._externalLinks - バッチモード: 外部公式リンク配列（内部用）
  * @param {string} opts._fetchedUrl - バッチモード: HTML 取得元 URL（内部用）
+ * @param {object} opts.anthropic - 共有 Anthropic インスタンス（内部用）
+ * @param {object} opts.pool - 共有 PostgreSQL Pool（内部用）
  */
 export async function enrichEvent(event, opts = { dryRun: false }) {
-  const { dryRun = false, _batchResult = null, _html = null, _fetchedUrl = null } = opts
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
+  const {
+    dryRun = false,
+    _batchResult = null,
+    _compressedHtml = null,
+    _relatedLinks = null,
+    _externalLinks = null,
+    _fetchedUrl = null,
+    anthropic: _anthropic = null,
+    pool: _pool = null
+  } = opts
+  const anthropic = _anthropic || new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const client = _pool ? _pool : new pg.Client({ connectionString: process.env.DATABASE_URL })
 
   try {
-    await client.connect()
+    if (!_pool) {
+      await client.connect()
+    }
     const { id: eventId, name, official_url: officialUrl } = event
 
     // --- ステップ1: ページ取得 ---
     const needsTavilyLookup = !officialUrl || isPortalUrl(officialUrl)
-    let html = _html || null
+    let html = null
     let fetchedUrl = _fetchedUrl || officialUrl
     let fetchFailed = needsTavilyLookup
 
-    if (!html && !needsTavilyLookup) {
+    if (!_compressedHtml && !needsTavilyLookup) {
       try {
         html = await fetchHtml(officialUrl)
       } catch (e) {
@@ -171,8 +187,9 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
           return { success: false, eventId, error: `fetch failed: ${e.message}` }
         }
       }
-    } else if (_html) {
-      // バッチモード: HTML は事前取得済み
+    } else if (_compressedHtml) {
+      // バッチモード: 圧縮済み HTML は事前取得済み
+      html = _compressedHtml
       fetchFailed = false
     } else if (needsTavilyLookup) {
       console.log(`  [tavily] ${name?.slice(0, 40)} | official_url=${officialUrl?.slice(0, 40) || '(なし)'} → Tavily検索`)
@@ -348,8 +365,8 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
 
     // --- ステップ2: 関連ページ探索（パス2） ---
     if (!fetchFailed && html && fetchedUrl) {
-      const relatedLinks = extractRelevantLinks(html, fetchedUrl)
-      const externalLinks = extractExternalOfficialLinks(html, fetchedUrl)
+      const relatedLinks = _relatedLinks || extractRelevantLinks(html, fetchedUrl)
+      const externalLinks = _externalLinks || extractExternalOfficialLinks(html, fetchedUrl)
       const allLinks = [...relatedLinks, ...externalLinks].slice(0, 2)
 
       for (const link of allLinks) {
@@ -675,7 +692,10 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
     } catch { /* ignore */ }
     return { success: false, eventId: event.id, error: e.message }
   } finally {
-    try { await client.end() } catch { /* ignore */ }
+    // pool が渡されている場合は接続を保持、単独 client の場合のみ閉じる
+    if (!_pool) {
+      try { await client.end() } catch { /* ignore */ }
+    }
   }
 }
 
@@ -716,13 +736,21 @@ async function runCli() {
   const rows = await fetchEventTargets(args)
 
   console.log(`対象: ${rows.length} 件 (DRY_RUN: ${DRY_RUN})\n`)
-  let ok = 0, err = 0
-  for (const event of rows) {
-    const result = await enrichEvent(event, { dryRun: DRY_RUN })
-    if (result.success) { ok++; console.log(`  OK  ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
-    else { err++; console.log(`  ERR ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
+
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+
+  try {
+    let ok = 0, err = 0
+    for (const event of rows) {
+      const result = await enrichEvent(event, { dryRun: DRY_RUN, anthropic, pool })
+      if (result.success) { ok++; console.log(`  OK  ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
+      else { err++; console.log(`  ERR ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
+    }
+    console.log(`\n完了: OK ${ok} / ERR ${err}`)
+  } finally {
+    await pool.end()
   }
-  console.log(`\n完了: OK ${ok} / ERR ${err}`)
 }
 
 /**
@@ -747,99 +775,132 @@ async function runBatchCli() {
   console.log(`[batch] 対象: ${rows.length} 件 (DRY_RUN: ${DRY_RUN})\n`)
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 
-  // --- パス1: HTML 事前取得 + バッチリクエスト構築 ---
-  const batchRequests = []
-  const eventMeta = new Map()  // custom_id → { event, html, fetchedUrl }
-  const syncFallbackEvents = []  // バッチに含められないイベント
+  try {
+    // --- パス1: イベント候補を分類（HTML 取得は遅延） ---
+    const CHUNK_SIZE = 10
+    const batchableEvents = []  // バッチ処理対象（URL有且つポータル非）
+    const syncFallbackEvents = []  // 同期フォールバック対象
 
-  for (const event of rows) {
-    const { id: eventId, name, official_url: officialUrl } = event
-    const needsTavilyLookup = !officialUrl || isPortalUrl(officialUrl)
+    for (const event of rows) {
+      const { id: eventId, name, official_url: officialUrl } = event
+      const needsTavilyLookup = !officialUrl || isPortalUrl(officialUrl)
 
-    if (needsTavilyLookup) {
-      syncFallbackEvents.push(event)
-      console.log(`  [batch] ${name?.slice(0, 40)} → 同期フォールバック（ポータルURL / URL なし）`)
-      continue
+      if (needsTavilyLookup) {
+        syncFallbackEvents.push(event)
+        console.log(`  [batch] ${name?.slice(0, 40)} → 同期フォールバック（ポータルURL / URL なし）`)
+      } else {
+        batchableEvents.push(event)
+      }
     }
 
-    let html = null
-    try {
-      html = await fetchHtml(officialUrl)
-    } catch (e) {
-      syncFallbackEvents.push(event)
-      console.log(`  [batch] ${name?.slice(0, 40)} → 同期フォールバック（fetch失敗: ${e.message?.slice(0, 30)}）`)
-      continue
+    console.log(`\n[batch] ${batchableEvents.length} 件をバッチ処理（10件チャンク），${syncFallbackEvents.length} 件は同期フォールバック\n`)
+
+    // --- パス2+3: チャンク単位でHTML取得→バッチ送信→結果処理 ---
+    let ok = 0, err = 0
+
+    for (let chunkIdx = 0; chunkIdx < batchableEvents.length; chunkIdx += CHUNK_SIZE) {
+      const chunkEvents = batchableEvents.slice(chunkIdx, chunkIdx + CHUNK_SIZE)
+      const chunkNumber = Math.floor(chunkIdx / CHUNK_SIZE) + 1
+
+      // チャンク内でHTML取得 + リクエスト構築（メモリ節約）
+      const chunkRequests = []
+      const chunkMeta = new Map()  // custom_id → { event, compressedHtml, relatedLinks, externalLinks, fetchedUrl }
+
+      for (const event of chunkEvents) {
+        const { id: eventId, name, official_url: officialUrl } = event
+
+        let html = null
+        try {
+          html = await fetchHtml(officialUrl)
+        } catch (e) {
+          console.log(`  [batch] ${name?.slice(0, 40)} → fetch失敗: ${e.message?.slice(0, 30)}`)
+          syncFallbackEvents.push(event)
+          continue
+        }
+
+        const content = extractRelevantContent(html) || ''
+        if (content.length < 50) {
+          console.log(`  [batch] ${name?.slice(0, 40)} → コンテンツ短い`)
+          syncFallbackEvents.push(event)
+          html = null
+          continue
+        }
+
+        const customId = `event_${eventId}`
+        const userMsg = `Page content for "${name}":\n\n${content}`
+        const compressedHtml = content
+        const relatedLinks = DRY_RUN ? [] : extractRelevantLinks(html, officialUrl)
+        const externalLinks = DRY_RUN ? [] : extractExternalOfficialLinks(html, officialUrl)
+        chunkRequests.push({
+          custom_id: customId,
+          systemPrompt: EVENT_SYSTEM_PROMPT,
+          userContent: userMsg,
+        })
+        chunkMeta.set(customId, { event, compressedHtml, relatedLinks, externalLinks, fetchedUrl: officialUrl })
+        html = null
+      }
+
+      // チャンク内のバッチを送信・結果処理
+      let chunkResults = new Map()
+      if (chunkRequests.length > 0 && !DRY_RUN) {
+        chunkResults = await runBatch(anthropic, chunkRequests)
+        console.log(`[batch] チャンク ${chunkNumber}: ${chunkRequests.length} 件送信完了`)
+      } else if (DRY_RUN && chunkRequests.length > 0) {
+        console.log(`[batch] チャンク ${chunkNumber}: DRY_RUN スキップ（${chunkRequests.length} 件）`)
+      }
+
+      // 結果処理
+      for (const [customId, meta] of chunkMeta) {
+        const { event } = meta
+
+        if (DRY_RUN) {
+          console.log(`  DRY (batch) ${event.name?.slice(0, 50)}`)
+          ok++
+          continue
+        }
+
+        const batchResult = chunkResults.get(customId)
+        if (batchResult && batchResult.success) {
+          const result = await enrichEvent(event, {
+            dryRun: false,
+            _batchResult: batchResult.parsed,
+            _compressedHtml: meta.compressedHtml,
+            _relatedLinks: meta.relatedLinks,
+            _externalLinks: meta.externalLinks,
+            _fetchedUrl: meta.fetchedUrl,
+            anthropic,
+            pool
+          })
+          if (result.success) { ok++; console.log(`  OK  (batch) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
+          else { err++; console.log(`  ERR (batch) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
+        } else {
+          const errorMsg = batchResult?.error || 'No batch result'
+          console.log(`  [batch] ${event.name?.slice(0, 40)} | バッチ失敗: ${errorMsg.slice(0, 40)} → 同期フォールバック`)
+          const result = await enrichEvent(event, { dryRun: false, anthropic, pool })
+          if (result.success) { ok++; console.log(`  OK  (sync-fallback) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
+          else { err++; console.log(`  ERR (sync-fallback) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
+        }
+      }
+
+      // チャンク処理後メモリ解放
+      chunkResults.clear()
+      chunkMeta.clear()
+      chunkRequests.length = 0
     }
 
-    const content = extractRelevantContent(html) || ''
-    if (content.length < 50) {
-      syncFallbackEvents.push(event)
-      console.log(`  [batch] ${name?.slice(0, 40)} → 同期フォールバック（コンテンツ短い）`)
-      continue
+    // 同期フォールバック分
+    for (const event of syncFallbackEvents) {
+      const result = await enrichEvent(event, { dryRun: DRY_RUN, anthropic, pool })
+      if (result.success) { ok++; console.log(`  OK  (sync) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
+      else { err++; console.log(`  ERR (sync) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
     }
 
-    const customId = `event_${eventId}`
-    const userMsg = `Page content for "${name}":\n\n${content}`
-    batchRequests.push({
-      custom_id: customId,
-      systemPrompt: EVENT_SYSTEM_PROMPT,
-      userContent: userMsg,
-    })
-    eventMeta.set(customId, { event, html, fetchedUrl: officialUrl })
+    console.log(`\n完了: OK ${ok} / ERR ${err}`)
+  } finally {
+    await pool.end()
   }
-
-  console.log(`\n[batch] ${batchRequests.length} 件をバッチ送信、${syncFallbackEvents.length} 件は同期フォールバック\n`)
-
-  // --- パス2: バッチ送信 + 待機 ---
-  let batchResults = new Map()
-  if (batchRequests.length > 0 && !DRY_RUN) {
-    batchResults = await runBatch(anthropic, batchRequests)
-  } else if (DRY_RUN) {
-    console.log(`[batch] DRY_RUN: バッチ送信スキップ`)
-  }
-
-  // --- パス3: バッチ結果を使って enrichEvent を実行 ---
-  let ok = 0, err = 0
-
-  for (const [customId, meta] of eventMeta) {
-    const { event } = meta
-
-    if (DRY_RUN) {
-      console.log(`  DRY (batch) ${event.name?.slice(0, 50)}`)
-      ok++
-      continue
-    }
-
-    const batchResult = batchResults.get(customId)
-    if (batchResult && batchResult.success) {
-      // バッチ結果を使って enrichEvent を実行（_batchResult で初回 LLM をスキップ）
-      const result = await enrichEvent(event, {
-        dryRun: false,
-        _batchResult: batchResult.parsed,
-        _html: meta.html,
-        _fetchedUrl: meta.fetchedUrl,
-      })
-      if (result.success) { ok++; console.log(`  OK  (batch) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
-      else { err++; console.log(`  ERR (batch) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
-    } else {
-      // バッチ失敗 → 同期フォールバック
-      const errorMsg = batchResult?.error || 'No batch result'
-      console.log(`  [batch] ${event.name?.slice(0, 40)} | バッチ失敗: ${errorMsg.slice(0, 40)} → 同期フォールバック`)
-      const result = await enrichEvent(event, { dryRun: false })
-      if (result.success) { ok++; console.log(`  OK  (sync-fallback) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
-      else { err++; console.log(`  ERR (sync-fallback) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
-    }
-  }
-
-  // 同期フォールバック分
-  for (const event of syncFallbackEvents) {
-    const result = await enrichEvent(event, { dryRun: DRY_RUN })
-    if (result.success) { ok++; console.log(`  OK  (sync) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
-    else { err++; console.log(`  ERR (sync) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
-  }
-
-  console.log(`\n完了: OK ${ok} / ERR ${err}`)
 }
 
 /**
@@ -855,100 +916,133 @@ export async function runOrchestratedEventBatch(events, { dryRun = false } = {})
   console.log(`\n[orchestrator-batch] イベント処理開始: ${events.length} 件 (DRY_RUN: ${dryRun})\n`)
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 
-  // --- パス1: HTML 事前取得 + バッチリクエスト構築 ---
-  const batchRequests = []
-  const eventMeta = new Map()  // custom_id → { event, html, fetchedUrl }
-  const syncFallbackEvents = []  // バッチに含められないイベント
+  try {
+    // --- パス1: イベント候補を分類（HTML 取得は遅延） ---
+    const CHUNK_SIZE = 10
+    const batchableEvents = []
+    const syncFallbackEvents = []
 
-  for (const event of events) {
-    const { id: eventId, name, official_url: officialUrl } = event
-    const needsTavilyLookup = !officialUrl || isPortalUrl(officialUrl)
+    for (const event of events) {
+      const { id: eventId, name, official_url: officialUrl } = event
+      const needsTavilyLookup = !officialUrl || isPortalUrl(officialUrl)
 
-    if (needsTavilyLookup) {
-      syncFallbackEvents.push(event)
-      console.log(`  [orchestrator-batch] ${name?.slice(0, 40)} → 同期フォールバック（ポータルURL / URL なし）`)
-      continue
+      if (needsTavilyLookup) {
+        syncFallbackEvents.push(event)
+        console.log(`  [orchestrator-batch] ${name?.slice(0, 40)} → 同期フォールバック（ポータルURL / URL なし）`)
+      } else {
+        batchableEvents.push(event)
+      }
     }
 
-    let html = null
-    try {
-      html = await fetchHtml(officialUrl)
-    } catch (e) {
-      syncFallbackEvents.push(event)
-      console.log(`  [orchestrator-batch] ${name?.slice(0, 40)} → 同期フォールバック（fetch失敗: ${e.message?.slice(0, 30)}）`)
-      continue
+    console.log(`[orchestrator-batch] ${batchableEvents.length} 件をバッチ処理（10件チャンク），${syncFallbackEvents.length} 件は同期フォールバック\n`)
+
+    // --- パス2+3: チャンク単位でHTML取得→バッチ送信→結果処理 ---
+    let ok = 0, err = 0
+
+    for (let chunkIdx = 0; chunkIdx < batchableEvents.length; chunkIdx += CHUNK_SIZE) {
+      const chunkEvents = batchableEvents.slice(chunkIdx, chunkIdx + CHUNK_SIZE)
+      const chunkNumber = Math.floor(chunkIdx / CHUNK_SIZE) + 1
+
+      // チャンク内でHTML取得 + リクエスト構築
+      const chunkRequests = []
+      const chunkMeta = new Map()
+
+      for (const event of chunkEvents) {
+        const { id: eventId, name, official_url: officialUrl } = event
+
+        let html = null
+        try {
+          html = await fetchHtml(officialUrl)
+        } catch (e) {
+          console.log(`  [orchestrator-batch] ${name?.slice(0, 40)} → fetch失敗: ${e.message?.slice(0, 30)}`)
+          syncFallbackEvents.push(event)
+          continue
+        }
+
+        const content = extractRelevantContent(html) || ''
+        if (content.length < 50) {
+          console.log(`  [orchestrator-batch] ${name?.slice(0, 40)} → コンテンツ短い`)
+          syncFallbackEvents.push(event)
+          html = null
+          continue
+        }
+
+        const customId = `event_${eventId}`
+        const userMsg = `Page content for "${name}":\n\n${content}`
+        const compressedHtml = content
+        const relatedLinks = dryRun ? [] : extractRelevantLinks(html, officialUrl)
+        const externalLinks = dryRun ? [] : extractExternalOfficialLinks(html, officialUrl)
+        chunkRequests.push({
+          custom_id: customId,
+          systemPrompt: EVENT_SYSTEM_PROMPT,
+          userContent: userMsg,
+        })
+        chunkMeta.set(customId, { event, compressedHtml, relatedLinks, externalLinks, fetchedUrl: officialUrl })
+        html = null
+      }
+
+      // チャンク内のバッチを送信・結果処理
+      let chunkResults = new Map()
+      if (chunkRequests.length > 0 && !dryRun) {
+        chunkResults = await runBatch(anthropic, chunkRequests)
+        console.log(`[orchestrator-batch] チャンク ${chunkNumber}: ${chunkRequests.length} 件送信完了`)
+      } else if (dryRun && chunkRequests.length > 0) {
+        console.log(`[orchestrator-batch] チャンク ${chunkNumber}: DRY_RUN スキップ（${chunkRequests.length} 件）`)
+      }
+
+      // 結果処理
+      for (const [customId, meta] of chunkMeta) {
+        const { event } = meta
+
+        if (dryRun) {
+          console.log(`  DRY (orchestrator-batch) ${event.name?.slice(0, 50)}`)
+          ok++
+          continue
+        }
+
+        const batchResult = chunkResults.get(customId)
+        if (batchResult && batchResult.success) {
+          const result = await enrichEvent(event, {
+            dryRun: false,
+            _batchResult: batchResult.parsed,
+            _compressedHtml: meta.compressedHtml,
+            _relatedLinks: meta.relatedLinks,
+            _externalLinks: meta.externalLinks,
+            _fetchedUrl: meta.fetchedUrl,
+            anthropic,
+            pool
+          })
+          if (result.success) { ok++; console.log(`  OK  (orchestrator-batch) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
+          else { err++; console.log(`  ERR (orchestrator-batch) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
+        } else {
+          const errorMsg = batchResult?.error || 'No batch result'
+          console.log(`  [orchestrator-batch] ${event.name?.slice(0, 40)} | バッチ失敗: ${errorMsg.slice(0, 40)} → 同期フォールバック`)
+          const result = await enrichEvent(event, { dryRun: false, anthropic, pool })
+          if (result.success) { ok++; console.log(`  OK  (orchestrator-sync-fallback) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
+          else { err++; console.log(`  ERR (orchestrator-sync-fallback) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
+        }
+      }
+
+      // チャンク処理後メモリ解放
+      chunkResults.clear()
+      chunkMeta.clear()
+      chunkRequests.length = 0
     }
 
-    const content = extractRelevantContent(html) || ''
-    if (content.length < 50) {
-      syncFallbackEvents.push(event)
-      console.log(`  [orchestrator-batch] ${name?.slice(0, 40)} → 同期フォールバック（コンテンツ短い）`)
-      continue
+    // 同期フォールバック分
+    for (const event of syncFallbackEvents) {
+      const result = await enrichEvent(event, { dryRun, anthropic, pool })
+      if (result.success) { ok++; console.log(`  OK  (orchestrator-sync) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
+      else { err++; console.log(`  ERR (orchestrator-sync) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
     }
 
-    const customId = `event_${eventId}`
-    const userMsg = `Page content for "${name}":\n\n${content}`
-    batchRequests.push({
-      custom_id: customId,
-      systemPrompt: EVENT_SYSTEM_PROMPT,
-      userContent: userMsg,
-    })
-    eventMeta.set(customId, { event, html, fetchedUrl: officialUrl })
+    console.log(`\n[orchestrator-batch] 完了: OK ${ok} / ERR ${err}`)
+    return { ok, err }
+  } finally {
+    await pool.end()
   }
-
-  console.log(`[orchestrator-batch] ${batchRequests.length} 件をバッチ送信、${syncFallbackEvents.length} 件は同期フォールバック\n`)
-
-  // --- パス2: バッチ送信 + 待機 ---
-  let batchResults = new Map()
-  if (batchRequests.length > 0 && !dryRun) {
-    batchResults = await runBatch(anthropic, batchRequests)
-  } else if (dryRun) {
-    console.log(`[orchestrator-batch] DRY_RUN: バッチ送信スキップ`)
-  }
-
-  // --- パス3: バッチ結果を使って enrichEvent を実行 ---
-  let ok = 0, err = 0
-
-  for (const [customId, meta] of eventMeta) {
-    const { event } = meta
-
-    if (dryRun) {
-      console.log(`  DRY (orchestrator-batch) ${event.name?.slice(0, 50)}`)
-      ok++
-      continue
-    }
-
-    const batchResult = batchResults.get(customId)
-    if (batchResult && batchResult.success) {
-      // バッチ結果を使って enrichEvent を実行（_batchResult で初回 LLM をスキップ）
-      const result = await enrichEvent(event, {
-        dryRun: false,
-        _batchResult: batchResult.parsed,
-        _html: meta.html,
-        _fetchedUrl: meta.fetchedUrl,
-      })
-      if (result.success) { ok++; console.log(`  OK  (orchestrator-batch) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
-      else { err++; console.log(`  ERR (orchestrator-batch) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
-    } else {
-      // バッチ失敗 → 同期フォールバック
-      const errorMsg = batchResult?.error || 'No batch result'
-      console.log(`  [orchestrator-batch] ${event.name?.slice(0, 40)} | バッチ失敗: ${errorMsg.slice(0, 40)} → 同期フォールバック`)
-      const result = await enrichEvent(event, { dryRun: false })
-      if (result.success) { ok++; console.log(`  OK  (orchestrator-sync-fallback) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
-      else { err++; console.log(`  ERR (orchestrator-sync-fallback) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
-    }
-  }
-
-  // 同期フォールバック分
-  for (const event of syncFallbackEvents) {
-    const result = await enrichEvent(event, { dryRun })
-    if (result.success) { ok++; console.log(`  OK  (orchestrator-sync) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
-    else { err++; console.log(`  ERR (orchestrator-sync) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
-  }
-
-  console.log(`\n[orchestrator-batch] 完了: OK ${ok} / ERR ${err}`)
-  return { ok, err }
 }
 
 // CLI 実行判定

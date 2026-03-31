@@ -89,7 +89,7 @@ export function detectLanguage(text) {
 
 // --- HTML 取得・解析 ---
 
-export async function fetchHtml(url, timeoutMs = 15000) {
+export async function fetchHtml(url, timeoutMs = 15000, maxBytes = 2 * 1024 * 1024) {
   for (let attempt = 0; attempt < 2; attempt++) {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -101,7 +101,23 @@ export async function fetchHtml(url, timeoutMs = 15000) {
       })
       clearTimeout(timer)
       if (!res.ok) throw new Error(`${res.status}`)
-      return res.text()
+      // Stream-read with size limit to prevent OOM on huge pages
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let html = ''
+      let totalBytes = 0
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        totalBytes += value.byteLength
+        if (totalBytes > maxBytes) {
+          reader.cancel()
+          html += decoder.decode(value, { stream: false })
+          break
+        }
+        html += decoder.decode(value, { stream: true })
+      }
+      return html
     } catch (e) {
       clearTimeout(timer)
       if (attempt === 0 && (e.name === 'AbortError' || e.code === 'ECONNREFUSED' || e.code === 'ECONNRESET')) {
