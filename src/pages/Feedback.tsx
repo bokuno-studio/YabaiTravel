@@ -532,6 +532,19 @@ function Feedback() {
           </p>
         )}
 
+        {/* Crew membership link */}
+        {!isSupporter && !isEn && (
+          <div className="mb-6 rounded-lg border border-border bg-muted/30 p-4">
+            <p className="text-sm">
+              {'Crewメンバーは掲示板でコメントができます'}
+              {' '}
+              <Link to={`/${lang || 'ja'}/pricing`} className="text-primary hover:underline font-medium">
+                {'詳しく見る'}
+              </Link>
+            </p>
+          </div>
+        )}
+
         {/* Filter chips */}
         <div className="flex flex-wrap gap-2 mb-6">
           {/* Type filters */}

@@ -565,6 +565,27 @@ function EventDetail() {
           ))}
         </div>
 
+        {/* Crew CTA */}
+        {!isEn && (
+          <div className="my-8 rounded-lg border border-primary/30 bg-primary/5 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex-1">
+                <p className="font-semibold text-foreground">
+                  {'お気に入りに保存して後で確認'}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {'Crewメンバー機能'}
+                </p>
+              </div>
+              <Button asChild size="sm">
+                <Link to={`${langPrefix}/pricing`}>
+                  {'詳しく'}
+                </Link>
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* レースレポート・口コミ */}
         <EventComments eventId={event.id} raceType={event.race_type ?? undefined} isEn={isEn} />
 

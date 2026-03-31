@@ -512,6 +512,21 @@ function EventList() {
 
       <div className="mx-auto max-w-7xl px-4 py-6 md:px-6">
 
+        {/* Crew Banner */}
+        {!isEn && (
+          <div className="mb-6 rounded-lg border border-primary/30 bg-primary/5 p-4 flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-foreground">Crew ¥500/月</p>
+              <p className="text-sm text-muted-foreground">
+                レース詳細の無制限閲覧、お気に入り保存、掲示板コメント
+              </p>
+            </div>
+            <Button asChild>
+              <a href={`${langPrefix}/pricing`}>詳しく見る</a>
+            </Button>
+          </div>
+        )}
+
         {/* Active filter chips + toolbar */}
         <div className="mb-4 space-y-2">
           {/* Active filter chips row */}
