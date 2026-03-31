@@ -365,8 +365,8 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
 
     // --- ステップ2: 関連ページ探索（パス2） ---
     if (!fetchFailed && html && fetchedUrl) {
-      const relatedLinks = extractRelevantLinks(html, fetchedUrl)
-      const externalLinks = extractExternalOfficialLinks(html, fetchedUrl)
+      const relatedLinks = _relatedLinks || extractRelevantLinks(html, fetchedUrl)
+      const externalLinks = _externalLinks || extractExternalOfficialLinks(html, fetchedUrl)
       const allLinks = [...relatedLinks, ...externalLinks].slice(0, 2)
 
       for (const link of allLinks) {
