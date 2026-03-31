@@ -343,17 +343,22 @@ async function reclassifyRaceType(anthropic, eventName) {
 }
 
 /** 高優先度フィールドが欠けているか判定 */
-function hasMissingFields(categories) {
+function hasMissingFields(categories, raceType = null) {
   if (!categories || categories.length === 0) return true
-  return categories.some((c) =>
-    c.distance_km == null ||
-    c.entry_fee == null ||
-    c.start_time == null ||
-    c.reception_end == null ||
-    c.cutoff_times == null ||
-    (Array.isArray(c.cutoff_times) && c.cutoff_times.length === 0 && c.distance_km > 20) ||
-    c.poles_allowed == null
-  )
+  return categories.some((c) => {
+    const missingBasic =
+      c.distance_km == null ||
+      c.entry_fee == null ||
+      c.start_time == null ||
+      c.reception_end == null ||
+      c.cutoff_times == null ||
+      (Array.isArray(c.cutoff_times) && c.cutoff_times.length === 0 && c.distance_km > 20)
+
+    // poles_allowed は trail または ultra race_type のみ必須
+    const missingPoles = (raceType === 'trail' || raceType === 'ultra') && c.poles_allowed == null
+
+    return missingBasic || missingPoles
+  })
 }
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || `https://${process.env.SUPABASE_PROJECT_REF || 'wzkjnmowrlfgvkuzyiio'}.supabase.co`
@@ -641,7 +646,7 @@ export async function enrichDetail(event, opts = { dryRun: false }) {
     }
 
     // Pass 3: 欠落フィールドが残っている場合のみ Tavily で Web 検索して補完
-    if (hasMissingFields(extracted.categories)) {
+    if (hasMissingFields(extracted.categories, extracted.event.race_type)) {
       const query = `${name} エントリー料金 距離 開催日 制限時間`
       const searchResults = await fetchTavilySearch(query)
       for (const content of searchResults) {
