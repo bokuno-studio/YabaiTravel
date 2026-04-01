@@ -239,7 +239,6 @@ function EventDetail() {
     if (isEn) {
       parts.push(displayName)
       if (displayLocation) parts.push(displayLocation)
-      if (event.distance_km) parts.push(`${event.distance_km}km`)
       parts.push('- entry fee, access, accommodation')
       return parts.join(' | ')
     } else {
@@ -247,7 +246,6 @@ function EventDetail() {
       const raceTypeStr = event.race_type ? raceTypeLabel(event.race_type) : '大会'
       parts.push(`${displayName} ${event.event_date ? event.event_date.split('-')[0] : ''}`)
       if (displayLocation) parts.push(`(${displayLocation})`)
-      if (event.distance_km) parts.push(`${event.distance_km}km`)
       parts.push(`${raceTypeStr}の参加費・アクセス・宿泊`)
       return parts.join('')
     }
