@@ -119,13 +119,13 @@ function Legal() {
             value={
               isEn ? (
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Crew Membership: ¥1,500/month (tax included)</li>
+                  <li>Crew Membership: ¥500/month (tax included)</li>
                   <li>Comment: Currently free (subject to change)</li>
                   <li>One-time Donation: Any amount (JPY)</li>
                 </ul>
               ) : (
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Crew メンバーシップ: ¥1,500/月（税込）</li>
+                  <li>Crew メンバーシップ: ¥500/月（税込）</li>
                   <li>コメント: 現在無料（将来変更の可能性あり）</li>
                   <li>単発寄付: 任意の金額（JPY）</li>
                 </ul>
