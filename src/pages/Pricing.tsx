@@ -163,17 +163,6 @@ function Pricing() {
               <td className="border border-border px-4 py-3 text-center">○</td>
               <td className="border border-border px-4 py-3 text-center">○</td>
             </tr>
-            <tr>
-              <td className="border border-border px-4 py-3">
-                {isEn ? 'Unlimited race detail viewing' : 'レース詳細閲覧'}
-              </td>
-              <td className="border border-border px-4 py-3 text-center text-muted-foreground">
-                {isEn ? 'Limited' : '制限あり'}
-              </td>
-              <td className="border border-border px-4 py-3 text-center">
-                {isEn ? 'Unlimited' : '無制限'}
-              </td>
-            </tr>
             <tr className="bg-muted/30">
               <td className="border border-border px-4 py-3">
                 {isEn ? 'Save favorite races' : 'お気に入り保存'}
