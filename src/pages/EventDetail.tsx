@@ -230,6 +230,29 @@ function EventDetail() {
   const displayLocation = isEn ? (event.location_en ?? event.location) : event.location
   const displayDescription = isEn ? (event.description_en ?? event.description) : event.description
 
+  // GSC CTR improvement: Generate enriched meta description with race details
+  const enrichedMetaDescription = (() => {
+    const baseDesc = displayDescription
+    if (baseDesc) return baseDesc // Use existing description if available
+
+    const parts = []
+    if (isEn) {
+      parts.push(displayName)
+      if (displayLocation) parts.push(displayLocation)
+      if (event.distance_km) parts.push(`${event.distance_km}km`)
+      parts.push('- entry fee, access, accommodation')
+      return parts.join(' | ')
+    } else {
+      // Japanese: More search-friendly format for 「トレイルランニング 日本 レース」等
+      const raceTypeStr = event.race_type ? raceTypeLabel(event.race_type) : '大会'
+      parts.push(`${displayName} ${event.event_date ? event.event_date.split('-')[0] : ''}`)
+      if (displayLocation) parts.push(`(${displayLocation})`)
+      if (event.distance_km) parts.push(`${event.distance_km}km`)
+      parts.push(`${raceTypeStr}の参加費・アクセス・宿泊`)
+      return parts.join('')
+    }
+  })()
+
   // Value badges data
   const tokyoOutbound = accessRoutes.find(
     (r) => r.origin_type === 'tokyo' && r.direction === 'outbound'
@@ -243,9 +266,9 @@ function EventDetail() {
     return (
       <>
         <title>{displayName} | yabai.travel</title>
-        <meta name="description" content={displayDescription ?? `${displayName}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+        <meta name="description" content={enrichedMetaDescription} />
         <meta property="og:title" content={`${displayName} | yabai.travel`} />
-        <meta property="og:description" content={displayDescription ?? `${displayName}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+        <meta property="og:description" content={enrichedMetaDescription} />
         <meta property="og:url" content={`https://yabai.travel${location.pathname}`} />
         <link rel="canonical" href={`https://yabai.travel${location.pathname}`} />
         <link rel="alternate" hrefLang="ja" href={`https://yabai.travel/ja/events/${event.id}`} />
@@ -478,9 +501,9 @@ function EventDetail() {
   return (
     <>
       <title>{displayName} | yabai.travel</title>
-      <meta name="description" content={displayDescription ?? `${displayName}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+      <meta name="description" content={enrichedMetaDescription} />
       <meta property="og:title" content={`${displayName} | yabai.travel`} />
-      <meta property="og:description" content={displayDescription ?? `${displayName}の大会情報・アクセス・宿泊をまとめてチェック。`} />
+      <meta property="og:description" content={enrichedMetaDescription} />
       <meta property="og:url" content={`https://yabai.travel${location.pathname}`} />
       <link rel="canonical" href={`https://yabai.travel${location.pathname}`} />
       <link rel="alternate" hrefLang="ja" href={`https://yabai.travel/ja/events/${event.id}`} />

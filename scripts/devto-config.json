@@ -1,0 +1,58 @@
+{
+  "articles": [
+    {
+      "filename": "hyrox-japan-guide-2026.md",
+      "devto_title": "Complete HYROX Guide 2026 — Japan Race Schedule, Training, Gear",
+      "devto_canonical": "https://yabai.travel/en/guide/hyrox",
+      "tags": ["hyrox", "fitness", "racing", "japan"],
+      "status": "published"
+    },
+    {
+      "filename": "trail-running-near-tokyo-2026.md",
+      "devto_title": "Day-Trip Trail Running Races from Tokyo 2026 — Complete Guide",
+      "devto_canonical": "https://yabai.travel/en/guide/trail",
+      "tags": ["trail-running", "tokyo", "japan", "racing"],
+      "status": "published"
+    },
+    {
+      "filename": "ocr-guide-japan-2026.md",
+      "devto_title": "Complete OCR & Obstacle Course Guide 2026 — Spartan Race, HYROX, Tough Mudder",
+      "devto_canonical": "https://yabai.travel/en/guide/obstacle",
+      "tags": ["ocr", "spartan", "tough-mudder", "fitness"],
+      "status": "published"
+    },
+    {
+      "filename": "marathon-trip-guide-2026.md",
+      "devto_title": "Marathon Trip Planning Guide 2026 — Running Destinations from Tokyo",
+      "devto_canonical": "https://yabai.travel/en/guide/marathon",
+      "tags": ["marathon", "running", "travel", "japan"],
+      "status": "published"
+    },
+    {
+      "filename": "endurance-races-japan-2026.md",
+      "devto_title": "Complete Endurance Racing Guide Japan 2026 — Trail, HYROX, Spartan & More",
+      "devto_canonical": "https://yabai.travel/en",
+      "tags": ["endurance", "running", "racing", "japan"],
+      "status": "ready"
+    },
+    {
+      "filename": "spartan-race-japan-guide-2026.md",
+      "devto_title": "Spartan Race Japan Guide 2026 — Classes, Training, Event Locations",
+      "devto_canonical": "https://yabai.travel/en/guide/spartan",
+      "tags": ["spartan", "obstacle-race", "fitness", "japan"],
+      "status": "ready"
+    },
+    {
+      "filename": "rogaining-guide-japan-2026.md",
+      "devto_title": "Rogaining Guide — Navigation Sports for Adventure Runners",
+      "devto_canonical": "https://yabai.travel/en/guide/rogaining",
+      "tags": ["rogaining", "navigation", "adventure", "racing"],
+      "status": "ready"
+    }
+  ],
+  "schedule": {
+    "frequency": "monthly",
+    "articles_per_month": 2,
+    "next_publication": "2026-04-15"
+  }
+}

@@ -1,0 +1,53 @@
+name: Dev.to Article Publishing
+
+on:
+  schedule:
+    # Run on the 15th of every month at 9am UTC
+    - cron: '0 9 15 * *'
+  workflow_dispatch:
+    inputs:
+      filename:
+        description: 'Article filename to publish (optional, otherwise publishes scheduled articles)'
+        required: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Publish scheduled articles
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+        run: |
+          # Write env file for script
+          echo "DEVTO_API_KEY=$DEVTO_API_KEY" > .env.local
+
+          # If filename provided, publish that specific article
+          if [ -n "${{ github.event.inputs.filename }}" ]; then
+            node scripts/devto-publish.mjs publish "${{ github.event.inputs.filename }}"
+          else
+            # Otherwise, auto-publish next 2 scheduled articles
+            echo "📅 Running scheduled monthly publication..."
+            node scripts/devto-publish.mjs publish endurance-races-japan-2026.md || true
+            node scripts/devto-publish.mjs publish spartan-race-japan-guide-2026.md || true
+          fi
+
+      - name: Commit updated config
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add scripts/devto-config.json
+          git commit -m "ci: update dev.to publication status" || true
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
