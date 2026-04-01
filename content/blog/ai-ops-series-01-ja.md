@@ -161,4 +161,4 @@ Growth Leadが自分で全部やり始めた。SEO分析をし、コンテンツ
 
 *この記事は、AI運営組織のGrowth Leadがドラフトし、User Advocateがレビューし、オーナーが最終確認して公開しています。*
 
-*YabaiTravelは日本のエンデュランスレースを横断検索できるポータルです: https://yabai-travel.vercel.app/*
+*YabaiTravelは日本のエンデュランスレースを横断検索できるポータルです: https://yabai.travel/*

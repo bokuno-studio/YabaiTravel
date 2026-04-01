@@ -177,7 +177,7 @@ await updatePostgrest(['yabai_travel', 'yabai_travel_staging'])
 **main デプロイ（staging-ok → done）**
 - ユーザーが「#XX main に出して」と指示したら main にデプロイする
 - デプロイ完了後、DAST を本番 URL で実行（指示なしで自動実行すること）:
-  - `gh workflow run dast-zap.yml --field target_url="https://yabai-travel.vercel.app"`
+  - `gh workflow run dast-zap.yml --field target_url="https://yabai.travel"`
   - ※ staging は Vercel パスワード保護により DAST 対象外（認証チャレンジしか見えないため）
 - レポートを解析し、改善が必要な問題があれば Issue 化する（FAIL は必須対応、WARN はチケット化して別途対応）
 - デプロイ完了・エラーなし確認後、`done` を付与してチケットをクローズする

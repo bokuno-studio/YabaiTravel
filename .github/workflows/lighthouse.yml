@@ -12,4 +12,4 @@ jobs:
         with:
           node-version: '20'
       - run: npm install -g @lhci/cli
-      - run: lhci autorun --collect.url=https://yabai-travel.vercel.app/ja --upload.target=temporary-public-storage
+      - run: lhci autorun --collect.url=https://yabai.travel/ja --upload.target=temporary-public-storage

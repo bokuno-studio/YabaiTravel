@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  TARGET_URL: https://yabai-travel.vercel.app
+  TARGET_URL: https://yabai.travel
 
 jobs:
   security-check:
