@@ -33,27 +33,37 @@ if (!HATENA_USER || !HATENA_BLOG_ID || !HATENA_API_KEY) {
 // Construct entry list endpoint
 const HATENA_ENTRY_URL = `https://blog.hatena.ne.jp/${HATENA_USER}/${HATENA_BLOG_ID}/atom/entry`
 
-// Target articles (mapped by PL confirmation)
+// Target articles with B案: related links at end
 const targetArticles = [
   {
     titlePattern: /ロゲイニング入門ガイド/i,
-    utm_content: 'endurance-races-japan'
+    utm_content: 'endurance-races-japan',
+    linkTarget: '/ja/',
+    linkText: 'YabaiTravel - 日本のレース検索'
   },
   {
     titlePattern: /マラソン遠征ガイド/i,
-    utm_content: 'marathon-guide'
+    utm_content: 'marathon-guide',
+    linkTarget: '/ja/guide/marathon',
+    linkText: 'YabaiTravel - マラソン遠征ガイド'
   },
   {
     titlePattern: /東京から日帰りで行けるトレイルランニング/i,
-    utm_content: 'trail-running-tokyo'
+    utm_content: 'trail-running-tokyo',
+    linkTarget: '/ja/guide/trail',
+    linkText: 'YabaiTravel - トレイルラン大会検索'
   },
   {
     titlePattern: /日本の障害物レース.*OCR/i,
-    utm_content: 'spartan-japan'
+    utm_content: 'spartan-japan',
+    linkTarget: '/ja/',
+    linkText: 'YabaiTravel - 障害物レース検索'
   },
   {
     titlePattern: /HYROX完全ガイド/i,
-    utm_content: 'hyrox-japan'
+    utm_content: 'hyrox-japan',
+    linkTarget: '/ja/',
+    linkText: 'YabaiTravel - HYROX大会検索'
   }
 ]
 
@@ -102,29 +112,31 @@ function parseXml(xml) {
   return entries
 }
 
-// Add UTM parameters
-function addUTMParameters(content, utm_content) {
-  let updated = false
+// Add related links section at end of content
+function addRelatedLinksSection(content, linkTarget, linkText, utm_content) {
+  // Build the UTM-tagged URL
+  const utmUrl = `https://yabai.travel${linkTarget}?utm_source=hatena&utm_medium=blog&utm_campaign=cycle10&utm_content=${utm_content}`
 
-  const linkRegex = /(https?:\/\/yabai\.travel[^\s"')]*?)(?=\s|"|'|\)|$)/g
+  // Create related links section in Markdown format (Hatena supports it)
+  const relatedLinksHtml = `
+---
 
-  const newContent = content.replace(linkRegex, (match) => {
-    if (match.includes('utm_')) {
-      return match
-    }
+## 関連リンク
 
-    updated = true
-    const separator = match.includes('?') ? '&' : '?'
-    return `${match}${separator}utm_source=hatena&utm_medium=blog&utm_campaign=cycle10&utm_content=${utm_content}`
-  })
+[${linkText}](${utmUrl})`
 
-  return { newContent, updated }
+  // Remove any existing related links section
+  let cleanContent = content.replace(/\n?---\s*\n##\s*関連リンク[\s\S]*?(?=\n|$)/g, '')
+
+  // Append new related links section
+  return cleanContent + relatedLinksHtml
 }
 
 // Update article
-async function updateArticle(editLink, newContent) {
+async function updateArticle(editLink, title, newContent) {
   const entryXml = `<?xml version="1.0" encoding="UTF-8"?>
 <entry xmlns="http://www.w3.org/2005/Atom">
+  <title>${title}</title>
   <content type="xhtml">
     <div xmlns="http://www.w3.org/1999/xhtml">
       <![CDATA[${newContent}]]>
@@ -150,7 +162,7 @@ async function updateArticle(editLink, newContent) {
 
 // Main
 async function main() {
-  console.log('=== Hatena UTM Link Update ===\n')
+  console.log('=== Hatena Related Links Update (B案) ===\n')
 
   try {
     console.log('📥 Fetching Atom feed...')
@@ -173,17 +185,23 @@ async function main() {
 
       console.log(`✓ [${target.utm_content}] "${matching.title}"`)
 
-      const { newContent, updated } = addUTMParameters(matching.content, target.utm_content)
+      // Add related links section with UTM parameters
+      const newContent = addRelatedLinksSection(
+        matching.content,
+        target.linkTarget,
+        target.linkText,
+        target.utm_content
+      )
 
-      if (!updated) {
+      if (newContent === matching.content) {
         console.log(`  ℹ No changes needed`)
         processedCount++
         continue
       }
 
-      console.log(`  🔄 Updating...`)
+      console.log(`  🔄 Updating with related links...`)
       try {
-        await updateArticle(matching.editLink, newContent)
+        await updateArticle(matching.editLink, matching.title, newContent)
         console.log(`  ✅ Updated`)
         updatedCount++
         processedCount++
