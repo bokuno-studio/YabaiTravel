@@ -22,7 +22,7 @@ const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
 
 // --- 必須フィールドテンプレート ---
 // 共通テンプレート: 全種別で必須
-const COMMON_REQUIRED_FIELDS = ['entry_fee']
+const COMMON_REQUIRED_FIELDS = []
 // 種別テンプレート: race_type ごとに追加（#318 で順次追加）
 const PER_RACE_TYPE_REQUIRED_FIELDS = {
   // trail: ['time_limit', 'elevation_gain', 'mandatory_gear', 'cutoff_times'],
