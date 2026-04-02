@@ -70,6 +70,7 @@ export type Event = {
   recovery_facilities_en?: string | null
   photo_spots_en?: string | null
   description_en?: string | null
+  source?: string | null
 }
 
 /** yabai_travel.access_routes テーブルの型 */

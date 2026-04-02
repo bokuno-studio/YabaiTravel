@@ -272,8 +272,8 @@ async function insertRace(client, race) {
        )
   )`
   const result = await client.query(
-    `INSERT INTO ${SCHEMA}.events (name, name_en, event_date, location, country, race_type, official_url, entry_url, collected_at)
-     SELECT $1, $8::text, $2::date, $3, $4, $5, $6, $7, NULL
+    `INSERT INTO ${SCHEMA}.events (name, name_en, event_date, location, country, race_type, official_url, entry_url, collected_at, source)
+     SELECT $1, $8::text, $2::date, $3, $4, $5, $6, $7, NULL, $9
      ${dupCheck}
      RETURNING id`,
     [
@@ -285,6 +285,7 @@ async function insertRace(client, race) {
       sanitizeUrl(race.official_url),
       sanitizeUrl(race.entry_url) || sanitizeUrl(race.official_url) || null,
       race.name_en || null,
+      race.source || null,
     ]
   )
   return result.rows[0]?.id || null
