@@ -23,6 +23,7 @@
     "crawl:fetch-all": "node scripts/crawl/fetch-all-urls.js",
     "crawl:fix-and-rerun": "node scripts/crawl/fix-and-rerun.js && npm run crawl:run",
     "crawl:reset-retry": "node scripts/crawl/reset-retry.js",
+    "report:daily": "node scripts/crawl/daily-report-ondemand.js",
     "deploy:watch": "sh scripts/watch-deploy.sh",
     "knip": "knip",
     "license-check": "license-checker --onlyAllow 'MIT;ISC;BSD-2-Clause;BSD-3-Clause;Apache-2.0;0BSD;CC0-1.0;CC-BY-4.0;Unlicense;MPL-2.0' --summary",
