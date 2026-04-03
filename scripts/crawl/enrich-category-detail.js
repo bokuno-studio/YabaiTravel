@@ -570,12 +570,15 @@ async function fetchTargets(args) {
     // 引数なし: 全未処理カテゴリを取得
     const limitIdx = args.indexOf('--limit')
     const limit = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : 50
+    const offsetIdx = args.indexOf('--offset')
+    const offset = offsetIdx >= 0 ? parseInt(args[offsetIdx + 1], 10) : 0
     const { rows } = await client.query(
       `SELECT c.id, c.name, c.distance_km, e.id as event_id, e.name as event_name, e.official_url, e.race_type, e.country_en
        FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id
        WHERE c.collected_at IS NULL AND c.attempt_count < 3 AND e.collected_at IS NOT NULL
-       ORDER BY c.updated_at ASC LIMIT $1`,
-      [limit]
+       AND (e.event_date IS NULL OR e.event_date >= CURRENT_DATE)
+       ORDER BY c.id ASC LIMIT $1 OFFSET $2`,
+      [limit, offset]
     )
     targets = rows.map((r) => ({
       event: { id: r.event_id, name: r.event_name, official_url: r.official_url, race_type: r.race_type, country_en: r.country_en },
