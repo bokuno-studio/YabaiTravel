@@ -5,6 +5,7 @@ import { eventToJsonLd } from '../lib/jsonld'
 import { supabase } from '../lib/supabaseClient'
 import { trackEventDetailView } from '../lib/analytics'
 import { useScrollDepth } from '@/hooks/useScrollDepth'
+import { useAuth } from '@/lib/auth'
 import EventComments from '@/components/EventComments'
 import type { Event, Category, AccessRoute, Accommodation } from '../types/event'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -56,6 +57,7 @@ function EventDetail() {
   const { t } = useTranslation()
   const langPrefix = `/${lang || 'ja'}`
   const isEn = lang === 'en'
+  const { isSupporter } = useAuth()
   const [event, setEvent] = useState<Event | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [accessRoutes, setAccessRoutes] = useState<AccessRoute[]>([])
@@ -587,24 +589,16 @@ function EventDetail() {
         </div>
 
         {/* Crew CTA */}
-        {!isEn && (
-          <div className="my-8 rounded-lg border border-primary/30 bg-primary/5 p-4">
-            <div className="flex items-start gap-3">
-              <div className="flex-1">
-                <p className="font-semibold text-foreground">
-                  {'お気に入りに保存して後で確認'}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {'Crewメンバー機能'}
-                </p>
-              </div>
-              <Button asChild size="sm">
-                <Link to={`${langPrefix}/pricing`}>
-                  {'詳しく'}
-                </Link>
-              </Button>
-            </div>
-          </div>
+        {!isSupporter && (
+          <p className="mt-4 text-sm text-muted-foreground">
+            ℹ{' '}
+            {isEn
+              ? 'Crew members can save favorites, join the discussion and more. '
+              : 'Crew メンバーは、お気に入り保存・掲示板参加などが使えます。'}
+            <Link to={`${langPrefix}/pricing`} className="underline">
+              {isEn ? 'Learn about Crew →' : 'Crew について知る →'}
+            </Link>
+          </p>
         )}
 
         {/* レースレポート・口コミ */}

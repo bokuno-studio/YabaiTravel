@@ -269,7 +269,7 @@ function Pricing() {
                 : 'サブスクリプションは毎月自動更新されます。アカウント設定からいつでもキャンセルできます。'}
             </p>
 
-            <ul className="space-y-3">
+            <ul className="space-y-3 mb-6">
               {supporterFeatures.map((feature) => (
                 <li key={feature} className="flex items-start gap-2">
                   <span className="mt-0.5 text-green-600">&#10003;</span>
@@ -277,6 +277,41 @@ function Pricing() {
                 </li>
               ))}
             </ul>
+
+            {/* Total Value Table */}
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold mb-2 text-foreground">
+                {isEn ? 'Total Value' : '総合価値'}
+              </h3>
+              <table className="w-full text-sm border-collapse">
+                <tbody>
+                  <tr className="border-b border-border/40">
+                    <td className="py-2 pr-2 text-muted-foreground">
+                      {isEn ? 'Favorites feature' : 'お気に入り保存機能'}
+                    </td>
+                    <td className="py-2 text-right font-medium">¥200</td>
+                  </tr>
+                  <tr className="border-b border-border/40">
+                    <td className="py-2 pr-2 text-muted-foreground">
+                      {isEn ? 'Community access' : 'コミュニティ参加'}
+                    </td>
+                    <td className="py-2 text-right font-medium">¥150</td>
+                  </tr>
+                  <tr className="border-b border-border/40">
+                    <td className="py-2 pr-2 text-muted-foreground">
+                      {isEn ? 'Crew badge' : 'Crewバッジ'}
+                    </td>
+                    <td className="py-2 text-right font-medium">¥150</td>
+                  </tr>
+                  <tr className="bg-primary/5">
+                    <td className="py-2 pr-2 font-semibold text-foreground">
+                      {isEn ? 'Total Value' : '合計価値'}
+                    </td>
+                    <td className="py-2 text-right font-bold text-primary">¥500+</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </CardContent>
 
           <CardFooter className="flex-col gap-3">

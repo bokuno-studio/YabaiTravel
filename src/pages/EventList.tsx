@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react'
-import { useParams, useSearchParams, useLocation } from 'react-router-dom'
+import { useParams, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabaseClient'
 import type { EventWithCategories, Category } from '../types/event'
 import LazyLoadWrapper from '../components/LazyLoadWrapper'
+import { useAuth } from '@/lib/auth'
 
 const EventMap = lazy(() => import('../components/EventMap'))
 import { EventCard } from '../components/EventCard'
@@ -89,6 +90,7 @@ function EventList() {
   const isEn = lang === 'en'
   const location = useLocation()
   const langPrefix = `/${lang || 'ja'}`
+  const { isSupporter } = useAuth()
   const DISTANCE_RANGES = useMemo(() => getDistanceRanges(isEn), [isEn])
   useScrollDepth('event_list')
 
@@ -641,6 +643,26 @@ function EventList() {
               <EventMap events={filtered} langPrefix={langPrefix} raceTypeLabel={raceTypeLabel} lang={lang} />
             </Suspense>
           </LazyLoadWrapper>
+        )}
+
+        {/* Crew CTA */}
+        {!isSupporter && (
+          <div className="mb-6 rounded-lg border border-primary/30 bg-primary/5 p-4 text-center">
+            <p className="font-medium">
+              {isEn ? 'More with Crew' : 'Crew なら、もっと便利に'}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isEn
+                ? 'Save favorites, join the discussion and more'
+                : 'お気に入り保存・掲示板コメント等'}
+            </p>
+            <Link
+              to={`${langPrefix}/pricing`}
+              className="mt-3 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              {isEn ? 'See Crew benefits for ¥500/mo' : '¥500/月で特典を確認'}
+            </Link>
+          </div>
         )}
 
         {/* Event Grid */}
