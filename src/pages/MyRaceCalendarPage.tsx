@@ -79,17 +79,18 @@ export default function MyRaceCalendarPage() {
         }
 
         // data を RaceWithEvent[] に変換
-        const racesData: RaceWithEvent[] = data
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const racesData = (data as any[])
           .map((item) => {
             const cat = item.categories as { id: string; name: string; name_en: string; events: RaceWithEvent['events'] } | null
             return {
-              id: cat?.id ?? '',
-              name: cat?.name ?? '',
-              name_en: cat?.name_en ?? '',
-              events: cat?.events ?? [],
-            }
+              id: (cat?.id ?? '') as string,
+              name: (cat?.name ?? '') as string,
+              name_en: (cat?.name_en ?? '') as string,
+              events: (cat?.events ?? []) as RaceWithEvent['events'],
+            } satisfies RaceWithEvent
           })
-          .filter((race) => race.events && race.events.length > 0)
+          .filter((race: RaceWithEvent) => race.events && race.events.length > 0) as RaceWithEvent[]
 
         setRaces(racesData)
         setError(null)
