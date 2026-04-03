@@ -11,14 +11,11 @@ const SOURCES = [
   { name: 'UTMB World Series', url: 'https://utmb.world/utmb-world-series-events', types: 'trail' },
   { name: 'Strong Viking', url: 'https://strongviking.com/en/tickets/', types: 'obstacle' },
   { name: 'Golden Trail Series', url: 'https://goldentrailseries.com/', types: 'trail' },
-  { name: 'Hardrock 100 Qualifying Races', url: 'https://hardrock100.com/hardrock-qualify.php', types: 'trail' },
   { name: 'Tough Mudder', url: 'https://toughmudder.com/', types: 'obstacle' },
   { name: 'Devils Circuit', url: 'https://www.devilscircuit.com/', types: 'obstacle' },
   { name: 'A-Extremo', url: 'https://www.a-extremo.com/', types: 'adventure' },
-  { name: 'Albatros Adventure Marathons', url: 'https://albatros-adventure-marathons.com/', types: 'marathon' },
   { name: 'Niseko Expedition', url: 'https://nisekoexpedition.jp/', types: 'adventure' },
   { name: 'AR World Series', url: 'https://arworldseries.com/races', types: 'adventure' },
-  { name: 'Adventure1 Series', url: 'https://adventure1series.com/a1/', types: 'adventure' },
   { name: 'Total Warrior', url: 'https://www.totalwarrior.co.uk/', types: 'total_warrior' },
 ]
 
