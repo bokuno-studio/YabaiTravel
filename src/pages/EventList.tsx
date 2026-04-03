@@ -178,7 +178,7 @@ function EventList() {
     if (entryStatus !== 'active') params.set('entryStatus', entryStatus)
     if (showPastEvents) params.set('showPast', '1')
     setSearchParams(params, { replace: true })
-  }, [raceTypes, selectedMonths, selectedCategories, distanceRanges, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents, setSearchParams])
+  }, [raceTypes, dateRangeStart, dateRangeEnd, selectedCategories, distanceRanges, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents, setSearchParams])
 
   useEffect(() => {
     async function fetchEvents() {
@@ -524,7 +524,7 @@ function EventList() {
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(INITIAL_RENDER_COUNT)
-  }, [raceTypes.size, selectedCategories.size, selectedMonths.size, distanceRanges.size, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents])
+  }, [raceTypes.size, selectedCategories.size,  distanceRanges.size, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents])
 
   if (error) {
     return (
