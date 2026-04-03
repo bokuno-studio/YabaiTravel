@@ -27,29 +27,19 @@ const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
 
 const PRICE_LEVEL_TO_JPY = { 1: 5000, 2: 10000, 3: 15000, 4: 25000 }
 
-// --- 海上座標判定 ---
+// --- 海上座標判定（日本国内イベントのみ対象） ---
 function isSeaCoordinate(lat, lng) {
-  // 簡易判定: よく知られた海上レースエリア（日本周辺）を除外
-  // トライアスロン・スイムなどで海上座標が正当な場合もあるが、
-  // 内陸レースが誤って海上に geocoding される場合を防ぐ
+  // 注意: 本来は沖縄周辺でも陸上座標がある可能性があるため、
+  // より正確には Google Geocoding の location_type を使用すべき
+  // ここは明らかに異常な座標（緯度経度の値がほぼ0,0付近）のみリセット対象
 
-  // 日本周辺の大陸棚・内海外
-  // 1. 太平洋沖（東経>145度 または 北緯<30度 かつ 東経>143度）
-  if (lng > 145 || (lat < 30 && lng > 143)) return true
-
-  // 2. 日本海沖（北緯>40度 かつ 東経<138度）
-  if (lat > 40 && lng < 138) return true
-
-  // 3. 東シナ海（北緯<32度 かつ 東経<130度）
-  if (lat < 32 && lng < 130) return true
-
-  // 4. フィリピン海（北緯<24度 かつ 東経>130度）
-  if (lat < 24 && lng > 130) return true
+  // 異常な座標（赤道・本初子午線付近）
+  if ((lat > -1 && lat < 1) && (lng > -1 && lng < 1)) return true
 
   return false
 }
 
-async function geocodeLocation(location, apiKey) {
+async function geocodeLocation(location, apiKey, countryEn = null) {
   const res = await fetch(
     `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&key=${apiKey}`
   )
@@ -59,8 +49,8 @@ async function geocodeLocation(location, apiKey) {
   const locationType = result.geometry.location_type
   if (locationType === 'GEOMETRIC_CENTER' || locationType === 'APPROXIMATE') return null
   const coords = result.geometry.location
-  // 海上座標チェック
-  if (isSeaCoordinate(coords.lat, coords.lng)) return null
+  // 海上座標チェック: 日本国内イベントのみ適用
+  if (countryEn === 'Japan' && isSeaCoordinate(coords.lat, coords.lng)) return null
   return coords // { lat, lng }
 }
 
@@ -538,7 +528,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
 
     if (googleApiKey && e.location) {
       try {
-        const geo = await geocodeLocation(e.location, googleApiKey)
+        const geo = await geocodeLocation(e.location, googleApiKey, e.country_en)
         if (geo) {
           venueLat = geo.lat
           venueLng = geo.lng
@@ -548,6 +538,16 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
             [eventId, venueLat, venueLng]
           )
           console.log(`  [geocode] ${name?.slice(0, 40)} | ${e.location} → ${venueLat.toFixed(4)}, ${venueLng.toFixed(4)}`)
+        } else {
+          // geocodeLocationがnullを返した場合（海上座標を検出した場合）
+          // 既存の座標をリセット
+          if (venueLat != null && venueLng != null) {
+            await client.query(
+              `UPDATE ${SCHEMA}.events SET latitude = NULL, longitude = NULL WHERE id = $1`,
+              [eventId]
+            )
+            console.log(`  [geocode-sea] ${name?.slice(0, 40)} | sea coordinate detected, reset to NULL`)
+          }
         }
       } catch (geoErr) {
         console.log(`  [geocode] WARN ${name?.slice(0, 40)} | ${geoErr.message?.slice(0, 60)}`)
