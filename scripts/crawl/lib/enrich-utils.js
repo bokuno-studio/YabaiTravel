@@ -322,15 +322,42 @@ export async function callLlm(anthropic, systemPrompt, userContent, { maxTokens 
         messages: [{ role: 'user', content: userContent }],
       })
       const text = msg.content[0].type === 'text' ? msg.content[0].text : ''
-      const jsonMatch = text.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) {
+      // JSON抽出: non-greedyで試行→失敗時greedyにフォールバック
+      let jsonStr = null
+
+      // 1. non-greedy: 最小マッチを検証
+      const jsonMatch = text.match(/\{[\s\S]*?\}/)
+      if (jsonMatch) {
+        try {
+          JSON.parse(jsonMatch[0])
+          jsonStr = jsonMatch[0]
+        } catch {
+          // non-greedyが不完全な場合はgreedyで再試行
+        }
+      }
+
+      // 2. greedy: JSONの末尾まで含む
+      if (!jsonStr) {
+        const greedyMatch = text.match(/\{[\s\S]*\}/)
+        if (greedyMatch) {
+          try {
+            JSON.parse(greedyMatch[0])
+            jsonStr = greedyMatch[0]
+          } catch {
+            // greedyも失敗
+          }
+        }
+      }
+
+      if (!jsonStr) {
         if (allowEmpty) {
-          console.warn(`  [LLM] no JSON found in Tavily result, returning empty result`)
+          console.warn(`  [LLM] no JSON found, returning empty result`)
           return { _usage: msg.usage }
         }
-        throw new Error('LLM JSON parse error: no JSON found')
+        throw new Error(`LLM JSON parse error: no valid JSON found in response. text=${text.slice(0, 100)}`)
       }
-      return { ...JSON.parse(jsonMatch[0]), _usage: msg.usage }
+
+      return { ...JSON.parse(jsonStr), _usage: msg.usage }
     } catch (e) {
       lastError = e
       if (e.status === 400 && e.error?.error?.message?.includes('credit')) {
