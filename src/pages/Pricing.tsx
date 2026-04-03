@@ -16,13 +16,22 @@ function Pricing() {
 
   useScrollDepth('pricing')
   const [donationAmount, setDonationAmount] = useState('500')
-
-  useEffect(() => { trackPricingView() }, [])
   const [donationLoading, setDonationLoading] = useState(false)
   const [subscriptionLoading, setSubscriptionLoading] = useState(false)
   const [cancelLoading, setCancelLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cancelConfirm, setCancelConfirm] = useState(false)
+  const [pendingCrewCheckout, setPendingCrewCheckout] = useState(false)
+  const [showCrewConfirm, setShowCrewConfirm] = useState(false)
+
+  useEffect(() => { trackPricingView() }, [])
+
+  useEffect(() => {
+    if (user && pendingCrewCheckout) {
+      setPendingCrewCheckout(false)
+      setShowCrewConfirm(true)
+    }
+  }, [user, pendingCrewCheckout])
 
   const handleDonate = async () => {
     setDonationLoading(true)
@@ -243,14 +252,9 @@ function Pricing() {
         {/* Crew Membership Card */}
         <Card className="flex flex-col border-primary/50">
           <CardHeader>
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-xl">
-                {isEn ? 'Crew Membership' : 'Crew'}
-              </CardTitle>
-              <Badge variant="default">
-                {isEn ? 'Recommended' : 'おすすめ'}
-              </Badge>
-            </div>
+            <CardTitle className="text-xl">
+              {isEn ? 'Crew Membership' : 'Crew'}
+            </CardTitle>
             <CardDescription>
               {isEn ? 'Monthly subscription' : '月額プラン'}
             </CardDescription>
@@ -314,6 +318,31 @@ function Pricing() {
             </div>
           </CardContent>
 
+          {showCrewConfirm && (
+            <div className="mx-6 mb-4 rounded-lg border border-primary/30 bg-primary/5 p-4 text-center space-y-3">
+              <p className="text-sm font-medium">
+                {isEn
+                  ? "You're signed in. Ready to subscribe to Crew for ¥500/mo?"
+                  : 'ログインしました。Crew（¥500/月）の決済に進みますか？'}
+              </p>
+              <div className="flex gap-2 justify-center">
+                <Button
+                  onClick={() => { setShowCrewConfirm(false); handleSubscribe() }}
+                  size="sm"
+                >
+                  {isEn ? 'Continue to payment' : '決済に進む'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCrewConfirm(false)}
+                >
+                  {isEn ? 'Cancel' : 'キャンセル'}
+                </Button>
+              </div>
+            </div>
+          )}
+
           <CardFooter className="flex-col gap-3">
             {isSupporter ? (
               <div className="w-full space-y-3">
@@ -368,7 +397,7 @@ function Pricing() {
                 <Button
                   className="w-full"
                   size="lg"
-                  onClick={() => { trackCtaClick('google_login', '/pricing'); signInWithGoogle() }}
+                  onClick={() => { trackCtaClick('google_login', '/pricing'); setPendingCrewCheckout(true); signInWithGoogle() }}
                 >
                   {isEn ? 'Sign in with Google to join Crew' : 'Googleでログインして Crew になる'}
                 </Button>
