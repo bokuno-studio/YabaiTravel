@@ -1,217 +1,154 @@
-import * as fs from 'fs'
-import * as path from 'path'
+import fs from 'fs'
+import path from 'path'
+import matter from 'gray-matter'
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const PROJECT_ROOT = path.resolve(__dirname, '..')
+const ENV_PATH = path.join(PROJECT_ROOT, '.env.local')
+const CONTENT_DIR = '/Volumes/Extreme SSD/ops/yabai-travel/content/blog/publish/devto'
+const DEVTO_API_BASE = 'https://dev.to/api'
 
-// Load environment variables
-function loadEnv() {
-  const envPath = path.join(__dirname, '..', '.env.local')
+function loadEnvFile(envPath) {
   if (!fs.existsSync(envPath)) {
-    throw new Error('.env.local not found')
+    throw new Error(`.env.local not found: ${envPath}`)
   }
-  const content = fs.readFileSync(envPath, 'utf-8')
+
   const env = {}
-  for (const line of content.split('\n')) {
-    const match = line.match(/^([^=]+)=(.*)$/)
-    if (match) {
-      env[match[1].trim()] = match[2].trim()
+  const content = fs.readFileSync(envPath, 'utf8')
+
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim()
+    if (!line || line.startsWith('#')) continue
+
+    const separatorIndex = line.indexOf('=')
+    if (separatorIndex === -1) continue
+
+    const key = line.slice(0, separatorIndex).trim()
+    let value = line.slice(separatorIndex + 1).trim()
+
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1)
     }
+
+    env[key] = value
   }
+
   return env
 }
 
-const env = loadEnv()
-const DEVTO_API_KEY = env.DEVTO_API_KEY
-
-if (!DEVTO_API_KEY) {
-  throw new Error('DEVTO_API_KEY missing')
+function normalizeTags(tags) {
+  if (!Array.isArray(tags)) return []
+  return tags
+    .map((tag) => String(tag).trim().toLowerCase().replace(/\s+/g, ''))
+    .filter(Boolean)
+    .slice(0, 4)
 }
 
-const DEVTO_API_BASE = 'https://dev.to/api'
-
-// Load dev.to config
-function loadConfig() {
-  const configPath = path.join(__dirname, 'devto-config.json')
-  if (!fs.existsSync(configPath)) {
-    throw new Error('devto-config.json not found')
-  }
-  return JSON.parse(fs.readFileSync(configPath, 'utf-8'))
+function serializeFrontmatter(data) {
+  return Object.entries(data)
+    .map(([key, value]) => {
+      if (Array.isArray(value)) return `${key}: [${value.join(', ')}]`
+      if (typeof value === 'string') return `${key}: ${JSON.stringify(value)}`
+      if (value instanceof Date) return `${key}: ${value.toISOString().slice(0, 10)}`
+      return `${key}: ${String(value)}`
+    })
+    .join('\n')
 }
 
-// Parse markdown file
-function parseMdFile(filepath) {
-  const content = fs.readFileSync(filepath, 'utf-8')
-  const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)
-  if (!match) throw new Error('Invalid markdown format (missing frontmatter)')
+function updateMarkdownFrontmatter(filePath, body, data) {
+  const nextContent = `---\n${serializeFrontmatter(data)}\n---\n\n${body.trimStart()}`
+  fs.writeFileSync(filePath, `${nextContent}\n`, 'utf8')
+}
 
-  const frontmatterStr = match[1]
-  const body = match[2].trim()
+async function publishArticle(apiKey, articlePath) {
+  const raw = fs.readFileSync(articlePath, 'utf8')
+  const parsed = matter(raw)
+  const body = parsed.content.trim()
+  const frontmatter = { ...parsed.data }
 
-  const frontmatter = {}
-  for (const line of frontmatterStr.split('\n')) {
-    const [key, ...valueParts] = line.split(':')
-    if (key && valueParts.length > 0) {
-      const value = valueParts.join(':').trim()
-      frontmatter[key.trim()] = value.replace(/^['"]|['"]$/g, '')
-    }
+  if (frontmatter.published !== true) {
+    return { status: 'skipped', title: frontmatter.title ?? path.basename(articlePath) }
   }
 
-  return { frontmatter, body }
-}
-
-// Publish article to dev.to
-async function publishToDevto(title, body, canonicalUrl, tags) {
-  console.log(`📝 Publishing to dev.to: "${title}"`)
-
-  // Generate description from body
-  const description = body
-    .split('\n')
-    .filter(line => line && !line.startsWith('#'))
-    .slice(0, 3)
-    .join(' ')
-    .replace(/[*`[\]]/g, '')
-    .substring(0, 160)
+  if (!frontmatter.title) throw new Error(`Missing title in ${articlePath}`)
+  if (!frontmatter.canonical_url) throw new Error(`Missing canonical_url in ${articlePath}`)
 
   const payload = {
     article: {
-      title,
-      description,
-      body_markdown: body,
+      title: frontmatter.title,
       published: true,
-      canonical_url: canonicalUrl,
-      tags: tags || ['yabaitravel', 'endurance', 'travel'],
+      body_markdown: body,
+      tags: normalizeTags(frontmatter.tags),
+      canonical_url: frontmatter.canonical_url,
+      series: frontmatter.series ?? null,
     },
   }
 
-  try {
-    const response = await fetch(`${DEVTO_API_BASE}/articles`, {
-      method: 'POST',
-      headers: {
-        'api-key': DEVTO_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    })
+  const devtoId = frontmatter.devto_id ? Number(frontmatter.devto_id) : null
+  const endpoint = devtoId
+    ? `${DEVTO_API_BASE}/articles/${devtoId}`
+    : `${DEVTO_API_BASE}/articles`
+  const method = devtoId ? 'PUT' : 'POST'
 
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Dev.to API error (${response.status}): ${error}`)
-    }
+  const response = await fetch(endpoint, {
+    method,
+    headers: {
+      'api-key': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
 
-    const result = await response.json()
-    console.log(`  ✅ Published: ${result.url}`)
-    return result
-  } catch (err) {
-    console.error(`  ❌ Error: ${err.message}`)
-    throw err
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`${method} ${endpoint} failed: ${response.status} ${errorText}`)
+  }
+
+  const result = await response.json()
+  frontmatter.devto_id = result.id
+  frontmatter.devto_url = result.url
+  updateMarkdownFrontmatter(articlePath, body, frontmatter)
+
+  return {
+    status: devtoId ? 'updated' : 'created',
+    title: frontmatter.title,
+    url: result.url,
   }
 }
 
-// Main
 async function main() {
-  const config = loadConfig()
-  const args = process.argv.slice(2)
-  const operation = args[0]
+  const env = loadEnvFile(ENV_PATH)
+  const apiKey = env.DEVTO_API_KEY
 
-  if (operation === 'list') {
-    // List articles by status
-    const status = args[1] || 'all'
-    console.log(`📚 Dev.to Articles Status:\n`)
+  if (!apiKey) throw new Error('DEVTO_API_KEY is missing in .env.local')
+  if (!fs.existsSync(CONTENT_DIR)) throw new Error(`Content directory not found: ${CONTENT_DIR}`)
 
-    const filtered = status === 'all'
-      ? config.articles
-      : config.articles.filter(a => a.status === status)
+  const files = fs.readdirSync(CONTENT_DIR).filter((name) => name.endsWith('.md')).sort()
+  const results = []
 
-    for (const article of filtered) {
-      console.log(`[${article.status.toUpperCase()}] ${article.filename}`)
-      console.log(`  Title: ${article.devto_title}`)
-      console.log(`  Canonical: ${article.devto_canonical}`)
-      console.log(`  Tags: ${article.tags.join(', ')}\n`)
+  for (const fileName of files) {
+    const articlePath = path.join(CONTENT_DIR, fileName)
+    const result = await publishArticle(apiKey, articlePath)
+    results.push(result)
+
+    if (result.status === 'skipped') {
+      console.log(`[skip] ${result.title}`)
+      continue
     }
 
-    console.log(`Next scheduled publication: ${config.schedule.next_publication}`)
-  } else if (operation === 'publish') {
-    // Publish specified article
-    const filename = args[1]
-    if (!filename) {
-      console.error('Usage: node devto-publish.mjs publish <filename>')
-      process.exit(1)
-    }
-
-    const articleConfig = config.articles.find(a => a.filename === filename)
-    if (!articleConfig) {
-      console.error(`Article not found in config: ${filename}`)
-      process.exit(1)
-    }
-
-    const blogDir = path.join(__dirname, '..', 'content', 'blog')
-    const filepath = path.join(blogDir, filename)
-
-    if (!fs.existsSync(filepath)) {
-      console.error(`File not found: ${filename}`)
-      process.exit(1)
-    }
-
-    try {
-      const { frontmatter, body } = parseMdFile(filepath)
-      const result = await publishToDevto(
-        articleConfig.devto_title,
-        body,
-        articleConfig.devto_canonical,
-        articleConfig.tags
-      )
-
-      // Update status in config
-      articleConfig.status = 'published'
-      articleConfig.devto_id = result.id
-      articleConfig.devto_url = result.url
-      articleConfig.published_at = new Date().toISOString()
-
-      fs.writeFileSync(
-        path.join(__dirname, 'devto-config.json'),
-        JSON.stringify(config, null, 2)
-      )
-
-      console.log(`\n✅ Article published and config updated!`)
-      console.log(`   Dev.to URL: ${result.url}`)
-    } catch (err) {
-      console.error(`\n❌ Publication failed`)
-      process.exit(1)
-    }
-  } else if (operation === 'schedule') {
-    // Show next scheduled articles
-    const status = args[1] || 'ready'
-    const next = config.articles
-      .filter(a => a.status === status)
-      .slice(0, config.schedule.articles_per_month)
-
-    console.log(`📅 Next Scheduled Articles (${config.schedule.articles_per_month}/month):\n`)
-    for (const article of next) {
-      console.log(`• ${article.filename}`)
-      console.log(`  "${article.devto_title}"`)
-      console.log(`  Scheduled: ${config.schedule.next_publication}\n`)
-    }
-
-    console.log(`To publish manually:\n`)
-    for (const article of next) {
-      console.log(`  node devto-publish.mjs publish ${article.filename}`)
-    }
-  } else {
-    console.log(`Usage:
-  node devto-publish.mjs list [status]              # List articles (status: all|published|ready|draft)
-  node devto-publish.mjs publish <filename>         # Publish an article to dev.to
-  node devto-publish.mjs schedule [status]          # Show next scheduled publications
-
-Examples:
-  node devto-publish.mjs list published
-  node devto-publish.mjs publish endurance-races-japan-2026.md
-  node devto-publish.mjs schedule
-`)
+    console.log(`[${result.status}] ${result.title}`)
+    console.log(result.url)
   }
+
+  const publishedResults = results.filter((result) => result.status !== 'skipped')
+  console.log(`Processed ${results.length} file(s); published ${publishedResults.length}.`)
 }
 
-main().catch(err => {
-  console.error(err)
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : error)
   process.exit(1)
 })

@@ -1,13 +1,13 @@
 name: Dev.to Article Publishing
 
 on:
-  schedule:
-    # Run on the 15th of every month at 9am UTC
-    - cron: '0 9 15 * *'
+  push:
+    paths:
+      - 'content/blog/publish/devto/**'
   workflow_dispatch:
     inputs:
       filename:
-        description: 'Article filename to publish (optional, otherwise publishes scheduled articles)'
+        description: 'Article filename to publish (optional, otherwise publishes all ready articles)'
         required: false
 
 jobs:
@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Publish scheduled articles
+      - name: Publish articles to Dev.to
         env:
           DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
         run: |
@@ -33,18 +33,17 @@ jobs:
           if [ -n "${{ github.event.inputs.filename }}" ]; then
             node scripts/devto-publish.mjs publish "${{ github.event.inputs.filename }}"
           else
-            # Otherwise, auto-publish next 2 scheduled articles
-            echo "📅 Running scheduled monthly publication..."
-            node scripts/devto-publish.mjs publish endurance-races-japan-2026.md || true
-            node scripts/devto-publish.mjs publish spartan-race-japan-guide-2026.md || true
+            # Otherwise, auto-publish all articles with published: true
+            echo "📅 Auto-publishing articles from content/blog/publish/devto/..."
+            node scripts/devto-publish.mjs publish
           fi
 
-      - name: Commit updated config
+      - name: Commit updated frontmatter
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add scripts/devto-config.json
-          git commit -m "ci: update dev.to publication status" || true
+          git add content/blog/publish/devto/
+          git commit -m "ci: update dev.to article frontmatter (devto_id)" || true
 
       - name: Push changes
         uses: ad-m/github-push-action@master
