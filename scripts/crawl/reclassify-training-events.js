@@ -23,7 +23,7 @@ if (existsSync(envPath)) {
 const args = process.argv.slice(2)
 const DRY_RUN = args.includes('--dry-run')
 const limitIdx = args.indexOf('--limit')
-const LIMIT = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : Infinity
+const LIMIT = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : 10000  // デフォルト: 10,000件
 
 const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
 
@@ -55,8 +55,8 @@ async function main() {
         OR race_type IN ('marathon', 'trail', 'triathlon', 'bike', 'duathlon', 'rogaining', 'spartan', 'hyrox', 'tough_mudder', 'obstacle', 'adventure', 'devils_circuit', 'strong_viking')
       )
     ORDER BY updated_at DESC
-    LIMIT ${LIMIT}
-  `)
+    LIMIT $1
+  `, [LIMIT])
 
   console.log(`対象: ${targets.length} 件\n`)
 

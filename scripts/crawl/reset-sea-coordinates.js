@@ -27,17 +27,8 @@ const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
 function isSeaCoordinate(lat, lng) {
   if (lat === null || lng === null) return false
 
-  // 1. 太平洋沖（東経>145度 または 北緯<30度 かつ 東経>143度）
-  if (lng > 145 || (lat < 30 && lng > 143)) return true
-
-  // 2. 日本海沖（北緯>40度 かつ 東経<138度）
-  if (lat > 40 && lng < 138) return true
-
-  // 3. 東シナ海（北緯<32度 かつ 東経<130度）
-  if (lat < 32 && lng < 130) return true
-
-  // 4. フィリピン海（北緯<24度 かつ 東経>130度）
-  if (lat < 24 && lng > 130) return true
+  // 異常な座標（赤道・本初子午線付近）のみリセット対象
+  if ((lat > -1 && lat < 1) && (lng > -1 && lng < 1)) return true
 
   return false
 }
@@ -48,14 +39,15 @@ async function main() {
 
   console.log(`=== 海上座標リセット開始 (DRY_RUN: ${DRY_RUN}) ===\n`)
 
-  // 座標を持つ全イベントを取得
+  // 日本国内イベントの座標を持つものを取得
   const { rows: allEvents } = await client.query(`
     SELECT id, name, location, latitude, longitude FROM ${SCHEMA}.events
     WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+      AND (country = 'Japan' OR country_en = 'Japan')
     ORDER BY updated_at DESC
   `)
 
-  // 海上座標を持つものをフィルタ
+  // 海上座標を持つものをフィルタ（日本国内のみ）
   const seaCoordinates = allEvents.filter(e => isSeaCoordinate(e.latitude, e.longitude))
 
   console.log(`対象: ${seaCoordinates.length} 件 (全 ${allEvents.length} 件中)\n`)
