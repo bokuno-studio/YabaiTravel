@@ -79,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           location_id: locationId,
         },
         checkout_options: {
-          redirect_url: `${baseUrl}${langPrefix}/payment/success`,
+          redirect_url: `${baseUrl}${langPrefix}/payment/success?type=donation`,
         },
       })
       return res.status(200).json({ url: data.payment_link?.url || data.payment_link?.long_url })
@@ -100,7 +100,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           location_id: locationId,
         },
         checkout_options: {
-          redirect_url: `${baseUrl}${langPrefix}/payment/success`,
+          redirect_url: `${baseUrl}${langPrefix}/payment/success?type=crew_subscription`,
         },
         pre_populated_data: email ? {
           buyer_email: email,
@@ -112,8 +112,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (mode === 'comment') {
       const redirectUrl = commentData
-        ? `${baseUrl}${langPrefix}/payment/success?pending_comment=${encodeURIComponent(commentData)}`
-        : `${baseUrl}${langPrefix}/payment/success`
+        ? `${baseUrl}${langPrefix}/payment/success?type=comment&pending_comment=${encodeURIComponent(commentData)}`
+        : `${baseUrl}${langPrefix}/payment/success?type=comment`
 
       const data = await squareRequest('/v2/online-checkout/payment-links', {
         idempotency_key: idempotencyKey,

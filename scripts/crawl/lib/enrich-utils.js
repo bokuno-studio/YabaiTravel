@@ -52,6 +52,7 @@ export const RELEVANT_LINK_TEXT_PATTERNS = [
 export const VALID_RACE_TYPES = [
   'marathon', 'trail', 'triathlon', 'bike', 'duathlon', 'rogaining',
   'spartan', 'hyrox', 'tough_mudder', 'obstacle', 'adventure', 'devils_circuit', 'strong_viking',
+  'training', 'workshop',
 ]
 
 const RACE_TYPE_CLASSIFY_PROMPT = `あなたはレースイベントの分類エキスパートです。
@@ -68,6 +69,8 @@ const RACE_TYPE_CLASSIFY_PROMPT = `あなたはレースイベントの分類エ
 - hyrox: HYROX
 - obstacle: OCR・障害物レース（スパルタン・HYROX以外）、タフマダー
 - adventure: アドベンチャーレース
+- training: 試走会、練習会、走力養成講座、実践講座等の練習・教育イベント（競技性がない、参加者の技術習得が目的）
+- workshop: クリニック、セミナー、講習会、ワークショップ等の教育・指導イベント（競技ではなく知識習得が目的）
 - other: 上記に該当しない場合のみ
 
 race_type の値のみを返してください（例: marathon）。説明は不要です。`

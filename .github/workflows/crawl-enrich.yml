@@ -37,7 +37,7 @@ jobs:
           if [ -n "$EVENT_ID" ]; then
             echo "=== 特定イベント再enrich: $EVENT_ID ==="
             node scripts/crawl/enrich-detail.js --event-id "$EVENT_ID"
-            node scripts/crawl/enrich-logi.js --event-id "$EVENT_ID"
+            node scripts/crawl/enrich-logi.js --batch --event-id "$EVENT_ID"
           else
             ARGS=""
             if [ -n "$ENRICH_LIMIT" ]; then ARGS="--once --concurrency $ENRICH_LIMIT"; fi

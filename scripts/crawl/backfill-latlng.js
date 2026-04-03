@@ -25,6 +25,20 @@ const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
 const GOOGLE_API_KEY = process.env.GOOGLE_DIRECTIONS_API_KEY || process.env.GOOGLE_API_KEY
 const SLEEP_MS = 200
 
+/** 日本のbbox: lat 24〜46, lng 122〜154 */
+const JAPAN_BBOX = {
+  lat_min: 24,
+  lat_max: 46,
+  lng_min: 122,
+  lng_max: 154,
+}
+
+function isOutsideJapan(lat, lng) {
+  if (lat === null || lng === null) return false
+  return lat < JAPAN_BBOX.lat_min || lat > JAPAN_BBOX.lat_max ||
+         lng < JAPAN_BBOX.lng_min || lng > JAPAN_BBOX.lng_max
+}
+
 if (!GOOGLE_API_KEY) {
   console.error('エラー: GOOGLE_DIRECTIONS_API_KEY が設定されていません')
   process.exit(1)
@@ -52,13 +66,17 @@ async function main() {
 
   console.log(`=== lat/lng backfill 開始 (DRY_RUN: ${DRY_RUN}) ===\n`)
 
-  // 対象レコードを取得
+  // 対象レコードを取得: lat/lng NULL または日本範囲外座標
   const { rows: targets } = await client.query(`
-    SELECT id, name, location FROM ${SCHEMA}.events
+    SELECT id, name, location, latitude, longitude FROM ${SCHEMA}.events
     WHERE location IS NOT NULL
-      AND (latitude IS NULL OR longitude IS NULL)
+      AND (
+        latitude IS NULL OR longitude IS NULL OR
+        latitude < $1 OR latitude > $2 OR
+        longitude < $3 OR longitude > $4
+      )
     ORDER BY updated_at DESC
-  `)
+  `, [JAPAN_BBOX.lat_min, JAPAN_BBOX.lat_max, JAPAN_BBOX.lng_min, JAPAN_BBOX.lng_max])
 
   console.log(`対象: ${targets.length} 件\n`)
 
@@ -66,7 +84,9 @@ async function main() {
   let skipCount = 0
 
   for (let i = 0; i < targets.length; i++) {
-    const { id, name, location } = targets[i]
+    const { id, name, location, latitude, longitude } = targets[i]
+    const isInvalid = latitude === null || longitude === null || isOutsideJapan(latitude, longitude)
+
     try {
       const result = await geocodeLocation(location, GOOGLE_API_KEY)
       if (!result) {
@@ -79,7 +99,8 @@ async function main() {
             [result.lat, result.lng, id]
           )
         }
-        console.log(`  [${i + 1}/${targets.length}] UPDATE: ${name?.slice(0, 50)} | lat=${result.lat.toFixed(4)}, lng=${result.lng.toFixed(4)}`)
+        const reason = latitude === null || longitude === null ? '(NULL修正)' : '(範囲外修正)'
+        console.log(`  [${i + 1}/${targets.length}] UPDATE ${reason}: ${name?.slice(0, 50)} | lat=${result.lat.toFixed(4)}, lng=${result.lng.toFixed(4)}`)
         successCount++
       }
     } catch (e) {

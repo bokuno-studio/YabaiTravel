@@ -7,7 +7,8 @@ const STORAGE_KEY = 'yabai_filters'
 
 interface FilterState {
   raceTypes: string[]
-  selectedMonths: string[]
+  dateRangeStart: string | null
+  dateRangeEnd: string | null
   selectedCategories: string[]
   distanceRanges: number[]
   timeLimitMin: string
@@ -20,7 +21,8 @@ interface FilterState {
 
 const DEFAULT: FilterState = {
   raceTypes: [],
-  selectedMonths: [],
+  dateRangeStart: null,
+  dateRangeEnd: null,
   selectedCategories: [],
   distanceRanges: [],
   timeLimitMin: '',
@@ -42,7 +44,8 @@ function loadFromSession(): FilterState {
     const parsed = JSON.parse(raw)
     return {
       raceTypes: parsed.raceTypes ?? [],
-      selectedMonths: parsed.selectedMonths ?? [],
+      dateRangeStart: parsed.dateRangeStart ?? null,
+      dateRangeEnd: parsed.dateRangeEnd ?? null,
       selectedCategories: parsed.selectedCategories ?? [],
       distanceRanges: parsed.distanceRanges ?? [],
       timeLimitMin: parsed.timeLimitMin ?? '',

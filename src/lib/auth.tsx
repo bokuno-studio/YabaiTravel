@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import type { UserProfile } from '@/types/auth'
+import { isAuthError, handleAuthError } from './authErrorHandler'
 
 interface AuthContextType {
   user: User | null
@@ -42,6 +43,12 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
     .maybeSingle()
 
   if (error) {
+    // 認証エラーの場合は自動サインアウト
+    if (isAuthError(error)) {
+      await handleAuthError(supabase)
+      return null
+    }
+    // その他のエラーはコンソールに出力
     console.error('Failed to fetch user profile:', error.message)
     return null
   }

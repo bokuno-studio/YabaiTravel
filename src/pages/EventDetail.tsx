@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabaseClient'
 import { trackEventDetailView } from '../lib/analytics'
 import { useScrollDepth } from '@/hooks/useScrollDepth'
 import { useAuth } from '@/lib/auth'
+import { isAuthError, handleAuthError } from '@/lib/authErrorHandler'
 import EventComments from '@/components/EventComments'
 import type { Event, Category, AccessRoute, Accommodation } from '../types/event'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -145,6 +146,12 @@ function EventDetail() {
           supabase.from('accommodations').select('*').eq('event_id', eventId),
         ])
 
+        // Check for auth errors in any response
+        if (isAuthError(eventRes.error) || isAuthError(catRes.error) || isAuthError(routesRes.error) || isAuthError(accRes.error)) {
+          await handleAuthError(supabase)
+          return
+        }
+
         if (eventRes.error) throw eventRes.error
         setEvent(eventRes.data ?? null)
         setCategories(catRes.data ?? [])
@@ -170,7 +177,7 @@ function EventDetail() {
   useEffect(() => {
     if (!event?.race_type || !event.id) return
     async function fetchRelated() {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('events')
         .select('*')
         .eq('race_type', event!.race_type!)
@@ -178,6 +185,10 @@ function EventDetail() {
         .not('location', 'is', null)
         .order('event_date', { ascending: true })
         .limit(3)
+      if (isAuthError(error)) {
+        await handleAuthError(supabase)
+        return
+      }
       setRelatedEvents(data ?? [])
     }
     fetchRelated()

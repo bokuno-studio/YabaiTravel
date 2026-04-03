@@ -4,7 +4,8 @@
  * 取得できない場合のみ LLM フォールバック
  *
  * 使い方:
- *   node scripts/crawl/enrich-logi-en.js                   # 全未処理件
+ *   node scripts/crawl/enrich-logi-en.js                   # 全未処理件（同期API）
+ *   node scripts/crawl/enrich-logi-en.js --batch            # 全未処理件（Batch API・50%割引）
  *   node scripts/crawl/enrich-logi-en.js --event-id <uuid> # 特定イベントのみ
  *   node scripts/crawl/enrich-logi-en.js --dry-run          # DB更新なし
  *   node scripts/crawl/enrich-logi-en.js --limit 5          # 最初の5件のみ
@@ -13,6 +14,7 @@ import pg from 'pg'
 import Anthropic from '@anthropic-ai/sdk'
 import { existsSync, readFileSync } from 'fs'
 import { resolve } from 'path'
+import { runBatch } from './lib/batch-utils.js'
 
 const envPath = resolve(process.cwd(), '.env.local')
 if (existsSync(envPath)) {
@@ -208,12 +210,29 @@ async function fetchRoute(origin, destination, apiKey) {
   }
 }
 
+/** システムプロンプト（キャッシュ対応） */
+const COST_ESTIMATE_SYSTEM_PROMPT = `You are an expert at estimating public transit and transportation costs worldwide.
+Provide cost estimates in ISO currency code format (e.g., "~30 USD", "~3000 JPY").
+Be concise and reply with amount and currency code only.`
+
+const TRANSIT_ESTIMATE_SYSTEM_PROMPT = `You are an expert at estimating public transit routes and costs worldwide.
+Provide route information in JSON format with time, route details, and cost.
+Use ISO currency codes. If no public transit exists, return null values.`
+
+const TAXI_ESTIMATE_SYSTEM_PROMPT = `You are an expert at estimating taxi/rideshare costs worldwide.
+Provide cost estimates in ISO currency code format (e.g., "~50 USD", "~40 EUR").
+Be concise and reply with amount and currency code only.`
+
+const VENUE_ACCESS_SYSTEM_PROMPT = `You are an expert at providing airport, station, and venue access information worldwide.
+Extract access information in JSON format with airport names, distances, and travel times.`
+
 /** LLM で経路の費用を推定（ISO通貨コード付き） */
 async function estimateCostWithLlm(anthropic, fromName, toLocation, routeDetail, country) {
   try {
     const msg = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 20,
+      system: [{ type: 'text', text: COST_ESTIMATE_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
       messages: [{
         role: 'user',
         content: `Estimate one-way public transit cost: "${fromName}" → "${toLocation}" in ${country || 'unknown country'}. Route: ${routeDetail || 'unknown'}. Reply with ONLY the amount and ISO currency code like "~30 USD" or "~25 EUR" or "~3000 JPY". No symbols, no explanation. If unknown: "null"`,
@@ -233,6 +252,7 @@ async function estimateTransitWithLlm(anthropic, fromName, toLocation, country) 
     const msg = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 200,
+      system: [{ type: 'text', text: TRANSIT_ESTIMATE_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
       messages: [{
         role: 'user',
         content: `Public transit route from "${fromName}" to "${toLocation}" in ${country || 'unknown'}. Reply in JSON: {"time":"~1h 30min","route":"1. Take X line to Y\\n2. Transfer to Z","cost":"~1500 JPY"}. Use ISO currency code. If no public transit exists, return {"time":null,"route":null,"cost":null}. JSON only.`,
@@ -253,6 +273,7 @@ async function estimateTaxiCostWithLlm(anthropic, fromName, toLocation, distance
     const msg = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 20,
+      system: [{ type: 'text', text: TAXI_ESTIMATE_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
       messages: [{
         role: 'user',
         content: `Estimate one-way taxi cost: "${fromName}" → "${toLocation}" in ${country || 'unknown country'} (approx ${Math.round(distanceKm)}km). Reply with ONLY the amount and ISO currency code like "~50 USD" or "~40 EUR". No symbols, no explanation. If unknown: "null"`,
@@ -273,6 +294,7 @@ async function fetchVenueAccessWithLlm(anthropic, location, country) {
   const msg = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 500,
+    system: [{ type: 'text', text: VENUE_ACCESS_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
     messages: [{
       role: 'user',
       content: `For "${location}" (${country || 'unknown'}), list the 2 nearest airports and 1 nearest train station.
@@ -529,8 +551,266 @@ async function runCli() {
   console.log(`OK: ${ok}, Errors: ${errors}`)
 }
 
+// --- Batch CLI ---
+
+/**
+ * バッチAPI対応CLIモード
+ * --batch フラグで起動時、複数イベントを蓄積してバッチ送信
+ */
+async function runBatchCli() {
+  const args = process.argv.slice(2)
+  const DRY_RUN = args.includes('--dry-run')
+  const FORCE = args.includes('--force')
+  const limitIdx = args.indexOf('--limit')
+  const LIMIT = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : Infinity
+  const eventIdIdx = args.indexOf('--event-id')
+  const EVENT_ID = eventIdIdx >= 0 ? args[eventIdIdx + 1] : null
+
+  const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
+  await client.connect()
+
+  let targets
+
+  if (EVENT_ID) {
+    const { rows } = await client.query(
+      `SELECT id, name, location, country FROM ${SCHEMA}.events WHERE id = $1`,
+      [EVENT_ID]
+    )
+    targets = rows
+  } else if (FORCE) {
+    const { rows } = await client.query(
+      `SELECT e.id, e.name, e.location, e.country
+       FROM ${SCHEMA}.events e
+       WHERE e.location IS NOT NULL AND e.collected_at IS NOT NULL
+         AND e.latitude IS NOT NULL
+         AND EXISTS (SELECT 1 FROM ${SCHEMA}.categories c WHERE c.event_id = e.id)
+       ORDER BY e.updated_at ASC
+       LIMIT $1`,
+      [LIMIT === Infinity ? 10000 : LIMIT]
+    )
+    targets = rows
+  } else {
+    const { rows } = await client.query(
+      `SELECT e.id, e.name, e.location, e.country
+       FROM ${SCHEMA}.events e
+       LEFT JOIN ${SCHEMA}.access_routes ar ON ar.event_id = e.id AND ar.origin_type = 'venue_access'
+       WHERE e.location IS NOT NULL AND e.collected_at IS NOT NULL AND ar.id IS NULL
+         AND e.latitude IS NOT NULL
+         AND EXISTS (SELECT 1 FROM ${SCHEMA}.categories c WHERE c.event_id = e.id)
+       ORDER BY e.updated_at ASC
+       LIMIT $1`,
+      [LIMIT === Infinity ? 10000 : LIMIT]
+    )
+    targets = rows
+  }
+
+  await client.end()
+
+  console.log(`=== ロジエンリッチ（英語版）バッチモード開始 (DRY_RUN: ${DRY_RUN}, 件数: ${targets.length}) ===\n`)
+
+  if (targets.length === 0) {
+    console.log('対象イベントなし')
+    return
+  }
+
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const apiKey = process.env.GOOGLE_DIRECTIONS_API_KEY
+
+  // --- パス1: Google API 試行 + バッチリクエスト構築 ---
+  const batchRequests = []
+  const eventContext = new Map()  // eventId → context info
+
+  for (const event of targets) {
+    const { id: eventId, name, location, country } = event
+    if (!location) continue
+
+    const isJapan = !country || country === '日本' || country.toLowerCase() === 'japan'
+    const ctx = { event, isJapan, googleSuccess: true, google_airports: [], google_stations: [] }
+    eventContext.set(eventId, ctx)
+
+    // Google API で基本情報を取得
+    if (apiKey) {
+      try {
+        const airports = await searchNearbyAirports(location, apiKey)
+        const stations = await searchNearbyStations(location, apiKey)
+
+        if (airports.length > 0 || stations.length > 0) {
+          ctx.google_airports = airports
+          ctx.google_stations = stations
+        } else {
+          ctx.googleSuccess = false
+        }
+      } catch {
+        ctx.googleSuccess = false
+      }
+    } else {
+      ctx.googleSuccess = false
+    }
+
+    // Google API が失敗 or 結果なし → LLM フォールバック用バッチリクエストを追加
+    if (!ctx.googleSuccess) {
+      batchRequests.push({
+        custom_id: `venue_access_${eventId}`,
+        systemPrompt: VENUE_ACCESS_SYSTEM_PROMPT,
+        userContent: `For "${location}" (${country || 'unknown'}), list the 2 nearest airports and 1 nearest train station.
+Return JSON only:
+{
+  "airport_1_name": "Name (CODE)",
+  "airport_1_distance_km": number,
+  "airport_1_access": "transport mode and time",
+  "airport_2_name": "Name (CODE)",
+  "airport_2_distance_km": number,
+  "airport_2_access": "transport mode and time",
+  "station_name": "Station Name",
+  "station_distance_km": number,
+  "station_access": "transport mode and time"
+}
+JSON only.`,
+        maxTokens: 500,
+      })
+    }
+  }
+
+  // バッチリクエスト内での各要素の cost/route 推定は仕訳が複雑なため、同期処理で実行
+  // （複数リクエストが互いに依存するため）
+
+  console.log(`[batch] ${batchRequests.length} 件のLLMリクエストをバッチ送信\n`)
+
+  // --- パス2: バッチ送信 + 待機 ---
+  let batchResults = new Map()
+  if (batchRequests.length > 0 && !DRY_RUN) {
+    batchResults = await runBatch(anthropic, batchRequests)
+  } else if (DRY_RUN) {
+    console.log(`[batch] DRY_RUN: バッチ送信スキップ`)
+  }
+
+  // --- パス3: 結果処理 + DB 書き込み ---
+  const dbClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
+  await dbClient.connect()
+
+  let ok = 0, errors = 0
+
+  for (const [eventId, ctx] of eventContext) {
+    const { event, isJapan, googleSuccess, google_airports: airports, google_stations: stations } = ctx
+    const { name, location, country } = event
+
+    if (DRY_RUN) {
+      console.log(`  DRY (batch) ${name?.slice(0, 40)} | google: ${googleSuccess} | airports: ${airports.length}, stations: ${stations.length}`)
+      ok++
+      continue
+    }
+
+    try {
+      let result = null
+
+      // Google API 成功時
+      if (googleSuccess && (airports.length > 0 || stations.length > 0)) {
+        result = {}
+
+        // このループ内で cost/route を同期的に推定（依存関係があるため）
+        const getRouteInfo = async (point, label) => {
+          if (point.distance_km < 1) {
+            return { access: `Walk ~${Math.round(point.distance_km * 1000)}m`, cost: null, polyline: null }
+          }
+          const route = isJapan ? null : await fetchRoute(point, location, apiKey)
+          if (route && route.routeDetail) {
+            return {
+              access: `${route.time}\n${route.routeDetail}`,
+              cost: await estimateCostWithLlm(anthropic, point.name, location, route.routeDetail, country),
+              polyline: route.polyline || null,
+            }
+          }
+          {
+            const llm = await estimateTransitWithLlm(anthropic, point.name, location, country)
+            if (llm?.route) {
+              return { access: `${llm.time || ''}\n${llm.route}`, cost: llm.cost || null, polyline: null }
+            }
+          }
+          return {
+            access: `Taxi ~${Math.round(point.distance_km)}km`,
+            cost: await estimateTaxiCostWithLlm(anthropic, point.name, location, point.distance_km, country),
+            polyline: null,
+          }
+        }
+
+        let airport1Coords = null, airport1Polyline = null
+        let airport2Coords = null, airport2Polyline = null
+        let stationCoords = null, stationPolyline = null
+
+        if (airports[0]) {
+          const info = await getRouteInfo(airports[0], 'airport_1')
+          result.airport_1_name = airports[0].name
+          result.airport_1_lat = airports[0].lat
+          result.airport_1_lng = airports[0].lng
+          result.airport_1_access = info.access
+          result.airport_1_cost = info.cost
+          airport1Coords = { lat: airports[0].lat, lng: airports[0].lng }
+          airport1Polyline = info.polyline
+        }
+        if (airports[1]) {
+          const info = await getRouteInfo(airports[1], 'airport_2')
+          result.airport_2_name = airports[1].name
+          result.airport_2_lat = airports[1].lat
+          result.airport_2_lng = airports[1].lng
+          result.airport_2_access = info.access
+          result.airport_2_cost = info.cost
+          airport2Coords = { lat: airports[1].lat, lng: airports[1].lng }
+          airport2Polyline = info.polyline
+        }
+        if (stations[0]) {
+          const info = await getRouteInfo(stations[0], 'station')
+          result.station_name = stations[0].name
+          result.station_lat = stations[0].lat
+          result.station_lng = stations[0].lng
+          result.station_access = info.access
+          result.station_cost = info.cost
+          stationCoords = { lat: stations[0].lat, lng: stations[0].lng }
+          stationPolyline = info.polyline
+        }
+
+        const primaryCoords = airport1Coords || stationCoords
+        const polylines = [airport1Polyline, airport2Polyline, stationPolyline].filter(Boolean)
+        const routePolyline = polylines.length > 0 ? JSON.stringify(polylines) : null
+
+        await dbClient.query(
+          `INSERT INTO ${SCHEMA}.access_routes
+            (event_id, direction, origin_type, route_detail_en, latitude, longitude, route_polyline)
+           VALUES ($1, 'access', 'venue_access', $2, $3, $4, $5)`,
+          [eventId, JSON.stringify(result), primaryCoords?.lat || null, primaryCoords?.lng || null, routePolyline]
+        )
+      } else {
+        // LLMフォールバック: バッチ結果から取得
+        const batchResult = batchResults.get(`venue_access_${eventId}`)
+        if (batchResult && batchResult.success && batchResult.parsed) {
+          result = batchResult.parsed
+          const primaryCoords = result.airport_1_distance_km ? { lat: null, lng: null } : null  // LLMはlatitude/longitude持たない
+          await dbClient.query(
+            `INSERT INTO ${SCHEMA}.access_routes
+              (event_id, direction, origin_type, route_detail_en, latitude, longitude, route_polyline)
+             VALUES ($1, 'access', 'venue_access', $2, $3, $4, $5)`,
+            [eventId, JSON.stringify(result), null, null, null]
+          )
+        }
+      }
+
+      ok++
+      console.log(`  OK (batch) ${name?.slice(0, 40)}`)
+    } catch (e) {
+      errors++
+      console.log(`  ERR (batch) ${name?.slice(0, 40)} | ${e.message?.slice(0, 60)}`)
+    }
+  }
+
+  await dbClient.end()
+
+  console.log(`\n=== 完了 ===`)
+  console.log(`OK: ${ok}, Errors: ${errors}`)
+}
+
 if (process.argv[1]?.endsWith('enrich-logi-en.js')) {
-  runCli().catch((e) => {
+  const useBatch = process.argv.includes('--batch')
+  const runner = useBatch ? runBatchCli : runCli
+  runner().catch((e) => {
     console.error(e)
     process.exit(1)
   })

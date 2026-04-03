@@ -22,10 +22,11 @@ export interface FiltersSidebarProps {
   availableCategories: string[]
   selectedCategories: Set<string>
   onCategoryToggle: (name: string) => void
-  /* Month filter */
+  /* Date range filter */
   availableMonths: string[]
-  selectedMonths: Set<string>
-  onMonthToggle: (month: string) => void
+  dateRangeStart: string | null
+  dateRangeEnd: string | null
+  onDateRangeChange: (start: string | null, end: string | null) => void
   /* Distance filter */
   distanceRanges: Set<number>
   onDistanceRangeToggle: (idx: number) => void
@@ -65,7 +66,7 @@ export function formatYearMonth(ym: string, lang: string | undefined): string {
 function countActiveFilters(props: FiltersSidebarProps): number {
   let count = 0
   if (props.raceTypes.size > 0) count++
-  if (props.selectedMonths.size > 0) count++
+  if (props.dateRangeStart || props.dateRangeEnd) count++
   if (props.selectedCategories.size > 0) count++
   if (props.distanceRanges.size > 0) count++
   if (props.timeLimitMin) count++
@@ -89,13 +90,37 @@ export function getActiveFilterChips(props: FiltersSidebarProps): { key: string;
     })
   }
 
-  // Months
-  for (const ym of props.selectedMonths) {
-    chips.push({
-      key: `month-${ym}`,
-      label: formatYearMonth(ym, props.lang),
-      onRemove: () => props.onMonthToggle(ym),
-    })
+  // Date Range
+  if (props.dateRangeStart || props.dateRangeEnd) {
+    const isEn = props.lang === 'en'
+    let label = ''
+    if (props.dateRangeStart && props.dateRangeEnd) {
+      const startMonth = parseInt(props.dateRangeStart.slice(5, 7), 10)
+      const endMonth = parseInt(props.dateRangeEnd.slice(5, 7), 10)
+      const startYear = props.dateRangeStart.slice(0, 4)
+      const endYear = props.dateRangeEnd.slice(0, 4)
+      if (isEn) {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        label = startYear === endYear
+          ? `${months[startMonth - 1]}~${months[endMonth - 1]} ${startYear}`
+          : `${months[startMonth - 1]} ${startYear}~${months[endMonth - 1]} ${endYear}`
+      } else {
+        label = startYear === endYear
+          ? `${startYear}年${startMonth}月~${endMonth}月`
+          : `${startYear}年${startMonth}月~${endYear}年${endMonth}月`
+      }
+    } else if (props.dateRangeStart) {
+      label = isEn ? `${formatYearMonth(props.dateRangeStart, props.lang)}~` : `${formatYearMonth(props.dateRangeStart, props.lang)}~`
+    } else if (props.dateRangeEnd) {
+      label = isEn ? `~${formatYearMonth(props.dateRangeEnd, props.lang)}` : `~${formatYearMonth(props.dateRangeEnd, props.lang)}`
+    }
+    if (label) {
+      chips.push({
+        key: 'dateRange',
+        label,
+        onRemove: () => props.onDateRangeChange(null, null),
+      })
+    }
   }
 
   // Categories

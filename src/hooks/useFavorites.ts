@@ -8,6 +8,7 @@ const MAX_FAVORITES_FREE = 10
 export function useFavorites() {
   const { user, isSupporter } = useAuth()
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set())
+  const [goingIds, setGoingIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const userId = useMemo(() => user?.id ?? null, [user])
 
@@ -20,7 +21,7 @@ export function useFavorites() {
       setLoading(true)
       const { data, error } = await supabase
         .from('user_favorites')
-        .select('category_id')
+        .select('category_id, status')
         .eq('user_id', userId!)
 
       if (!cancelled) {
@@ -30,7 +31,17 @@ export function useFavorites() {
             console.error('Failed to fetch favorites:', error.message)
           }
         } else {
-          setFavoriteIds(new Set((data ?? []).map((d) => d.category_id)))
+          const favorites = new Set<string>()
+          const going = new Set<string>()
+          ;(data ?? []).forEach((item) => {
+            if (item.status === 'going') {
+              going.add(item.category_id)
+            } else {
+              favorites.add(item.category_id)
+            }
+          })
+          setFavoriteIds(favorites)
+          setGoingIds(going)
         }
         setLoading(false)
       }
@@ -45,12 +56,20 @@ export function useFavorites() {
     [favoriteIds],
   )
 
+  const isGoing = useCallback(
+    (categoryId: string) => goingIds.has(categoryId),
+    [goingIds],
+  )
+
   const toggle = useCallback(
-    async (categoryId: string) => {
+    async (categoryId: string, status: 'favorite' | 'going' = 'favorite') => {
       if (!userId) return
 
-      if (favoriteIds.has(categoryId)) {
-        setFavoriteIds((prev) => {
+      const targetSet = status === 'going' ? goingIds : favoriteIds
+      const setTargetSet = status === 'going' ? setGoingIds : setFavoriteIds
+
+      if (targetSet.has(categoryId)) {
+        setTargetSet((prev) => {
           const next = new Set(prev)
           next.delete(categoryId)
           return next
@@ -60,20 +79,21 @@ export function useFavorites() {
           .delete()
           .eq('user_id', userId)
           .eq('category_id', categoryId)
+          .eq('status', status)
         if (error && error.code !== 'PGRST204' && !error.message?.includes('404')) {
-          console.error('Failed to remove favorite:', error.message)
-          setFavoriteIds((prev) => new Set(prev).add(categoryId))
+          console.error(`Failed to remove ${status}:`, error.message)
+          setTargetSet((prev) => new Set(prev).add(categoryId))
         }
       } else {
         const limit = isSupporter ? MAX_FAVORITES : MAX_FAVORITES_FREE
-        if (favoriteIds.size >= limit) return
-        setFavoriteIds((prev) => new Set(prev).add(categoryId))
+        if (targetSet.size >= limit) return
+        setTargetSet((prev) => new Set(prev).add(categoryId))
         const { error } = await supabase
           .from('user_favorites')
-          .insert({ user_id: userId, category_id: categoryId })
+          .insert({ user_id: userId, category_id: categoryId, status })
         if (error && error.code !== 'PGRST204' && !error.message?.includes('404')) {
-          console.error('Failed to add favorite:', error.message)
-          setFavoriteIds((prev) => {
+          console.error(`Failed to add ${status}:`, error.message)
+          setTargetSet((prev) => {
             const next = new Set(prev)
             next.delete(categoryId)
             return next
@@ -81,8 +101,8 @@ export function useFavorites() {
         }
       }
     },
-    [userId, isSupporter, favoriteIds],
+    [userId, isSupporter, favoriteIds, goingIds],
   )
 
-  return { favoriteIds, isFavorite, toggle, loading, isSupporter }
+  return { favoriteIds, goingIds, isFavorite, isGoing, toggle, loading, isSupporter }
 }

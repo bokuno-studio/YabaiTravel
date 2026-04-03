@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabaseClient'
 import type { EventWithCategories, Category } from '../types/event'
 import LazyLoadWrapper from '../components/LazyLoadWrapper'
 import { useAuth } from '@/lib/auth'
+import { isAuthError, handleAuthError } from '@/lib/authErrorHandler'
 
 const EventMap = lazy(() => import('../components/EventMap'))
 import { EventCard } from '../components/EventCard'
@@ -111,14 +112,19 @@ function EventList() {
     if (initialType) return new Set([initialType])
     return new Set(saved.raceTypes)
   })
+  const [dateRangeStart, setDateRangeStart] = useState<string | null>(() => {
+    const fromParams = searchParams.get('month_from')
+    return fromParams ?? (saved.dateRangeStart ?? null)
+  })
+  const [dateRangeEnd, setDateRangeEnd] = useState<string | null>(() => {
+    const fromParams = searchParams.get('month_to')
+    return fromParams ?? (saved.dateRangeEnd ?? null)
+  })
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => {
     const fromParams = parseSetParam(searchParams, 'categories')
     return fromParams.size > 0 ? fromParams : new Set(saved.selectedCategories)
   })
-  const [selectedMonths, setSelectedMonths] = useState<Set<string>>(() => {
-    const fromParams = parseSetParam(searchParams, 'months')
-    return fromParams.size > 0 ? fromParams : new Set(saved.selectedMonths)
-  })
+
   const [distanceRanges, setDistanceRanges] = useState<Set<number>>(() => {
     const fromParams = parseNumSetParam(searchParams, 'distances')
     return fromParams.size > 0 ? fromParams : new Set(saved.distanceRanges)
@@ -147,7 +153,8 @@ function EventList() {
   useEffect(() => {
     saveFilterState({
       raceTypes: [...raceTypes],
-      selectedMonths: [...selectedMonths],
+      dateRangeStart,
+      dateRangeEnd,
       selectedCategories: [...selectedCategories],
       distanceRanges: [...distanceRanges],
       timeLimitMin,
@@ -159,7 +166,9 @@ function EventList() {
     })
     const params = new URLSearchParams()
     if (raceTypes.size > 0) params.set('raceTypes', [...raceTypes].join(','))
-    if (selectedMonths.size > 0) params.set('months', [...selectedMonths].join(','))
+    if (dateRangeStart) params.set('month_from', dateRangeStart)
+    if (dateRangeEnd) params.set('month_to', dateRangeEnd)
+    // Old: if (selectedMonths.size > 0) params.set('months', [dateRangeStart, dateRangeEnd]].join(','))
     if (selectedCategories.size > 0) params.set('categories', [...selectedCategories].join(','))
     if (distanceRanges.size > 0) params.set('distances', [...distanceRanges].join(','))
     if (timeLimitMin) params.set('timeLimitMin', timeLimitMin)
@@ -185,7 +194,14 @@ function EventList() {
             .select('*, categories(*)')
             .order('event_date', { ascending: true, nullsFirst: false })
             .range(from, from + PAGE_SIZE - 1)
-          if (err) throw err
+          if (err) {
+            // 認証エラーの場合は自動サインアウト
+            if (isAuthError(err)) {
+              await handleAuthError(supabase)
+              return
+            }
+            throw err
+          }
           if (!page || page.length === 0) break
           allEvents.push(...page)
           if (page.length < PAGE_SIZE) break
@@ -207,19 +223,33 @@ function EventList() {
     }
 
     async function fetchStats() {
-      const { data: lastRow } = await supabase
+      const { data: lastRow, error: lastRowErr } = await supabase
         .from('events')
         .select('collected_at')
         .not('collected_at', 'is', null)
         .order('collected_at', { ascending: false })
         .limit(1)
+      if (lastRowErr) {
+        // 認証エラーの場合は自動サインアウト
+        if (isAuthError(lastRowErr)) {
+          await handleAuthError(supabase)
+          return
+        }
+      }
       if (lastRow?.[0]?.collected_at) setSidebarLastUpdated(lastRow[0].collected_at)
 
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-      const { count } = await supabase
+      const { count, error: countErr } = await supabase
         .from('events')
         .select('id', { count: 'exact', head: true })
         .gte('updated_at', weekAgo)
+      if (countErr) {
+        // 認証エラーの場合は自動サインアウト
+        if (isAuthError(countErr)) {
+          await handleAuthError(supabase)
+          return
+        }
+      }
       setSidebarWeeklyNewCount(count ?? 0)
     }
 
@@ -302,14 +332,11 @@ function EventList() {
     })
   }
 
-  const toggleMonth = (m: string) => {
-    setSelectedMonths((prev) => {
-      const next = new Set(prev)
-      if (next.has(m)) next.delete(m)
-      else next.add(m)
-      return next
-    })
+  const onDateRangeChange = (start: string | null, end: string | null) => {
+    setDateRangeStart(start)
+    setDateRangeEnd(end)
   }
+
 
   /** イベント日付から利用可能な月一覧を生成 */
   const availableMonths = useMemo(() => {
@@ -361,7 +388,7 @@ function EventList() {
     })
   }
 
-  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || selectedMonths.size > 0 || distanceRanges.size > 0 || !!timeLimitMin || costMin > 0 || costMax < Infinity || !!poleFilter || entryStatus !== 'active' || showPastEvents
+  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || distanceRanges.size > 0 || !!timeLimitMin || costMin > 0 || costMax < Infinity || !!poleFilter || entryStatus !== 'active' || showPastEvents
 
   // #2: Reset all filters
   const resetAllFilters = useCallback(() => {
@@ -388,9 +415,10 @@ function EventList() {
       const hasMatch = [...selectedCategories].some((name) => catNames.has(name))
       if (!hasMatch) return false
     }
-    if (selectedMonths.size > 0 && event.event_date) {
+    if ((dateRangeStart || dateRangeEnd) && event.event_date) {
       const ym = event.event_date.slice(0, 7)
-      if (!selectedMonths.has(ym)) return false
+      if (dateRangeStart && ym < dateRangeStart) return false
+      if (dateRangeEnd && ym > dateRangeEnd) return false
     }
     if (entryStatus) {
       if (entryStatus === 'active') {
@@ -435,6 +463,11 @@ function EventList() {
     setCostMax(newMax)
   }
 
+  const onDateRangeChange = (start: string | null, end: string | null) => {
+    setDateRangeStart(start)
+    setDateRangeEnd(end)
+  }
+
   const filterProps: FiltersSidebarProps = {
     availableRaceTypes,
     raceTypes,
@@ -444,8 +477,9 @@ function EventList() {
     selectedCategories,
     onCategoryToggle: toggleCategory,
     availableMonths,
-    selectedMonths,
-    onMonthToggle: toggleMonth,
+    dateRangeStart,
+    dateRangeEnd,
+    onDateRangeChange,
     distanceRanges,
     onDistanceRangeToggle: toggleDistanceRange,
     distanceRangeOptions: DISTANCE_RANGES,
@@ -469,7 +503,7 @@ function EventList() {
   // Inject filters into sidebar via context (dependency on filter state to avoid infinite loop)
   const { setFilterNode } = useSidebarFilter()
   const filterDepsKey = JSON.stringify([
-    [...raceTypes], [...selectedMonths], [...selectedCategories],
+    [...raceTypes], dateRangeStart, dateRangeEnd, [...selectedCategories],
     [...distanceRanges], timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents,
     raceTypes.size, loading,
   ])

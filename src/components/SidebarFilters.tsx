@@ -12,16 +12,6 @@ function formatYearMonth(ym: string, lang: string | undefined): string {
   return `${year}年${m}月`
 }
 
-/** Group months by year */
-function groupMonthsByYear(months: string[]): Map<string, string[]> {
-  const groups = new Map<string, string[]>()
-  for (const ym of months) {
-    const year = ym.slice(0, 4)
-    if (!groups.has(year)) groups.set(year, [])
-    groups.get(year)!.push(ym)
-  }
-  return groups
-}
 
 /** Collapsible section wrapper */
 function FilterSection({
@@ -53,33 +43,6 @@ function FilterSection({
 }
 
 /** Sub-section (e.g. year within month filter) */
-function SubSection({
-  title,
-  defaultOpen = false,
-  children,
-}: {
-  title: string
-  defaultOpen?: boolean
-  children: React.ReactNode
-}) {
-  const [open, setOpen] = useState(defaultOpen)
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-        className="flex w-full items-center gap-1 py-1 text-sm text-foreground/80 hover:text-foreground transition-colors bg-transparent border-0 cursor-pointer"
-      >
-        <ChevronDown
-          className={cn('h-3 w-3 transition-transform', open ? 'rotate-0' : '-rotate-90')}
-        />
-        <span>{title}</span>
-      </button>
-      {open && <div className="ml-4 mt-1">{children}</div>}
-    </div>
-  )
-}
 
 /** Count active filters */
 function countActiveFilters(props: FiltersSidebarProps): number {
@@ -104,7 +67,7 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
   const clearAll = () => {
     // Clear all filters by toggling off each active one
     for (const type of props.raceTypes) props.onRaceTypeToggle(type)
-    for (const m of props.selectedMonths) props.onMonthToggle(m)
+    props.onDateRangeChange(null, null)
     for (const c of props.selectedCategories) props.onCategoryToggle(c)
     for (const idx of props.distanceRanges) props.onDistanceRangeToggle(idx)
     if (props.timeLimitMin) props.onTimeLimitChange('')
@@ -114,7 +77,6 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
     if (props.showPastEvents) props.onShowPastEventsChange(false)
   }
 
-  const yearGroups = groupMonthsByYear(props.availableMonths)
 
   return (
     <div className="space-y-0">
@@ -152,39 +114,65 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
         </FilterSection>
       )}
 
-      {/* Month - grouped by year */}
+      {/* Date Range Picker */}
       {props.availableMonths.length > 0 && (
-        <FilterSection title={isEn ? 'Month' : '開催時期'} defaultOpen>
-          <div className="space-y-1">
-            {[...yearGroups.entries()].map(([year, months], yearIdx) => (
-              <SubSection
-                key={year}
-                title={isEn ? year : `${year}年`}
-                defaultOpen={yearIdx === 0}
+        <FilterSection title={isEn ? 'Date Range' : '開催時期'} defaultOpen>
+          <div className="space-y-3">
+            <div>
+              <label htmlFor="dateRangeStart" className="block text-xs font-medium mb-1">
+                {isEn ? 'From' : '開始月'}
+              </label>
+              <select
+                id="dateRangeStart"
+                value={props.dateRangeStart ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value || null
+                  const correctedEnd = props.dateRangeEnd && val && val > props.dateRangeEnd ? val : props.dateRangeEnd
+                  props.onDateRangeChange(val, correctedEnd)
+                }}
+                className="w-full rounded border border-input bg-background px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label={isEn ? 'Start month' : '開始月'}
               >
-                <div className="grid grid-cols-2 gap-x-1 gap-y-0.5">
-                  {months.map((ym) => {
-                    const m = parseInt(ym.slice(5, 7), 10)
-                    return (
-                      <label
-                        key={ym}
-                        className="flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 hover:bg-secondary/50 transition-colors"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={props.selectedMonths.has(ym)}
-                          onChange={() => props.onMonthToggle(ym)}
-                          className="h-3.5 w-3.5 rounded border-input text-primary accent-primary"
-                        />
-                        <span className="text-xs">
-                          {isEn ? formatYearMonth(ym, props.lang) : `${m}月`}
-                        </span>
-                      </label>
-                    )
-                  })}
-                </div>
-              </SubSection>
-            ))}
+                <option value="">{isEn ? '---' : '指定なし'}</option>
+                {props.availableMonths.map((ym) => (
+                  <option key={`start-${ym}`} value={ym}>
+                    {formatYearMonth(ym, props.lang)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="dateRangeEnd" className="block text-xs font-medium mb-1">
+                {isEn ? 'To' : '終了月'}
+              </label>
+              <select
+                id="dateRangeEnd"
+                value={props.dateRangeEnd ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value || null
+                  const correctedStart = props.dateRangeStart && val && val < props.dateRangeStart ? val : props.dateRangeStart
+                  props.onDateRangeChange(correctedStart, val)
+                }}
+                className="w-full rounded border border-input bg-background px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label={isEn ? 'End month' : '終了月'}
+              >
+                <option value="">{isEn ? '---' : '指定なし'}</option>
+                {props.availableMonths.map((ym) => (
+                  <option key={`end-${ym}`} value={ym}>
+                    {formatYearMonth(ym, props.lang)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {(props.dateRangeStart || props.dateRangeEnd) && (
+              <button
+                type="button"
+                onClick={() => props.onDateRangeChange(null, null)}
+                className="w-full text-xs px-2 py-1 rounded border border-border/50 hover:bg-secondary/50 transition-colors"
+              >
+                {isEn ? 'Clear' : 'クリア'}
+              </button>
+            )}
           </div>
         </FilterSection>
       )}

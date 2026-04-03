@@ -5,6 +5,7 @@ import { categoryToJsonLd } from '../lib/jsonld'
 import { supabase } from '../lib/supabaseClient'
 import { trackEventDetailView } from '../lib/analytics'
 import { useScrollDepth } from '@/hooks/useScrollDepth'
+import { isAuthError, handleAuthError } from '@/lib/authErrorHandler'
 import type { Event, AccessRoute, Accommodation, Category, CourseMapFile, StayStatus } from '../types/event'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -145,6 +146,12 @@ function CategoryDetail() {
           supabase.from('course_map_files').select('*').eq('event_id', eventId).order('year', { ascending: false }),
         ])
 
+        // Check for auth errors in any response
+        if (isAuthError(eventRes.error) || isAuthError(catRes.error) || isAuthError(routesRes.error) || isAuthError(accRes.error) || isAuthError(allCatsRes.error) || isAuthError(courseMapsRes.error)) {
+          await handleAuthError(supabase)
+          return
+        }
+
         if (eventRes.error) throw eventRes.error
         if (catRes.error) throw catRes.error
         const ev = eventRes.data ?? null
@@ -164,6 +171,10 @@ function CategoryDetail() {
             .lt('event_date', ev.event_date)
             .order('event_date', { ascending: false })
             .limit(5)
+          if (isAuthError(pastRes.error)) {
+            await handleAuthError(supabase)
+            return
+          }
           const pastEvents = pastRes.data ?? []
           const pastWithMaps: Array<{ event: Event; courseMaps: CourseMapFile[]; categories: Category[] }> = []
           for (const pe of pastEvents) {
@@ -171,6 +182,10 @@ function CategoryDetail() {
               supabase.from('course_map_files').select('*').eq('event_id', pe.id).order('year', { ascending: false }),
               supabase.from('categories').select('*').eq('event_id', pe.id).order('name'),
             ])
+            if (isAuthError(mapsRes.error) || isAuthError(catsRes.error)) {
+              await handleAuthError(supabase)
+              return
+            }
             pastWithMaps.push({
               event: pe as Event,
               courseMaps: mapsRes.data ?? [],
@@ -199,7 +214,7 @@ function CategoryDetail() {
   useEffect(() => {
     if (!event?.race_type || !event.id) return
     async function fetchRelated() {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('events')
         .select('*')
         .eq('race_type', event!.race_type!)
@@ -207,6 +222,10 @@ function CategoryDetail() {
         .not('location', 'is', null)
         .order('event_date', { ascending: true })
         .limit(3)
+      if (isAuthError(error)) {
+        await handleAuthError(supabase)
+        return
+      }
       setRelatedEvents(data ?? [])
     }
     fetchRelated()

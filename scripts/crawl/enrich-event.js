@@ -27,6 +27,28 @@ const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
 
 const PRICE_LEVEL_TO_JPY = { 1: 5000, 2: 10000, 3: 15000, 4: 25000 }
 
+// --- 海上座標判定 ---
+function isSeaCoordinate(lat, lng) {
+  // 簡易判定: よく知られた海上レースエリア（日本周辺）を除外
+  // トライアスロン・スイムなどで海上座標が正当な場合もあるが、
+  // 内陸レースが誤って海上に geocoding される場合を防ぐ
+
+  // 日本周辺の大陸棚・内海外
+  // 1. 太平洋沖（東経>145度 または 北緯<30度 かつ 東経>143度）
+  if (lng > 145 || (lat < 30 && lng > 143)) return true
+
+  // 2. 日本海沖（北緯>40度 かつ 東経<138度）
+  if (lat > 40 && lng < 138) return true
+
+  // 3. 東シナ海（北緯<32度 かつ 東経<130度）
+  if (lat < 32 && lng < 130) return true
+
+  // 4. フィリピン海（北緯<24度 かつ 東経>130度）
+  if (lat < 24 && lng > 130) return true
+
+  return false
+}
+
 async function geocodeLocation(location, apiKey) {
   const res = await fetch(
     `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&key=${apiKey}`
@@ -36,7 +58,10 @@ async function geocodeLocation(location, apiKey) {
   const result = data.results[0]
   const locationType = result.geometry.location_type
   if (locationType === 'GEOMETRIC_CENTER' || locationType === 'APPROXIMATE') return null
-  return result.geometry.location // { lat, lng }
+  const coords = result.geometry.location
+  // 海上座標チェック
+  if (isSeaCoordinate(coords.lat, coords.lng)) return null
+  return coords // { lat, lng }
 }
 
 async function searchNearbyLodging(lat, lng, apiKey) {
@@ -79,7 +104,7 @@ If the source is in Japanese, translate to English for _en fields. If the source
     "location_en": "Venue location in English. Include venue/facility name if available. Format: 'Venue Name, City, Country' or 'City, Country'",
     "country": "国名（日本語）",
     "country_en": "Country name in English",
-    "race_type": "marathon|trail|triathlon|bike|duathlon|rogaining|spartan|hyrox|tough_mudder|obstacle|adventure|devils_circuit|strong_viking|other",
+    "race_type": "marathon|trail|triathlon|bike|duathlon|rogaining|spartan|hyrox|tough_mudder|obstacle|adventure|devils_circuit|strong_viking|training|workshop|other",
     "official_url": "Official website URL of the event (NOT portal or registration sites like runnet.jp, sportsentry.ne.jp, moshicom.com, l-tike.com)",
     "entry_url": "Registration URL",
     "entry_start": "YYYY-MM-DD",
@@ -105,6 +130,13 @@ If the source is in Japanese, translate to English for _en fields. If the source
     { "name": "Course name", "distance_km": number }
   ]
 }
+
+race_type classification rules:
+- Practice runs / trial races / training runs → "training"
+- Workshops / clinics / lectures / seminars → "workshop"
+- These are non-competitive or educational events, NOT actual competitive races
+- Look for keywords like: 試走会、練習会、走力養成、実践講座、クリニック、セミナー、講習会、ワークショップ (Japanese) or "practice run", "trial", "clinic", "workshop", "seminar" (English)
+- If you cannot determine the race_type from the event name and description, use "other"
 
 Course extraction rules:
 - Output only unique courses (different distances/routes)
@@ -720,7 +752,9 @@ async function fetchEventTargets(args) {
   } else {
     const res = await client.query(
       `SELECT id, name, official_url, location, country FROM ${SCHEMA}.events
-       WHERE collected_at IS NULL AND (enrich_quality IS NULL OR enrich_quality != 'low')
+       WHERE location IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM ${SCHEMA}.categories WHERE event_id = events.id)
+       AND (enrich_quality IS NULL OR enrich_quality != 'low')
        ORDER BY updated_at ASC LIMIT $1`,
       [LIMIT === Infinity ? 1000 : LIMIT]
     )

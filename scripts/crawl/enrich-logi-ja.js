@@ -98,6 +98,11 @@ function parseGoogleDirections(data) {
   }
 }
 
+/** システムプロンプト（キャッシュ対応） */
+const DOMESTIC_LOGI_JA_SYSTEM_PROMPT = `You are an expert at providing domestic transportation logistics information for race participants in Japan.
+Provide responses in both Japanese and English.
+Extract transportation data in JSON format with 3-tier accessibility assessment (full/partial/none).`
+
 /** LLM 呼び出しのラッパー（429時に60秒待機してリトライ） */
 async function callLlmWithRetry(anthropic, params) {
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -122,6 +127,7 @@ async function fetchDomesticLogiWithLlm(anthropic, location, latitude, longitude
   const msg = await callLlmWithRetry(anthropic, {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1500,
+    system: [{ type: 'text', text: DOMESTIC_LOGI_JA_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
     messages: [
       {
         role: 'user',
