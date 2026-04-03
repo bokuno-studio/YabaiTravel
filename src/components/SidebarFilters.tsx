@@ -48,7 +48,7 @@ function FilterSection({
 function countActiveFilters(props: FiltersSidebarProps): number {
   let count = 0
   if (props.raceTypes.size > 0) count++
-  if (props.selectedMonths.size > 0) count++
+  if (props.dateRangeStart || props.dateRangeEnd) count++
   if (props.selectedCategories.size > 0) count++
   if (props.distanceRanges.size > 0) count++
   if (props.timeLimitMin) count++

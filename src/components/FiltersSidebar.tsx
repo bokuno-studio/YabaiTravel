@@ -288,30 +288,7 @@ export function FilterBar(props: FiltersSidebarProps) {
                 </div>
               )}
 
-              {/* Month - year-month multi-select checkboxes */}
-              {props.availableMonths.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {props.lang === 'en' ? 'Month' : '開催月'}
-                  </h3>
-                  <div className="max-h-48 space-y-1.5 overflow-y-auto">
-                    {props.availableMonths.map((ym) => (
-                      <label
-                        key={ym}
-                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-secondary/50 transition-colors"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={props.selectedMonths.has(ym)}
-                          onChange={() => props.onMonthToggle(ym)}
-                          className="h-4 w-4 rounded border-input text-primary accent-primary"
-                        />
-                        <span className="text-sm">{formatYearMonth(ym, props.lang)}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
+
 
               {/* Category */}
               {props.availableCategories.length > 0 && (
@@ -463,9 +440,7 @@ export function FilterChipBar({
   onRaceTypeToggle,
   raceTypeLabel,
   availableMonths,
-  selectedMonths,
-  onMonthToggle,
-}: Pick<FiltersSidebarProps, 'availableRaceTypes' | 'raceTypes' | 'onRaceTypeToggle' | 'raceTypeLabel' | 'availableMonths' | 'selectedMonths' | 'onMonthToggle'>) {
+}: Pick<FiltersSidebarProps, 'availableRaceTypes' | 'raceTypes' | 'onRaceTypeToggle' | 'raceTypeLabel' | 'availableMonths'>) {
   return (
     <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-none">
       <div className="flex shrink-0 gap-1.5">
@@ -485,29 +460,7 @@ export function FilterChipBar({
           </Badge>
         ))}
       </div>
-      {availableMonths.length > 0 && availableRaceTypes.length > 0 && (
-        <div className="shrink-0 w-px bg-border" />
-      )}
-      <div className="flex shrink-0 gap-1">
-        {availableMonths.map((ym) => {
-          const m = parseInt(ym.slice(5, 7), 10)
-          return (
-            <button
-              key={ym}
-              type="button"
-              onClick={() => onMonthToggle(ym)}
-              className={cn(
-                'rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap transition-colors',
-                selectedMonths.has(ym)
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-              )}
-            >
-              {m}月
-            </button>
-          )
-        })}
-      </div>
+
     </div>
   )
 }

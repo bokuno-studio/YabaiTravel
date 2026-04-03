@@ -524,7 +524,7 @@ function EventList() {
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(INITIAL_RENDER_COUNT)
-  }, [raceTypes.size, selectedCategories.size,  distanceRanges.size, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents])
+  }, [raceTypes.size, selectedCategories.size, dateRangeStart, dateRangeEnd, distanceRanges.size, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents])
 
   if (error) {
     return (
