@@ -177,7 +177,7 @@ async function run() {
           // ③: ロジ収集（--category-only 時はスキップ）
           if (CATEGORY_ONLY) return
           const enrichedEvent = event  // Batch モード後はlocationが既に入っている
-          const logiResult = await enrichLogi(enrichedEvent, { dryRun: DRY_RUN }).catch((e) => {
+          const logiResult = await enrichLogi(enrichedEvent, { dryRun: DRY_RUN, useBatch: BATCH }).catch((e) => {
             if (e instanceof InsufficientBalanceError) throw e
             return { success: false, error: e.message }
           })
@@ -190,7 +190,7 @@ async function run() {
           }
 
           // ③-en: 英語版ロジ（会場アクセスポイント）
-          const logiEnResult = await enrichLogiEn(enrichedEvent, { dryRun: DRY_RUN }).catch((e) => {
+          const logiEnResult = await enrichLogiEn(enrichedEvent, { dryRun: DRY_RUN, useBatch: BATCH }).catch((e) => {
             if (e instanceof InsufficientBalanceError) throw e
             return { success: false, error: e.message }
           })
@@ -309,7 +309,7 @@ async function run() {
         // ③: ロジ収集（--category-only 時はスキップ）
         if (CATEGORY_ONLY) return
         const enrichedEvent = eventResultLocation ? { ...event, location: eventResultLocation } : event
-        const logiResult = await enrichLogi(enrichedEvent, { dryRun: DRY_RUN }).catch((e) => {
+        const logiResult = await enrichLogi(enrichedEvent, { dryRun: DRY_RUN, useBatch: BATCH }).catch((e) => {
           if (e instanceof InsufficientBalanceError) throw e
           return { success: false, error: e.message }
         })
@@ -322,7 +322,7 @@ async function run() {
         }
 
         // ③-en: 英語版ロジ（会場アクセスポイント）
-        const logiEnResult = await enrichLogiEn(enrichedEvent, { dryRun: DRY_RUN }).catch((e) => {
+        const logiEnResult = await enrichLogiEn(enrichedEvent, { dryRun: DRY_RUN, useBatch: BATCH }).catch((e) => {
           if (e instanceof InsufficientBalanceError) throw e
           return { success: false, error: e.message }
         })
