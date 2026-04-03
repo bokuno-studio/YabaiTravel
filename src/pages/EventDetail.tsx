@@ -358,10 +358,10 @@ function EventDetail() {
             {(event.official_url || event.entry_url) && (
               <div className="mt-3 flex gap-3">
                 {event.official_url && (
-                  <Button asChild variant="outline" size="sm">
+                  <Button asChild variant="default" size="sm" className="min-h-[44px]">
                     <a href={event.official_url} target="_blank" rel="noreferrer">
                       <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                      {isEn ? 'Official' : '公式'}
+                      {isEn ? 'Visit Official Site' : '公式サイトを見る'}
                     </a>
                   </Button>
                 )}
