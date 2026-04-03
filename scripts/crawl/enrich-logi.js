@@ -261,8 +261,8 @@ const DISCLAIMER_EN = '\n* This information is approximate. Please verify actual
  * @param {object} opts - {dryRun: boolean}
  * @returns {Promise<{success: boolean, eventId: string, error?: string}>}
  */
-export async function enrichLogi(event, opts = { dryRun: false }) {
-  const { dryRun = false } = opts
+export async function enrichLogi(event, opts = { dryRun: false, useBatch: false }) {
+  const { dryRun = false, useBatch = false } = opts
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
 

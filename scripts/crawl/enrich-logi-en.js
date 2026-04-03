@@ -324,8 +324,8 @@ JSON only.`,
 /**
  * 単一イベントの英語版ロジ情報をエンリッチする
  */
-export async function enrichLogiEn(event, opts = { dryRun: false, force: false }) {
-  const { dryRun = false, force = false } = opts
+export async function enrichLogiEn(event, opts = { dryRun: false, force: false, useBatch: false }) {
+  const { dryRun = false, force = false, useBatch = false } = opts
   const apiKey = process.env.GOOGLE_DIRECTIONS_API_KEY
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
 
