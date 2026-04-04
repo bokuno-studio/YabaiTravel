@@ -79,6 +79,8 @@ async function collectStats(client) {
     logiBase,
     logiPending,
     tokyoAccessRoutes,
+    catUncollectedFuture,
+    catUncollectedPast,
   ] = await Promise.all([
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories`),
@@ -102,6 +104,8 @@ async function collectStats(client) {
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE collected_at IS NOT NULL AND location IS NOT NULL`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events e LEFT JOIN ${SCHEMA}.access_routes ar ON ar.event_id = e.id WHERE e.collected_at IS NOT NULL AND e.location IS NOT NULL AND ar.id IS NULL`),
     queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.access_routes WHERE origin_type = 'tokyo'`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id WHERE e.collected_at IS NOT NULL AND c.collected_at IS NULL AND (e.event_date IS NULL OR e.event_date >= CURRENT_DATE)`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id WHERE e.collected_at IS NOT NULL AND c.collected_at IS NULL AND e.event_date IS NOT NULL AND e.event_date < CURRENT_DATE`),
   ])
 
   // batch_jobs: 現在処理中（status='pending'）のrequest_countをscript_typeごとに取得
@@ -146,6 +150,8 @@ async function collectStats(client) {
     logiBase,
     logiPending,
     tokyoAccessRoutes,
+    catUncollectedFuture,
+    catUncollectedPast,
     batchPendingByStep,
   }
 }
@@ -323,7 +329,9 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   lines.push('[Step3] カテゴリ詳細（AI）')
   lines.push(`  母数: ${fmt(stats.catBase)}件（Step2完了イベントのカテゴリ）`)
   lines.push(`  完了: ${fmt(stats.catDone)}件 (${pct(stats.catDone, stats.catBase)})`)
-  lines.push(`  未処理: ${fmt(stats.catPendingNew)}件`)
+  lines.push(`  未処理: ${fmt(stats.catBase - stats.catDone)}件`)
+  lines.push(`    うち 要処理（未来イベント）: ${fmt(stats.catUncollectedFuture)}件`)
+  lines.push(`    うち 対象外（過去開催）:    ${fmt(stats.catUncollectedPast)}件`)
   lines.push('')
   lines.push('[Step4] ロジ情報（AI）')
   lines.push(`  母数: ${fmt(stats.logiBase)}件（location有りイベント）`)
