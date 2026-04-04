@@ -32,6 +32,7 @@ const PaymentSuccess = lazyWithRetry(() => import('./pages/PaymentSuccess'))
 const PaymentCancel = lazyWithRetry(() => import('./pages/PaymentCancel'))
 const BlogList = lazyWithRetry(() => import('./pages/BlogList'))
 const BlogPost = lazyWithRetry(() => import('./pages/BlogPost'))
+const MyRaceCalendarPage = lazyWithRetry(() => import('./pages/MyRaceCalendarPage'))
 
 /** パスの :lang から i18n 言語を設定し、子ルートを描画 */
 function LangLayout() {
@@ -106,6 +107,7 @@ function AppRoutes() {
         <Route path="blog/:slug" element={<BlogPost />} />
         <Route path="payment/success" element={<PaymentSuccess />} />
         <Route path="payment/cancel" element={<PaymentCancel />} />
+        <Route path="my-calendar" element={<MyRaceCalendarPage />} />
       </Route>
       <Route path="/" element={<DefaultRedirect />} />
       {/* 旧URL互換 */}

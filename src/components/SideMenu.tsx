@@ -1,9 +1,10 @@
 import { Link, useParams, useLocation } from 'react-router-dom'
 import { useState } from 'react'
-import { Search, Heart, MessageSquare, Info, FileText, ChevronDown, Menu, X, BookOpen } from 'lucide-react'
+import { Search, Heart, MessageSquare, Info, FileText, ChevronDown, Menu, X, BookOpen, CalendarDays } from 'lucide-react'
 import AuthButton from './AuthButton'
 import { useSidebarFilter } from '@/contexts/SidebarFilterContext'
 import { useSidebarStats } from '@/contexts/SidebarStatsContext'
+import { useAuth } from '@/lib/auth'
 
 const SPORT_GUIDES = [
   { key: 'marathon', ja: 'マラソン', en: 'Marathon' },
@@ -46,6 +47,7 @@ function SideMenuContent({
 }) {
   const [guidesExpanded, setGuidesExpanded] = useState(false)
   const [filtersCollapsed, setFiltersCollapsed] = useState(false) // #3: collapse/expand filters
+  const { user } = useAuth()
 
   const isActive = (path: string) => location.pathname === path || location.pathname === `${path}/`
   const isActiveIncludes = (segment: string) => location.pathname.includes(segment)
@@ -193,6 +195,20 @@ function SideMenuContent({
 
       {/* Support Section */}
       <div className="space-y-1">
+        {user && (
+          <Link
+            to={`${langPrefix}/my-calendar`}
+            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm no-underline transition-colors ${
+              isActiveIncludes('/my-calendar')
+                ? 'bg-primary/10 text-primary'
+                : 'text-foreground/70 hover:text-foreground hover:bg-muted'
+            }`}
+            onClick={onNavigate}
+          >
+            <CalendarDays className="h-4 w-4" />
+            {isEn ? 'My Calendar' : 'マイカレンダー'}
+          </Link>
+        )}
         <Link
           to={`${langPrefix}/pricing`}
           className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm no-underline transition-colors ${
