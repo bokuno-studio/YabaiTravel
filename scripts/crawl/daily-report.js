@@ -63,6 +63,12 @@ async function collectStats(client) {
     enrichedCategories,
     accessRoutes,
     accommodations,
+    eventsWithDetailPage,
+    catCollected,
+    catPending,
+    dateFilled,
+    placeFilled,
+    transportFeeFilled,
   ] = await Promise.all([
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories`),
@@ -70,8 +76,18 @@ async function collectStats(client) {
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE entry_fee IS NOT NULL`),
     queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.access_routes`),
     queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.accommodations`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE official_url IS NOT NULL AND official_url != ''`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE collected_at IS NOT NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE collected_at IS NULL AND attempt_count < 5`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE event_date IS NOT NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE latitude IS NOT NULL AND longitude IS NOT NULL`),
+    queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.access_routes WHERE cost_estimate IS NOT NULL`),
   ])
-  return { totalEvents, totalCategories, enrichedEvents, enrichedCategories, accessRoutes, accommodations }
+  return {
+    totalEvents, totalCategories, enrichedEvents, enrichedCategories, accessRoutes, accommodations,
+    eventsWithDetailPage, catCollected, catPending,
+    dateFilled, placeFilled, transportFeeFilled,
+  }
 }
 
 async function upsertSnapshot(client, stats) {
@@ -229,11 +245,31 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   const accomBacklog = stats.enrichedEvents - stats.accommodations
 
   const lines = []
-  lines.push(`\ud83d\udcca \u30af\u30ed\u30fc\u30eb\u9032\u6357\u30ec\u30dd\u30fc\u30c8\uff08${today}\uff09`)
+  lines.push(`📊 クロール進捗レポート（${today}）`)
+  lines.push('')
+
+  // --- Pipeline status ---
+  lines.push('■ パイプライン状況')
+  lines.push('')
+  lines.push('[イベント収集]')
+  lines.push(`  取得イベント総数: ${fmt(stats.totalEvents)}件${diff(stats.totalEvents, yesterday?.total_events)}`)
+  lines.push(`    詳細ページあり: ${fmt(stats.eventsWithDetailPage)}件 (${pct(stats.eventsWithDetailPage, stats.totalEvents)})`)
+  lines.push('')
+  lines.push('[カテゴリ取得]')
+  lines.push(`  取得済み: ${fmt(stats.catCollected)}件 / ${fmt(stats.totalCategories)}件`)
+  lines.push(`  未取得  : ${fmt(stats.catPending)}件`)
+  lines.push('')
+  lines.push('[レース詳細（AI処理）]')
+  lines.push(`  完了  : ${fmt(stats.enrichedEvents)}件 (${pct(stats.enrichedEvents, stats.totalEvents)})`)
+  lines.push(`  未処理: ${fmt(stats.totalEvents - stats.enrichedEvents)}件`)
+  lines.push('')
+  lines.push('[ロジ情報（AI処理）]')
+  lines.push(`  完了  : ${fmt(stats.accessRoutes)}件 (${pct(stats.accessRoutes, stats.totalEvents)})`)
+  lines.push(`  未処理: ${fmt(stats.totalEvents - stats.accessRoutes)}件`)
   lines.push('')
 
   // --- Summary ---
-  lines.push('\u25a0 \u5168\u4f53\u30b5\u30de\u30ea')
+  lines.push('■ 全体サマリー')
   lines.push(`  \u30ec\u30fc\u30b9\u6570:        ${fmt(stats.totalEvents)}${diff(stats.totalEvents, yesterday?.total_events)}`)
   lines.push(`  \u30ab\u30c6\u30b4\u30ea\u6570:     ${fmt(stats.totalCategories)}${diff(stats.totalCategories, yesterday?.total_categories)}`)
   lines.push('')
@@ -295,6 +331,26 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
     }
     lines.push('')
   }
+
+  // --- 10 metrics ---
+  lines.push('■ 10指標充填率（目標達成状況）')
+  const metrics = [
+    { label: '詳細ページあり', done: stats.eventsWithDetailPage, total: stats.totalEvents,      target: 90 },
+    { label: '詳細充填      ', done: stats.enrichedEvents,        total: stats.totalEvents,      target: 95 },
+    { label: 'ロジ充填      ', done: stats.accessRoutes,          total: stats.totalEvents,      target: 95 },
+    { label: 'レース料金    ', done: stats.enrichedCategories,    total: stats.totalCategories,  target: 70 },
+    { label: '宿泊料金      ', done: stats.accommodations,        total: stats.totalEvents,      target: 60 },
+    { label: '日程          ', done: stats.dateFilled,            total: stats.totalEvents,      target: 95 },
+    { label: '場所(lat/lng) ', done: stats.placeFilled,           total: stats.totalEvents,      target: 95 },
+    { label: '移動料金      ', done: stats.transportFeeFilled,    total: stats.totalEvents,      target: 60 },
+    { label: '東京アクセス  ', done: stats.accessRoutes,          total: stats.totalEvents,      target: 95 },
+  ]
+  for (const m of metrics) {
+    const rate = m.total > 0 ? (m.done / m.total * 100) : 0
+    const icon = rate >= m.target ? '✅' : rate >= m.target * 0.9 ? '⚠️' : '🔴'
+    lines.push(`  ${m.label} ${rate.toFixed(1).padStart(5)}% [目標${m.target}%] ${icon}`)
+  }
+  lines.push('')
 
   // Wrap in <pre> for Telegram fixed-width font
   return '<pre>' + lines.join('\n').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>'
