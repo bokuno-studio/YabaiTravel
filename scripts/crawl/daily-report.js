@@ -104,26 +104,20 @@ async function collectStats(client) {
     queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.access_routes WHERE origin_type = 'tokyo'`),
   ])
 
-  // batch_jobs集計（直近24時間、script_typeごと）
-  // batchByStep[scriptType] = { pending: request_count合計, ended: succeeded合計 }
-  const batchByStep = {}
+  // batch_jobs: 現在処理中（status='pending'）のrequest_countをscript_typeごとに取得
+  // batchPendingByStep[scriptType] = 処理中リクエスト数
+  const batchPendingByStep = {}
   try {
     const batchRes = await client.query(`
       SELECT
         script_type,
-        COALESCE(SUM(request_count) FILTER (WHERE status = 'pending'), 0) AS pending_requests,
-        COALESCE(SUM(succeeded) FILTER (WHERE status = 'ended'), 0) AS ended_succeeded,
-        COALESCE(SUM(request_count) FILTER (WHERE status = 'ended'), 0) AS ended_requests
+        COALESCE(SUM(request_count), 0) AS pending_requests
       FROM ${SCHEMA}.batch_jobs
-      WHERE submitted_at >= NOW() - INTERVAL '24 hours'
+      WHERE status = 'pending'
       GROUP BY script_type
     `)
     for (const row of batchRes.rows) {
-      batchByStep[row.script_type] = {
-        pending: parseInt(row.pending_requests) || 0,
-        endedSucceeded: parseInt(row.ended_succeeded) || 0,
-        endedRequests: parseInt(row.ended_requests) || 0,
-      }
+      batchPendingByStep[row.script_type] = parseInt(row.pending_requests) || 0
     }
   } catch (e) {
     // batch_jobsテーブルが存在しない場合は無視
@@ -152,7 +146,7 @@ async function collectStats(client) {
     logiBase,
     logiPending,
     tokyoAccessRoutes,
-    batchByStep,
+    batchPendingByStep,
   }
 }
 
@@ -336,19 +330,17 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   lines.push(`  完了: ${fmt(stats.accessRoutes)}件 (${pct(stats.accessRoutes, stats.logiBase)})`)
   lines.push(`  未処理: ${fmt(stats.logiPending)}件`)
   lines.push('')
-  lines.push('[AI Batch処理（直近24h）]')
-  lines.push(`  ${'ステップ'.padEnd(18)} ${'総数'.padStart(5)}  ${'結果待ち'.padStart(6)}  ${'取得済み'.padStart(6)}  ${'未投入'.padStart(6)}`)
+  lines.push('[AI Batch処理状況]')
+  lines.push(`  ${'ステップ'.padEnd(18)} ${'総数'.padStart(5)}  ${'処理済み'.padStart(6)}  ${'処理中'.padStart(5)}  ${'未処理'.padStart(5)}`)
   const batchSteps = [
-    { label: 'Step2 イベント詳細', type: 'enrich-event',           total: stats.totalEvents },
-    { label: 'Step3 カテゴリ詳細', type: 'enrich-category-detail', total: stats.catBase },
-    { label: 'Step4 ロジ情報',     type: 'enrich-logi',            total: stats.logiBase },
+    { label: 'Step2 イベント詳細', type: 'enrich-event',           total: stats.totalEvents,  done: stats.enrichedEvents },
+    { label: 'Step3 カテゴリ詳細', type: 'enrich-category-detail', total: stats.catBase,       done: stats.catDone },
+    { label: 'Step4 ロジ情報',     type: 'enrich-logi',            total: stats.logiBase,      done: stats.accessRoutes },
   ]
   for (const s of batchSteps) {
-    const b = stats.batchByStep[s.type] || { pending: 0, endedSucceeded: 0, endedRequests: 0 }
-    const waiting = b.pending
-    const received = b.endedSucceeded
-    const notSubmitted = Math.max(0, s.total - waiting - b.endedRequests)
-    lines.push(`  ${s.label.padEnd(18)} ${fmt(s.total).padStart(5)}  ${fmt(waiting).padStart(6)}  ${fmt(received).padStart(6)}  ${fmt(notSubmitted).padStart(6)}`)
+    const inProgress = stats.batchPendingByStep[s.type] || 0
+    const notYet = Math.max(0, s.total - s.done - inProgress)
+    lines.push(`  ${s.label.padEnd(18)} ${fmt(s.total).padStart(5)}  ${fmt(s.done).padStart(6)}  ${fmt(inProgress).padStart(5)}  ${fmt(notYet).padStart(5)}`)
   }
   lines.push('')
 
