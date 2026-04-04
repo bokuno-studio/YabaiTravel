@@ -276,8 +276,9 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       }
     }
 
-    // Tavily フォールバック: HTML取得失敗または HTML が不十分な場合
-    if (Object.keys(extracted).filter(k => k !== '_usage').length === 0 && process.env.TAVILY_API_KEY) {
+    // Tavily フォールバック: HTML取得失敗 / HTML不十分 / entry_fee未取得の場合
+    const extractedHasFee = extracted.entry_fee != null
+    if ((!extractedHasFee || Object.keys(extracted).filter(k => k !== '_usage').length === 0) && process.env.TAVILY_API_KEY) {
       console.log(`  [tavily-1] ${eventName?.slice(0, 30)} / ${catLabel} | extracted empty, starting Tavily search`)
       const query = `${eventName} ${catName} entry fee registration price 参加費 料金`
       try {
