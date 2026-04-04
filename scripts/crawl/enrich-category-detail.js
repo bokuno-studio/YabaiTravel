@@ -226,7 +226,7 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
 
   try {
     await client.connect()
-    const { id: eventId, name: eventName, official_url: officialUrl, race_type: raceType, country_en: countryEn } = event
+    const { id: eventId, name: eventName, official_url: officialUrl, entry_url: entryUrl, race_type: raceType, country_en: countryEn } = event
     const { id: categoryId, name: catName, distance_km: distKm } = category
 
     const catLabel = `${catName}${distKm ? `(${distKm}km)` : ''}`
@@ -245,6 +245,18 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
         html = await fetchHtml(officialUrl)
       } catch (e) {
         console.log(`  [html-fetch] WARN ${eventName?.slice(0, 30)} | HTML取得失敗: ${e.message?.slice(0, 50)}`)
+      }
+    }
+
+    // entry_url fallback: official_url が無効で entry_url があり、sportsentry のような外部ポータルの場合のみfallback
+    if (!html && entryUrl && entryUrl.includes('sportsentry.ne.jp') && !isPortalUrl(entryUrl)) {
+      console.log(`  [entry-url-fallback] ${eventName?.slice(0, 30)} | using entry_url (sportsentry)`)
+      try {
+        html = await fetchHtml(entryUrl)
+        fetchedUrl = entryUrl
+        htmlFetchAttempted = true
+      } catch (e) {
+        console.log(`  [entry-url-fallback] WARN ${eventName?.slice(0, 30)} | entry_url HTML取得失敗: ${e.message?.slice(0, 50)}`)
       }
     }
 
