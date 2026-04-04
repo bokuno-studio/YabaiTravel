@@ -281,7 +281,7 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   lines.push(`    詳細ページあり: ${fmt(stats.eventsWithDetailPage)}件 (${pct(stats.eventsWithDetailPage, stats.totalEvents)})`)
   lines.push('')
   lines.push('[カテゴリ取得]')
-  lines.push(`  取得済み: ${fmt(stats.catWithEventDetail)}件 / ${fmt(stats.totalEvents)}イベント`)
+  lines.push(`  取得済み: ${fmt(stats.catDone)}件 / ${fmt(stats.totalCategories)}件`)
   lines.push(`  未取得  : ${fmt(stats.catPending)}件`)
   lines.push('')
   lines.push('[レース詳細（AI処理）]')
@@ -360,7 +360,7 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   // --- Data Quality Metrics ---
   lines.push('■ 10指標充填率（目標達成状況）')
   const detailPagePct = pct(stats.eventsWithDetailPage, stats.totalEvents)
-  const detailFillPct = pct(stats.enrichedCategories, stats.totalCategories)
+  const detailFillPct = pct(stats.enrichedEvents, stats.totalEvents)
   const logiPct = pct(stats.logiDone, stats.totalEvents)
   const entryFeePct = pct(stats.entryFeeFilled, stats.totalCategories)
   const accomPct = pct(stats.accommodationEventsFilled, stats.totalEvents)
