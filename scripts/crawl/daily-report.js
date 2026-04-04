@@ -78,6 +78,7 @@ async function collectStats(client) {
     catPendingNew,
     logiBase,
     logiPending,
+    tokyoAccessRoutes,
   ] = await Promise.all([
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories`),
@@ -100,6 +101,7 @@ async function collectStats(client) {
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id WHERE c.collected_at IS NULL AND c.attempt_count < 3 AND e.collected_at IS NOT NULL`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE collected_at IS NOT NULL AND location IS NOT NULL`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events e LEFT JOIN ${SCHEMA}.access_routes ar ON ar.event_id = e.id WHERE e.collected_at IS NOT NULL AND e.location IS NOT NULL AND ar.id IS NULL`),
+    queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.access_routes WHERE origin_type = 'tokyo'`),
   ])
 
   // batch_jobs集計（直近24時間、script_typeごと）
@@ -149,6 +151,7 @@ async function collectStats(client) {
     catPendingNew,
     logiBase,
     logiPending,
+    tokyoAccessRoutes,
     batchByStep,
   }
 }
@@ -423,7 +426,7 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   const datePct = pct(stats.eventDateFilled, stats.totalEvents)
   const latlngPct = pct(stats.eventLatLngFilled, stats.totalEvents)
   const moveCostPct = pct(stats.accessRouteCostFilled, stats.totalEvents)
-  const accessPct = pct(stats.accessRoutes, stats.totalEvents)
+  const accessPct = pct(stats.tokyoAccessRoutes, stats.totalEvents)
 
   lines.push(`  詳細ページあり  ${detailPagePct.padStart(5)} [目標 90%] ${statusIcon(detailPagePct, 90)}`)
   lines.push(`  詳細充填        ${detailFillPct.padStart(5)} [目標 95%] ${statusIcon(detailFillPct, 95)}`)
