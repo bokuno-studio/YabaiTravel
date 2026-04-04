@@ -588,13 +588,16 @@ async function fetchTargets(args) {
     const FORCE = args.includes('--force')
     const domainIdx = args.indexOf('--domain')
     const domain = domainIdx >= 0 ? args[domainIdx + 1] : null
+    const collectedFilter = FORCE ? '' : 'AND c.collected_at IS NULL'
     const attemptFilter = FORCE ? '' : 'AND c.attempt_count < 3'
+    const feeFilter = FORCE ? 'AND c.entry_fee IS NULL' : ''
     const domainFilter = domain ? `AND (e.official_url ILIKE $3 OR e.entry_url ILIKE $3)` : ''
     const queryParams = domain ? [limit, offset, `%${domain}%`] : [limit, offset]
     const { rows } = await client.query(
       `SELECT c.id, c.name, c.distance_km, e.id as event_id, e.name as event_name, e.official_url, e.entry_url, e.race_type, e.country_en
        FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id
-       WHERE c.collected_at IS NULL ${attemptFilter} AND e.collected_at IS NOT NULL
+       WHERE e.collected_at IS NOT NULL
+       ${collectedFilter} ${attemptFilter} ${feeFilter}
        AND (e.event_date IS NULL OR e.event_date >= CURRENT_DATE)
        ${domainFilter}
        ORDER BY c.id ASC LIMIT $1 OFFSET $2`,
