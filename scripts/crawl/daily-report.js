@@ -63,12 +63,17 @@ async function collectStats(client) {
     enrichedCategories,
     accessRoutes,
     accommodations,
-    eventsWithDetailPage,
-    catCollected,
+    catWithEventDetail,
     catPending,
-    dateFilled,
-    placeFilled,
-    transportFeeFilled,
+    catFailed,
+    eventsWithDetailPage,
+    logiDone,
+    catDone,
+    eventDateFilled,
+    eventLatLngFilled,
+    entryFeeFilled,
+    accommodationEventsFilled,
+    accessRouteCostFilled,
   ] = await Promise.all([
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories`),
@@ -76,17 +81,36 @@ async function collectStats(client) {
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE entry_fee IS NOT NULL`),
     queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.access_routes`),
     queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.accommodations`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE official_url IS NOT NULL AND official_url != ''`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE collected_at IS NOT NULL`),
+    queryCount(client, `SELECT count(DISTINCT ec.event_id) FROM ${SCHEMA}.categories ec WHERE ec.collected_at IS NOT NULL`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE collected_at IS NULL AND attempt_count < 5`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE attempt_count >= 5`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE official_url IS NOT NULL AND official_url != ''`),
+    queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.access_routes`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE collected_at IS NOT NULL`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE event_date IS NOT NULL`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE latitude IS NOT NULL AND longitude IS NOT NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE entry_fee IS NOT NULL`),
+    queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.accommodations`),
     queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.access_routes WHERE cost_estimate IS NOT NULL`),
   ])
   return {
-    totalEvents, totalCategories, enrichedEvents, enrichedCategories, accessRoutes, accommodations,
-    eventsWithDetailPage, catCollected, catPending,
-    dateFilled, placeFilled, transportFeeFilled,
+    totalEvents,
+    totalCategories,
+    enrichedEvents,
+    enrichedCategories,
+    accessRoutes,
+    accommodations,
+    catWithEventDetail,
+    catPending,
+    catFailed,
+    eventsWithDetailPage,
+    logiDone,
+    catDone,
+    eventDateFilled,
+    eventLatLngFilled,
+    entryFeeFilled,
+    accommodationEventsFilled,
+    accessRouteCostFilled,
   }
 }
 
@@ -114,7 +138,7 @@ async function getHistory(client, days = 7) {
     ORDER BY stat_date DESC
     LIMIT $1
   `, [days])
-  return rows.reverse() // oldest first
+  return rows.reverse()
 }
 
 async function getErrorBreakdown(client) {
@@ -174,18 +198,22 @@ function pct(done, total) {
   return (done / total * 100).toFixed(1) + '%'
 }
 
+function statusIcon(pctStr, target) {
+  const val = parseFloat(pctStr)
+  if (val >= target) return '✅'
+  if (val >= target * 0.9) return '⚠️'
+  return '🔴'
+}
+
 function estimateDays(backlog, history, field) {
   if (backlog <= 0) return '完了'
   if (history.length < 2) {
-    // Only 1 day of data - estimate from current done count (assume linear from start)
     const current = history[0]?.[field] ?? 0
     if (current <= 0) return '不明'
-    // Rough estimate: if we processed `current` items so far, assume similar daily rate
-    const rate = current / 7 // assume data was collected over ~1 week
+    const rate = current / 7
     if (rate <= 0) return '不明'
     return `約${Math.ceil(backlog / rate)}`
   }
-  // Average daily consumption over available history
   const first = history[0]
   const last = history[history.length - 1]
   const days = Math.max(1, history.length - 1)
@@ -209,12 +237,10 @@ function barGraph(history, valueKey, maxWidth = 20) {
   }).join('\n')
 }
 
-/** Calculate display width considering fullwidth chars */
 function displayWidth(str) {
   let w = 0
   for (const ch of str) {
     const cp = ch.codePointAt(0)
-    // CJK, fullwidth, etc.
     w += (cp >= 0x1100 && (
       (cp <= 0x115f) || cp === 0x2329 || cp === 0x232a ||
       (cp >= 0x2e80 && cp <= 0xa4cf && cp !== 0x303f) ||
@@ -230,7 +256,6 @@ function displayWidth(str) {
   return w
 }
 
-/** Pad string to target display width */
 function padEndW(str, width) {
   const w = displayWidth(str)
   return str + ' '.repeat(Math.max(0, width - w))
@@ -248,41 +273,41 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   lines.push(`📊 クロール進捗レポート（${today}）`)
   lines.push('')
 
-  // --- Pipeline status ---
+  // --- Pipeline Status ---
   lines.push('■ パイプライン状況')
   lines.push('')
   lines.push('[イベント収集]')
-  lines.push(`  取得イベント総数: ${fmt(stats.totalEvents)}件${diff(stats.totalEvents, yesterday?.total_events)}`)
+  lines.push(`  取得イベント総数: ${fmt(stats.totalEvents)}件`)
   lines.push(`    詳細ページあり: ${fmt(stats.eventsWithDetailPage)}件 (${pct(stats.eventsWithDetailPage, stats.totalEvents)})`)
   lines.push('')
   lines.push('[カテゴリ取得]')
-  lines.push(`  取得済み: ${fmt(stats.catCollected)}件 / ${fmt(stats.totalCategories)}件`)
+  lines.push(`  取得済み: ${fmt(stats.catWithEventDetail)}件 / ${fmt(stats.totalEvents)}イベント`)
   lines.push(`  未取得  : ${fmt(stats.catPending)}件`)
   lines.push('')
   lines.push('[レース詳細（AI処理）]')
-  lines.push(`  完了  : ${fmt(stats.enrichedEvents)}件 (${pct(stats.enrichedEvents, stats.totalEvents)})`)
-  lines.push(`  未処理: ${fmt(stats.totalEvents - stats.enrichedEvents)}件`)
+  lines.push(`  完了: ${fmt(stats.catDone)}件 (${pct(stats.catDone, stats.totalCategories)})`)
+  lines.push(`  未処理: ${fmt(catBacklog)}件`)
   lines.push('')
   lines.push('[ロジ情報（AI処理）]')
-  lines.push(`  完了  : ${fmt(stats.accessRoutes)}件 (${pct(stats.accessRoutes, stats.totalEvents)})`)
-  lines.push(`  未処理: ${fmt(stats.totalEvents - stats.accessRoutes)}件`)
+  lines.push(`  完了: ${fmt(stats.logiDone)}件 (${pct(stats.logiDone, stats.totalEvents)})`)
+  lines.push(`  未処理: ${fmt(accessBacklog)}件`)
   lines.push('')
 
   // --- Summary ---
   lines.push('■ 全体サマリー')
-  lines.push(`  \u30ec\u30fc\u30b9\u6570:        ${fmt(stats.totalEvents)}${diff(stats.totalEvents, yesterday?.total_events)}`)
-  lines.push(`  \u30ab\u30c6\u30b4\u30ea\u6570:     ${fmt(stats.totalCategories)}${diff(stats.totalCategories, yesterday?.total_categories)}`)
+  lines.push(`  レース数:        ${fmt(stats.totalEvents)}${diff(stats.totalEvents, yesterday?.total_events)}`)
+  lines.push(`  カテゴリ数:     ${fmt(stats.totalCategories)}${diff(stats.totalCategories, yesterday?.total_categories)}`)
   lines.push('')
 
   // --- Enrich progress ---
-  lines.push('\u25a0 Enrich \u9032\u6357')
+  lines.push('■ Enrich進捗')
   lines.push(`  ${padEndW('', 14)} ${'完了'.padStart(5)}  ${'未完了'.padStart(5)}  ${'完了率'.padStart(6)}  ${'前日比'.padStart(5)}`)
 
   const enrichRows = [
-    { label: '\u30a4\u30d9\u30f3\u30c8\u57fa\u672c\u60c5\u5831', done: stats.enrichedEvents, total: stats.totalEvents, prevDone: yesterday?.enriched_events },
-    { label: '\u30ab\u30c6\u30b4\u30ea\u8a73\u7d30', done: stats.enrichedCategories, total: stats.totalCategories, prevDone: yesterday?.enriched_categories },
-    { label: '\u30a2\u30af\u30bb\u30b9\u60c5\u5831', done: stats.accessRoutes, total: stats.enrichedEvents, prevDone: yesterday?.access_routes_count },
-    { label: '\u5bbf\u6cca\u60c5\u5831', done: stats.accommodations, total: stats.enrichedEvents, prevDone: yesterday?.accommodations_count },
+    { label: 'イベント基本情報', done: stats.enrichedEvents, total: stats.totalEvents, prevDone: yesterday?.enriched_events },
+    { label: 'カテゴリ詳細', done: stats.enrichedCategories, total: stats.totalCategories, prevDone: yesterday?.enriched_categories },
+    { label: 'アクセス情報', done: stats.accessRoutes, total: stats.enrichedEvents, prevDone: yesterday?.access_routes_count },
+    { label: '宿泊情報', done: stats.accommodations, total: stats.enrichedEvents, prevDone: yesterday?.accommodations_count },
   ]
   for (const r of enrichRows) {
     const remaining = r.total - r.done
@@ -292,20 +317,20 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   lines.push('')
 
   // --- Backlog estimate ---
-  lines.push('\u25a0 \u30d0\u30c3\u30af\u30ed\u30b0\u6d88\u5316\u898b\u8fbc\u307f')
+  lines.push('■ バックログ消化見込み')
   const eventEst = estimateDays(eventBacklog, history, 'enriched_events')
   const catEst = estimateDays(catBacklog, history, 'enriched_categories')
-  lines.push(`  \u30a4\u30d9\u30f3\u30c8\u57fa\u672c: ${eventBacklog}\u4ef6\u6b8b \u2192 \u7d04${eventEst}\u65e5\u5f8c\u306b\u5b8c\u4e86`)
-  lines.push(`  \u30ab\u30c6\u30b4\u30ea\u8a73\u7d30: ${catBacklog}\u4ef6\u6b8b \u2192 \u7d04${catEst}\u65e5\u5f8c\u306b\u5b8c\u4e86`)
+  lines.push(`  イベント基本: ${eventBacklog}件残 → 約${eventEst}日後に完了`)
+  lines.push(`  カテゴリ詳細: ${catBacklog}件残 → 約${catEst}日後に完了`)
   lines.push('')
 
   // --- Error breakdown ---
-  lines.push('\u25a0 Enrich \u7a7a\u632f\u308a\u5185\u8a33')
+  lines.push('■ Enrich空振り内訳')
   if (errors.length === 0) {
-    lines.push('  \u306a\u3057')
+    lines.push('  なし')
   } else {
     for (const e of errors) {
-      const label = e.last_error_type ?? '\u5206\u985e\u4e0d\u660e(null)'
+      const label = e.last_error_type ?? '分類不明(null)'
       lines.push(`  ${padEndW(label, 14)} ${e.cnt}件`)
     }
   }
@@ -313,7 +338,7 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
 
   // --- Backlog trend graph ---
   if (history.length >= 2) {
-    lines.push('\u25a0 \u30d0\u30c3\u30af\u30ed\u30b0\u63a8\u79fb\uff08\u76f4\u8fd17\u65e5 - \u30a4\u30d9\u30f3\u30c8\u672a\u51e6\u7406\u6570\uff09')
+    lines.push('■ バックログ推移（直近7日 - イベント未処理数）')
     const backlogHistory = history.map((h) => ({
       ...h,
       _backlog: h.total_events - h.enriched_events,
@@ -324,35 +349,37 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
 
   // --- Workflow runs ---
   if (workflowRuns) {
-    lines.push('\u25a0 \u30b8\u30e7\u30d6\u5b9f\u884c\u72b6\u6cc1')
+    lines.push('■ ジョブ実行状況')
     for (const r of workflowRuns) {
-      const icon = r.status === 'success' ? '\u2705' : r.status === 'failure' ? '\u274c' : '\u26a0\ufe0f'
+      const icon = r.status === 'success' ? '✅' : r.status === 'failure' ? '❌' : '⚠️'
       lines.push(`  ${icon} ${r.name}  ${r.status}  ${r.date}`)
     }
     lines.push('')
   }
 
-  // --- 10 metrics ---
+  // --- Data Quality Metrics ---
   lines.push('■ 10指標充填率（目標達成状況）')
-  const metrics = [
-    { label: '詳細ページあり', done: stats.eventsWithDetailPage, total: stats.totalEvents,      target: 90 },
-    { label: '詳細充填      ', done: stats.enrichedEvents,        total: stats.totalEvents,      target: 95 },
-    { label: 'ロジ充填      ', done: stats.accessRoutes,          total: stats.totalEvents,      target: 95 },
-    { label: 'レース料金    ', done: stats.enrichedCategories,    total: stats.totalCategories,  target: 70 },
-    { label: '宿泊料金      ', done: stats.accommodations,        total: stats.totalEvents,      target: 60 },
-    { label: '日程          ', done: stats.dateFilled,            total: stats.totalEvents,      target: 95 },
-    { label: '場所(lat/lng) ', done: stats.placeFilled,           total: stats.totalEvents,      target: 95 },
-    { label: '移動料金      ', done: stats.transportFeeFilled,    total: stats.totalEvents,      target: 60 },
-    { label: '東京アクセス  ', done: stats.accessRoutes,          total: stats.totalEvents,      target: 95 },
-  ]
-  for (const m of metrics) {
-    const rate = m.total > 0 ? (m.done / m.total * 100) : 0
-    const icon = rate >= m.target ? '✅' : rate >= m.target * 0.9 ? '⚠️' : '🔴'
-    lines.push(`  ${m.label} ${rate.toFixed(1).padStart(5)}% [目標${m.target}%] ${icon}`)
-  }
+  const detailPagePct = pct(stats.eventsWithDetailPage, stats.totalEvents)
+  const detailFillPct = pct(stats.enrichedCategories, stats.totalCategories)
+  const logiPct = pct(stats.logiDone, stats.totalEvents)
+  const entryFeePct = pct(stats.entryFeeFilled, stats.totalCategories)
+  const accomPct = pct(stats.accommodationEventsFilled, stats.totalEvents)
+  const datePct = pct(stats.eventDateFilled, stats.totalEvents)
+  const latlngPct = pct(stats.eventLatLngFilled, stats.totalEvents)
+  const moveCostPct = pct(stats.accessRouteCostFilled, stats.totalEvents)
+  const accessPct = pct(stats.logiDone, stats.totalEvents)
+
+  lines.push(`  詳細ページあり  ${detailPagePct.padStart(5)} [目標 90%] ${statusIcon(detailPagePct, 90)}`)
+  lines.push(`  詳細充填        ${detailFillPct.padStart(5)} [目標 95%] ${statusIcon(detailFillPct, 95)}`)
+  lines.push(`  ロジ充填        ${logiPct.padStart(5)} [目標 95%] ${statusIcon(logiPct, 95)}`)
+  lines.push(`  レース料金      ${entryFeePct.padStart(5)} [目標 70%] ${statusIcon(entryFeePct, 70)}`)
+  lines.push(`  宿泊料金        ${accomPct.padStart(5)} [目標 60%] ${statusIcon(accomPct, 60)}`)
+  lines.push(`  日程            ${datePct.padStart(5)} [目標 95%] ${statusIcon(datePct, 95)}`)
+  lines.push(`  場所(lat/lng)   ${latlngPct.padStart(5)} [目標 95%] ${statusIcon(latlngPct, 95)}`)
+  lines.push(`  移動料金        ${moveCostPct.padStart(5)} [目標 60%] ${statusIcon(moveCostPct, 60)}`)
+  lines.push(`  東京アクセス    ${accessPct.padStart(5)} [目標 95%] ${statusIcon(accessPct, 95)}`)
   lines.push('')
 
-  // Wrap in <pre> for Telegram fixed-width font
   return '<pre>' + lines.join('\n').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>'
 }
 
@@ -368,7 +395,6 @@ async function sendTelegram(text) {
     return
   }
 
-  // Split into chunks if needed
   const chunks = []
   if (text.length <= TELEGRAM_MAX_LENGTH) {
     chunks.push(text)
@@ -399,7 +425,6 @@ async function sendTelegram(text) {
     if (!res.ok) {
       const body = await res.text()
       console.error(`[Telegram] Failed to send: ${res.status} ${body}`)
-      // Retry without parse_mode if HTML caused an error
       const retry = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -420,7 +445,7 @@ async function sendTelegram(text) {
 // Delivery: GitHub Issue comment
 // ---------------------------------------------------------------------------
 
-const REPORT_ISSUE_TITLE = '\ud83d\udcca Daily Crawl Report'
+const REPORT_ISSUE_TITLE = '📊 Daily Crawl Report'
 const REPORT_ISSUE_LABEL = 'daily-report'
 
 async function findOrCreateReportIssue() {
@@ -434,7 +459,6 @@ async function findOrCreateReportIssue() {
     Accept: 'application/vnd.github+json',
   }
 
-  // Search for existing report issue
   const searchRes = await fetch(
     `https://api.github.com/repos/${GITHUB_REPOSITORY}/issues?labels=${REPORT_ISSUE_LABEL}&state=open&per_page=1`,
     { headers }
@@ -446,7 +470,6 @@ async function findOrCreateReportIssue() {
     }
   }
 
-  // Ensure the label exists
   try {
     await fetch(`https://api.github.com/repos/${GITHUB_REPOSITORY}/labels`, {
       method: 'POST',
@@ -455,7 +478,6 @@ async function findOrCreateReportIssue() {
     })
   } catch { /* label may already exist */ }
 
-  // Create new issue
   const createRes = await fetch(`https://api.github.com/repos/${GITHUB_REPOSITORY}/issues`, {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
@@ -477,7 +499,6 @@ async function findOrCreateReportIssue() {
 async function postGitHubComment(issueNumber, text) {
   if (!GITHUB_TOKEN || !GITHUB_REPOSITORY || !issueNumber) return
 
-  // Wrap in code block for monospace formatting
   const body = '```\n' + text + '\n```'
 
   const res = await fetch(
@@ -508,29 +529,15 @@ async function run() {
   await client.connect()
 
   try {
-    // Ensure stats table exists
     await ensureStatsTable(client)
-
-    // Collect current stats
     const stats = await collectStats(client)
     console.log('Current stats:', stats)
-
-    // Save snapshot
     await upsertSnapshot(client, stats)
-
-    // Get history (including today's just-saved snapshot)
     const history = await getHistory(client, 7)
     const yesterday = history.length >= 2 ? history[history.length - 2] : null
-
-    // Error breakdown
     const errors = await getErrorBreakdown(client)
-
-    // GitHub Actions status
     const workflowRuns = await getWorkflowRuns()
-
-    // Build report
     const report = buildReport(stats, yesterday, history, errors, workflowRuns)
-
     console.log('\n' + report)
 
     if (DRY_RUN) {
@@ -538,10 +545,7 @@ async function run() {
       return
     }
 
-    // Send via Telegram
     await sendTelegram(report)
-
-    // Post as GitHub Issue comment
     const issueNumber = await findOrCreateReportIssue()
     await postGitHubComment(issueNumber, report)
 
