@@ -143,18 +143,44 @@ export async function getBatchResults(anthropic, batchId) {
  * @param {object} opts
  * @param {number} opts.pollIntervalMs
  * @param {number} opts.maxWaitMs
+ * @param {object} [opts.dbPool] - pg.Pool instance for batch_jobs tracking
+ * @param {string} [opts.scriptType] - script name for batch_jobs.script_type
  * @returns {Promise<Map<string, {success: boolean, parsed?: object, usage?: object, error?: string}>>}
  */
 export async function runBatch(anthropic, requests, opts = {}) {
-  const { pollIntervalMs = 30000, maxWaitMs = 2 * 60 * 60 * 1000 } = opts
+  const { pollIntervalMs = 30000, maxWaitMs = 2 * 60 * 60 * 1000, dbPool = null, scriptType = 'unknown' } = opts
+  const SCHEMA = process.env.SUPABASE_SCHEMA || 'yabai_travel'
 
   const batchId = await createBatch(anthropic, requests)
+
+  if (dbPool) {
+    try {
+      await dbPool.query(
+        `INSERT INTO ${SCHEMA}.batch_jobs (batch_id, script_type, status, request_count) VALUES ($1, $2, 'pending', $3) ON CONFLICT (batch_id) DO NOTHING`,
+        [batchId, scriptType, requests.length]
+      )
+    } catch (e) {
+      console.warn(`[batch] batch_jobs INSERT failed: ${e.message}`)
+    }
+  }
+
   await waitForBatch(anthropic, batchId, pollIntervalMs, maxWaitMs)
   const results = await getBatchResults(anthropic, batchId)
 
   const succeeded = [...results.values()].filter((r) => r.success).length
   const failed = [...results.values()].filter((r) => !r.success).length
   console.log(`[batch] Complete: ${succeeded} succeeded, ${failed} failed out of ${requests.length} requests`)
+
+  if (dbPool) {
+    try {
+      await dbPool.query(
+        `UPDATE ${SCHEMA}.batch_jobs SET status='ended', succeeded=$2, failed=$3, completed_at=NOW() WHERE batch_id=$1`,
+        [batchId, succeeded, failed]
+      )
+    } catch (e) {
+      console.warn(`[batch] batch_jobs UPDATE failed: ${e.message}`)
+    }
+  }
 
   return results
 }

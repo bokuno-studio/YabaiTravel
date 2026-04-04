@@ -1020,7 +1020,7 @@ export async function runOrchestratedEventBatch(events, { dryRun = false } = {})
       // チャンク内のバッチを送信・結果処理
       let chunkResults = new Map()
       if (chunkRequests.length > 0 && !dryRun) {
-        chunkResults = await runBatch(anthropic, chunkRequests)
+        chunkResults = await runBatch(anthropic, chunkRequests, { dbPool: pool, scriptType: 'enrich-event' })
         console.log(`[orchestrator-batch] チャンク ${chunkNumber}: ${chunkRequests.length} 件送信完了`)
       } else if (dryRun && chunkRequests.length > 0) {
         console.log(`[orchestrator-batch] チャンク ${chunkNumber}: DRY_RUN スキップ（${chunkRequests.length} 件）`)

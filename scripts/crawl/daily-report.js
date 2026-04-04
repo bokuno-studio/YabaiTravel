@@ -93,6 +93,25 @@ async function collectStats(client) {
     queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.accommodations`),
     queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.access_routes WHERE cost_estimate IS NOT NULL`),
   ])
+
+  // batch_jobs集計（直近24時間）
+  let batchPendingJobs = 0, batchPendingRequests = 0, batchCompletedRequests = 0
+  try {
+    const batchRes = await client.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE status = 'pending') AS pending_jobs,
+        COALESCE(SUM(request_count) FILTER (WHERE status = 'pending'), 0) AS pending_requests,
+        COALESCE(SUM(succeeded) FILTER (WHERE status = 'ended'), 0) AS completed_requests
+      FROM ${SCHEMA}.batch_jobs
+      WHERE submitted_at >= NOW() - INTERVAL '24 hours'
+    `)
+    batchPendingJobs = parseInt(batchRes.rows[0].pending_jobs) || 0
+    batchPendingRequests = parseInt(batchRes.rows[0].pending_requests) || 0
+    batchCompletedRequests = parseInt(batchRes.rows[0].completed_requests) || 0
+  } catch (e) {
+    // batch_jobsテーブルが存在しない場合は無視
+  }
+
   return {
     totalEvents,
     totalCategories,
@@ -111,6 +130,9 @@ async function collectStats(client) {
     entryFeeFilled,
     accommodationEventsFilled,
     accessRouteCostFilled,
+    batchPendingJobs,
+    batchPendingRequests,
+    batchCompletedRequests,
   }
 }
 
@@ -291,6 +313,10 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   lines.push('[ロジ情報（AI処理）]')
   lines.push(`  完了: ${fmt(stats.logiDone)}件 (${pct(stats.logiDone, stats.totalEvents)})`)
   lines.push(`  未処理: ${fmt(accessBacklog)}件`)
+  lines.push('')
+  lines.push('[AI Batch処理（直近24h）]')
+  lines.push(`  投入済み（処理中）: ${fmt(stats.batchPendingJobs)}件 (${fmt(stats.batchPendingRequests)} リクエスト)`)
+  lines.push(`  完了（取得済み）  : ${fmt(stats.batchCompletedRequests)}件`)
   lines.push('')
 
   // --- Summary ---
