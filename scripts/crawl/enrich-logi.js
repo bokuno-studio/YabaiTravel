@@ -660,16 +660,17 @@ JSONのみ返してください。`,
 
   // --- パス2: バッチ送信 + 待機 ---
   let batchResults = new Map()
+  const dbClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
+  await dbClient.connect()
   if (batchRequests.length > 0 && !DRY_RUN) {
-    batchResults = await runBatch(anthropic, batchRequests)
+    const dbPool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
+    batchResults = await runBatch(anthropic, batchRequests, { dbPool, scriptType: 'enrich-logi' })
+    await dbPool.end()
   } else if (DRY_RUN) {
     console.log(`[batch] DRY_RUN: バッチ送信スキップ`)
   }
 
   // --- パス3: 結果処理 + DB 書き込み ---
-  const dbClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
-  await dbClient.connect()
-
   let ok = 0, errors = 0
 
   for (const [eventId, ctx] of eventContext) {

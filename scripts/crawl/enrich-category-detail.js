@@ -701,7 +701,9 @@ async function runBatchCli() {
   // --- パス2: バッチ送信 + 待機 ---
   let batchResults = new Map()
   if (batchRequests.length > 0 && !DRY_RUN) {
-    batchResults = await runBatch(anthropic, batchRequests)
+    const dbPool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
+    batchResults = await runBatch(anthropic, batchRequests, { dbPool, scriptType: 'enrich-category-detail' })
+    await dbPool.end()
   } else if (DRY_RUN) {
     console.log(`[batch] DRY_RUN: バッチ送信スキップ`)
   }

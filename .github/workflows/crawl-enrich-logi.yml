@@ -26,10 +26,11 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - name: ロジ（交通アクセス）充填
-        run: node scripts/crawl/enrich-logi.js --limit ${{ github.event.inputs.limit || '200' }}
+        run: node scripts/crawl/enrich-logi.js --batch --limit ${{ github.event.inputs.limit || '200' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_SCHEMA: yabai_travel
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOOGLE_DIRECTIONS_API_KEY: ${{ secrets.GOOGLE_DIRECTIONS_API_KEY }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
