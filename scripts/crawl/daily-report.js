@@ -102,20 +102,27 @@ async function collectStats(client) {
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events e LEFT JOIN ${SCHEMA}.access_routes ar ON ar.event_id = e.id WHERE e.collected_at IS NOT NULL AND e.location IS NOT NULL AND ar.id IS NULL`),
   ])
 
-  // batch_jobs集計（直近24時間）
-  let batchPendingJobs = 0, batchPendingRequests = 0, batchCompletedRequests = 0
+  // batch_jobs集計（直近24時間、script_typeごと）
+  // batchByStep[scriptType] = { pending: request_count合計, ended: succeeded合計 }
+  const batchByStep = {}
   try {
     const batchRes = await client.query(`
       SELECT
-        COUNT(*) FILTER (WHERE status = 'pending') AS pending_jobs,
+        script_type,
         COALESCE(SUM(request_count) FILTER (WHERE status = 'pending'), 0) AS pending_requests,
-        COALESCE(SUM(succeeded) FILTER (WHERE status = 'ended'), 0) AS completed_requests
+        COALESCE(SUM(succeeded) FILTER (WHERE status = 'ended'), 0) AS ended_succeeded,
+        COALESCE(SUM(request_count) FILTER (WHERE status = 'ended'), 0) AS ended_requests
       FROM ${SCHEMA}.batch_jobs
       WHERE submitted_at >= NOW() - INTERVAL '24 hours'
+      GROUP BY script_type
     `)
-    batchPendingJobs = parseInt(batchRes.rows[0].pending_jobs) || 0
-    batchPendingRequests = parseInt(batchRes.rows[0].pending_requests) || 0
-    batchCompletedRequests = parseInt(batchRes.rows[0].completed_requests) || 0
+    for (const row of batchRes.rows) {
+      batchByStep[row.script_type] = {
+        pending: parseInt(row.pending_requests) || 0,
+        endedSucceeded: parseInt(row.ended_succeeded) || 0,
+        endedRequests: parseInt(row.ended_requests) || 0,
+      }
+    }
   } catch (e) {
     // batch_jobsテーブルが存在しない場合は無視
   }
@@ -142,9 +149,7 @@ async function collectStats(client) {
     catPendingNew,
     logiBase,
     logiPending,
-    batchPendingJobs,
-    batchPendingRequests,
-    batchCompletedRequests,
+    batchByStep,
   }
 }
 
@@ -329,8 +334,19 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   lines.push(`  未処理: ${fmt(stats.logiPending)}件`)
   lines.push('')
   lines.push('[AI Batch処理（直近24h）]')
-  lines.push(`  投入済み（処理中）: ${fmt(stats.batchPendingJobs)}件 (${fmt(stats.batchPendingRequests)} リクエスト)`)
-  lines.push(`  完了（取得済み）  : ${fmt(stats.batchCompletedRequests)}件`)
+  lines.push(`  ${'ステップ'.padEnd(18)} ${'総数'.padStart(5)}  ${'結果待ち'.padStart(6)}  ${'取得済み'.padStart(6)}  ${'未投入'.padStart(6)}`)
+  const batchSteps = [
+    { label: 'Step2 イベント詳細', type: 'enrich-event',           total: stats.totalEvents },
+    { label: 'Step3 カテゴリ詳細', type: 'enrich-category-detail', total: stats.catBase },
+    { label: 'Step4 ロジ情報',     type: 'enrich-logi',            total: stats.logiBase },
+  ]
+  for (const s of batchSteps) {
+    const b = stats.batchByStep[s.type] || { pending: 0, endedSucceeded: 0, endedRequests: 0 }
+    const waiting = b.pending
+    const received = b.endedSucceeded
+    const notSubmitted = Math.max(0, s.total - waiting - b.endedRequests)
+    lines.push(`  ${s.label.padEnd(18)} ${fmt(s.total).padStart(5)}  ${fmt(waiting).padStart(6)}  ${fmt(received).padStart(6)}  ${fmt(notSubmitted).padStart(6)}`)
+  }
   lines.push('')
 
   // --- Summary ---
