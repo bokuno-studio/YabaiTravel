@@ -74,6 +74,10 @@ async function collectStats(client) {
     entryFeeFilled,
     accommodationEventsFilled,
     accessRouteCostFilled,
+    catBase,
+    catPendingNew,
+    logiBase,
+    logiPending,
   ] = await Promise.all([
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories`),
@@ -92,6 +96,10 @@ async function collectStats(client) {
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE entry_fee IS NOT NULL`),
     queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.accommodations`),
     queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.access_routes WHERE cost_estimate IS NOT NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id WHERE e.collected_at IS NOT NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id WHERE c.collected_at IS NULL AND c.attempt_count < 3 AND e.collected_at IS NOT NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE collected_at IS NOT NULL AND location IS NOT NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events e LEFT JOIN ${SCHEMA}.access_routes ar ON ar.event_id = e.id WHERE e.collected_at IS NOT NULL AND e.location IS NOT NULL AND ar.id IS NULL`),
   ])
 
   // batch_jobs集計（直近24時間）
@@ -130,6 +138,10 @@ async function collectStats(client) {
     entryFeeFilled,
     accommodationEventsFilled,
     accessRouteCostFilled,
+    catBase,
+    catPendingNew,
+    logiBase,
+    logiPending,
     batchPendingJobs,
     batchPendingRequests,
     batchCompletedRequests,
@@ -298,21 +310,23 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   // --- Pipeline Status ---
   lines.push('■ パイプライン状況')
   lines.push('')
-  lines.push('[イベント収集]')
-  lines.push(`  取得イベント総数: ${fmt(stats.totalEvents)}件`)
-  lines.push(`    詳細ページあり: ${fmt(stats.eventsWithDetailPage)}件 (${pct(stats.eventsWithDetailPage, stats.totalEvents)})`)
+  lines.push('[Step1] イベント収集')
+  lines.push(`  収集済み: ${fmt(stats.totalEvents)}件`)
   lines.push('')
-  lines.push('[カテゴリ取得]')
-  lines.push(`  取得済み: ${fmt(stats.catDone)}件 / ${fmt(stats.totalCategories)}件`)
-  lines.push(`  未取得  : ${fmt(stats.catPending)}件`)
+  lines.push('[Step2] イベント詳細（AI Batch）')
+  lines.push(`  母数: ${fmt(stats.totalEvents)}件`)
+  lines.push(`  完了: ${fmt(stats.enrichedEvents)}件 (${pct(stats.enrichedEvents, stats.totalEvents)})`)
+  lines.push(`  未処理: ${fmt(stats.totalEvents - stats.enrichedEvents)}件`)
   lines.push('')
-  lines.push('[レース詳細（AI処理）]')
-  lines.push(`  完了: ${fmt(stats.catDone)}件 (${pct(stats.catDone, stats.totalCategories)})`)
-  lines.push(`  未処理: ${fmt(catBacklog)}件`)
+  lines.push('[Step3] カテゴリ詳細（AI）')
+  lines.push(`  母数: ${fmt(stats.catBase)}件（Step2完了イベントのカテゴリ）`)
+  lines.push(`  完了: ${fmt(stats.catDone)}件 (${pct(stats.catDone, stats.catBase)})`)
+  lines.push(`  未処理: ${fmt(stats.catPendingNew)}件`)
   lines.push('')
-  lines.push('[ロジ情報（AI処理）]')
-  lines.push(`  完了: ${fmt(stats.logiDone)}件 (${pct(stats.logiDone, stats.totalEvents)})`)
-  lines.push(`  未処理: ${fmt(accessBacklog)}件`)
+  lines.push('[Step4] ロジ情報（AI）')
+  lines.push(`  母数: ${fmt(stats.logiBase)}件（location有りイベント）`)
+  lines.push(`  完了: ${fmt(stats.accessRoutes)}件 (${pct(stats.accessRoutes, stats.logiBase)})`)
+  lines.push(`  未処理: ${fmt(stats.logiPending)}件`)
   lines.push('')
   lines.push('[AI Batch処理（直近24h）]')
   lines.push(`  投入済み（処理中）: ${fmt(stats.batchPendingJobs)}件 (${fmt(stats.batchPendingRequests)} リクエスト)`)
