@@ -281,7 +281,7 @@ export async function enrichCategoryDetail(event, category, opts = { dryRun: fal
       console.log(`  [tavily-1] ${eventName?.slice(0, 30)} / ${catLabel} | extracted empty, starting Tavily search`)
       const query = `${eventName} ${catName} entry fee registration price 参加費 料金`
       try {
-        const searchResults = await fetchTavilySearch(query)
+        const searchResults = await fetchTavilySearch(query, { searchDepth: 'advanced' })
         console.log(`  [tavily-1] search results: ${searchResults.length} items`)
         const tavilyPrefix = `The following is search result text (not a webpage). Extract information and return ONLY valid JSON. If no relevant information found, return {"entry_fee": null}.\n\n`
         for (const content of searchResults) {
@@ -556,18 +556,18 @@ async function fetchTargets(args) {
 
   if (CAT_ID) {
     const { rows } = await client.query(
-      `SELECT c.id, c.name, c.distance_km, e.id as event_id, e.name as event_name, e.official_url, e.race_type, e.country_en
+      `SELECT c.id, c.name, c.distance_km, e.id as event_id, e.name as event_name, e.official_url, e.entry_url, e.race_type, e.country_en
        FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id
        WHERE c.id = $1`,
       [CAT_ID]
     )
     targets = rows.map((r) => ({
-      event: { id: r.event_id, name: r.event_name, official_url: r.official_url, race_type: r.race_type, country_en: r.country_en },
+      event: { id: r.event_id, name: r.event_name, official_url: r.official_url, entry_url: r.entry_url, race_type: r.race_type, country_en: r.country_en },
       category: { id: r.id, name: r.name, distance_km: r.distance_km },
     }))
   } else if (EVENT_ID) {
     const { rows: [ev] } = await client.query(
-      `SELECT id, name, official_url, race_type, country_en FROM ${SCHEMA}.events WHERE id = $1`,
+      `SELECT id, name, official_url, entry_url, race_type, country_en FROM ${SCHEMA}.events WHERE id = $1`,
       [EVENT_ID]
     )
     if (!ev) { console.log('イベントが見つかりません'); process.exit(1) }
@@ -584,16 +584,23 @@ async function fetchTargets(args) {
     const limit = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : 50
     const offsetIdx = args.indexOf('--offset')
     const offset = offsetIdx >= 0 ? parseInt(args[offsetIdx + 1], 10) : 0
+    const FORCE = args.includes('--force')
+    const domainIdx = args.indexOf('--domain')
+    const domain = domainIdx >= 0 ? args[domainIdx + 1] : null
+    const attemptFilter = FORCE ? '' : 'AND c.attempt_count < 3'
+    const domainFilter = domain ? `AND (e.official_url ILIKE $3 OR e.entry_url ILIKE $3)` : ''
+    const queryParams = domain ? [limit, offset, `%${domain}%`] : [limit, offset]
     const { rows } = await client.query(
-      `SELECT c.id, c.name, c.distance_km, e.id as event_id, e.name as event_name, e.official_url, e.race_type, e.country_en
+      `SELECT c.id, c.name, c.distance_km, e.id as event_id, e.name as event_name, e.official_url, e.entry_url, e.race_type, e.country_en
        FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id
-       WHERE c.collected_at IS NULL AND c.attempt_count < 3 AND e.collected_at IS NOT NULL
+       WHERE c.collected_at IS NULL ${attemptFilter} AND e.collected_at IS NOT NULL
        AND (e.event_date IS NULL OR e.event_date >= CURRENT_DATE)
+       ${domainFilter}
        ORDER BY c.id ASC LIMIT $1 OFFSET $2`,
-      [limit, offset]
+      queryParams
     )
     targets = rows.map((r) => ({
-      event: { id: r.event_id, name: r.event_name, official_url: r.official_url, race_type: r.race_type, country_en: r.country_en },
+      event: { id: r.event_id, name: r.event_name, official_url: r.official_url, entry_url: r.entry_url, race_type: r.race_type, country_en: r.country_en },
       category: { id: r.id, name: r.name, distance_km: r.distance_km },
     }))
   }
