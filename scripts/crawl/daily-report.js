@@ -346,8 +346,8 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   lines.push('■ バックログ消化見込み')
   const eventEst = estimateDays(eventBacklog, history, 'enriched_events')
   const catEst = estimateDays(catBacklog, history, 'enriched_categories')
-  lines.push(`  イベント基本: ${eventBacklog}件残 → 約${eventEst}日後に完了`)
-  lines.push(`  カテゴリ詳細: ${catBacklog}件残 → 約${catEst}日後に完了`)
+  lines.push(`  イベント基本: ${eventBacklog}件残 → ${eventEst}日後に完了`)
+  lines.push(`  カテゴリ詳細: ${catBacklog}件残 → ${catEst}日後に完了`)
   lines.push('')
 
   // --- Error breakdown ---
