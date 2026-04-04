@@ -299,7 +299,7 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   const today = new Date().toISOString().slice(0, 10)
 
   const eventBacklog = stats.totalEvents - stats.enrichedEvents
-  const catBacklog = stats.totalCategories - stats.enrichedCategories
+  const catBacklog = stats.totalCategories - stats.catDone
   const accessBacklog = stats.enrichedEvents - stats.accessRoutes
   const accomBacklog = stats.enrichedEvents - stats.accommodations
 
@@ -345,7 +345,7 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
 
   const enrichRows = [
     { label: 'イベント基本情報', done: stats.enrichedEvents, total: stats.totalEvents, prevDone: yesterday?.enriched_events },
-    { label: 'カテゴリ詳細', done: stats.enrichedCategories, total: stats.totalCategories, prevDone: yesterday?.enriched_categories },
+    { label: 'カテゴリ詳細', done: stats.catDone, total: stats.totalCategories, prevDone: yesterday?.enriched_categories },
     { label: 'アクセス情報', done: stats.accessRoutes, total: stats.enrichedEvents, prevDone: yesterday?.access_routes_count },
     { label: '宿泊情報', done: stats.accommodations, total: stats.enrichedEvents, prevDone: yesterday?.accommodations_count },
   ]
@@ -407,7 +407,7 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   const datePct = pct(stats.eventDateFilled, stats.totalEvents)
   const latlngPct = pct(stats.eventLatLngFilled, stats.totalEvents)
   const moveCostPct = pct(stats.accessRouteCostFilled, stats.totalEvents)
-  const accessPct = pct(stats.accessRouteCostFilled, stats.totalEvents)
+  const accessPct = pct(stats.accessRoutes, stats.totalEvents)
 
   lines.push(`  詳細ページあり  ${detailPagePct.padStart(5)} [目標 90%] ${statusIcon(detailPagePct, 90)}`)
   lines.push(`  詳細充填        ${detailFillPct.padStart(5)} [目標 95%] ${statusIcon(detailFillPct, 95)}`)
