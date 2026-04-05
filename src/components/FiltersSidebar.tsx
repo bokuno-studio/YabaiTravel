@@ -18,11 +18,7 @@ export interface FiltersSidebarProps {
   raceTypes: Set<string>
   onRaceTypeToggle: (type: string) => void
   raceTypeLabel: (type: string | null) => string
-  /* Category filter */
-  availableCategories: string[]
-  selectedCategories: Set<string>
-  onCategoryToggle: (name: string) => void
-  /* Date range filter */
+/* Date range filter */
   availableMonths: string[]
   dateRangeStart: string | null
   dateRangeEnd: string | null
@@ -67,7 +63,6 @@ function countActiveFilters(props: FiltersSidebarProps): number {
   let count = 0
   if (props.raceTypes.size > 0) count++
   if (props.dateRangeStart || props.dateRangeEnd) count++
-  if (props.selectedCategories.size > 0) count++
   if (props.distanceRanges.size > 0) count++
   if (props.timeLimitMin) count++
   if (props.costMin > 0 || props.costMax < Infinity) count++
@@ -121,15 +116,6 @@ export function getActiveFilterChips(props: FiltersSidebarProps): { key: string;
         onRemove: () => props.onDateRangeChange(null, null),
       })
     }
-  }
-
-  // Categories
-  for (const name of props.selectedCategories) {
-    chips.push({
-      key: `cat-${name}`,
-      label: name,
-      onRemove: () => props.onCategoryToggle(name),
-    })
   }
 
   // Distance ranges

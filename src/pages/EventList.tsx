@@ -120,10 +120,6 @@ function EventList() {
     const fromParams = searchParams.get('month_to')
     return fromParams ?? (saved.dateRangeEnd ?? null)
   })
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => {
-    const fromParams = parseSetParam(searchParams, 'categories')
-    return fromParams.size > 0 ? fromParams : new Set(saved.selectedCategories)
-  })
 
   const [distanceRanges, setDistanceRanges] = useState<Set<number>>(() => {
     const fromParams = parseNumSetParam(searchParams, 'distances')
@@ -155,7 +151,6 @@ function EventList() {
       raceTypes: [...raceTypes],
       dateRangeStart,
       dateRangeEnd,
-      selectedCategories: [...selectedCategories],
       distanceRanges: [...distanceRanges],
       timeLimitMin,
       costMin,
@@ -169,7 +164,6 @@ function EventList() {
     if (dateRangeStart) params.set('month_from', dateRangeStart)
     if (dateRangeEnd) params.set('month_to', dateRangeEnd)
     // Old: if (selectedMonths.size > 0) params.set('months', [dateRangeStart, dateRangeEnd]].join(','))
-    if (selectedCategories.size > 0) params.set('categories', [...selectedCategories].join(','))
     if (distanceRanges.size > 0) params.set('distances', [...distanceRanges].join(','))
     if (timeLimitMin) params.set('timeLimitMin', timeLimitMin)
     if (costMin > 0) params.set('costMin', String(costMin))
@@ -178,7 +172,7 @@ function EventList() {
     if (entryStatus !== 'active') params.set('entryStatus', entryStatus)
     if (showPastEvents) params.set('showPast', '1')
     setSearchParams(params, { replace: true })
-  }, [raceTypes, dateRangeStart, dateRangeEnd, selectedCategories, distanceRanges, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents, setSearchParams])
+  }, [raceTypes, dateRangeStart, dateRangeEnd, distanceRanges, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents, setSearchParams])
 
   useEffect(() => {
     async function fetchEvents() {
@@ -323,15 +317,6 @@ function EventList() {
     })
   }
 
-  const toggleCategory = (name: string) => {
-    setSelectedCategories((prev) => {
-      const next = new Set(prev)
-      if (next.has(name)) next.delete(name)
-      else next.add(name)
-      return next
-    })
-  }
-
   const onDateRangeChange = (start: string | null, end: string | null) => {
     setDateRangeStart(start)
     setDateRangeEnd(end)
@@ -388,7 +373,7 @@ function EventList() {
     })
   }
 
-  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || distanceRanges.size > 0 || !!timeLimitMin || costMin > 0 || costMax < Infinity || !!poleFilter || entryStatus !== 'active' || showPastEvents
+  const hasAnyFilter = raceTypes.size > 0 || distanceRanges.size > 0 || !!timeLimitMin || costMin > 0 || costMax < Infinity || !!poleFilter || entryStatus !== 'active' || showPastEvents
 
   // #2: Reset all filters
   const resetAllFilters = useCallback(() => {
@@ -410,11 +395,6 @@ function EventList() {
     // デフォルト: 当日以降のイベントのみ表示（#135）
     if (!showPastEvents && event.event_date && event.event_date < today) return false
     if (raceTypes.size > 0 && (event.race_type == null || !raceTypes.has(event.race_type))) return false
-    if (selectedCategories.size > 0) {
-      const catNames = new Set((event.categories ?? []).map((c) => c.name))
-      const hasMatch = [...selectedCategories].some((name) => catNames.has(name))
-      if (!hasMatch) return false
-    }
     if ((dateRangeStart || dateRangeEnd) && event.event_date) {
       const ym = event.event_date.slice(0, 7)
       if (dateRangeStart && ym < dateRangeStart) return false
@@ -474,8 +454,6 @@ function EventList() {
     onRaceTypeToggle: toggleRaceType,
     raceTypeLabel,
     availableCategories,
-    selectedCategories,
-    onCategoryToggle: toggleCategory,
     availableMonths,
     dateRangeStart,
     dateRangeEnd,
@@ -503,7 +481,7 @@ function EventList() {
   // Inject filters into sidebar via context (dependency on filter state to avoid infinite loop)
   const { setFilterNode } = useSidebarFilter()
   const filterDepsKey = JSON.stringify([
-    [...raceTypes], dateRangeStart, dateRangeEnd, [...selectedCategories],
+    [...raceTypes], dateRangeStart, dateRangeEnd,
     [...distanceRanges], timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents,
     raceTypes.size, loading,
   ])
@@ -524,7 +502,7 @@ function EventList() {
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(INITIAL_RENDER_COUNT)
-  }, [raceTypes.size, selectedCategories.size, dateRangeStart, dateRangeEnd, distanceRanges.size, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents])
+  }, [raceTypes.size, dateRangeStart, dateRangeEnd, distanceRanges.size, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents])
 
   if (error) {
     return (

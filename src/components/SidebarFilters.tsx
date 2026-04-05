@@ -177,36 +177,6 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
         </FilterSection>
       )}
 
-      {/* Category */}
-      {props.availableCategories.length > 0 && (
-        <FilterSection title={props.t('filter.category')}>
-          <div className="flex flex-wrap gap-1">
-            {props.availableCategories.slice(0, 20).map((name) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => props.onCategoryToggle(name)}
-                className={cn(
-                  'rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors',
-                  props.selectedCategories.has(name)
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-                )}
-              >
-                {name}
-              </button>
-            ))}
-            {props.availableCategories.length > 20 && (
-              <span className="self-center text-[11px] text-muted-foreground">
-                {isEn
-                  ? `+${props.availableCategories.length - 20} more`
-                  : `他${props.availableCategories.length - 20}件`}
-              </span>
-            )}
-          </div>
-        </FilterSection>
-      )}
-
       {/* Distance */}
       <FilterSection title={props.t('filter.distance')}>
         <div className="flex flex-wrap gap-1">

@@ -9,7 +9,6 @@ interface FilterState {
   raceTypes: string[]
   dateRangeStart: string | null
   dateRangeEnd: string | null
-  selectedCategories: string[]
   distanceRanges: number[]
   timeLimitMin: string
   costMin: number
@@ -23,7 +22,6 @@ const DEFAULT: FilterState = {
   raceTypes: [],
   dateRangeStart: null,
   dateRangeEnd: null,
-  selectedCategories: [],
   distanceRanges: [],
   timeLimitMin: '',
   costMin: 0,
@@ -46,7 +44,6 @@ function loadFromSession(): FilterState {
       raceTypes: parsed.raceTypes ?? [],
       dateRangeStart: parsed.dateRangeStart ?? null,
       dateRangeEnd: parsed.dateRangeEnd ?? null,
-      selectedCategories: parsed.selectedCategories ?? [],
       distanceRanges: parsed.distanceRanges ?? [],
       timeLimitMin: parsed.timeLimitMin ?? '',
       costMin: parsed.costMin ?? 0,
