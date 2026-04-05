@@ -400,6 +400,7 @@ function CategoryDetail() {
 
   // #8: Prefer _en fields for English pages
   const displayName = isEn ? (event.name_en ?? event.name) : event.name
+  const displayDescription = isEn ? (event.description_en ?? event.description) : event.description
   const displayCategoryName = isEn ? (category.name_en ?? category.name) : category.name
   const displayLocation = isEn ? (event.location_en ?? event.location) : event.location
   const displayReceptionPlace = isEn
@@ -470,6 +471,11 @@ function CategoryDetail() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
             {displayName} — {displayCategoryName}
           </h1>
+          {displayDescription && (
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              {displayDescription}
+            </p>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Calendar className="h-3.5 w-3.5 shrink-0 text-primary/70" />
