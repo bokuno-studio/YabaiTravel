@@ -1,10 +1,21 @@
 import { useState } from 'react'
-import { ChevronDown, X } from 'lucide-react'
+import { ChevronDown, X, CalendarIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import PriceHistogramSlider from '@/components/PriceHistogramSlider'
 import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import type { DateRange } from 'react-day-picker'
 import type { FiltersSidebarProps } from '@/components/FiltersSidebar'
+
+/** Format date for display: "4/5" or "Apr 5" */
+function formatDate(dateStr: string, isEn: boolean): string {
+  const d = new Date(dateStr)
+  if (isEn) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    return `${months[d.getMonth()]} ${d.getDate()}`
+  }
+  return `${d.getMonth() + 1}/${d.getDate()}`
+}
 
 /** Format year-month for display: "2026年3月" or "2026/03" */
 
@@ -107,27 +118,48 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
         </FilterSection>
       )}
 
-      {/* Date Range Picker */}
+      {/* Date Range Picker — Popover */}
       <FilterSection title={isEn ? 'Date Range' : '開催時期'} defaultOpen>
-        <Calendar
-          mode="range"
-          selected={{
-            from: props.dateRangeStart ? new Date(props.dateRangeStart) : undefined,
-            to: props.dateRangeEnd ? new Date(props.dateRangeEnd) : undefined,
-          }}
-          onSelect={(range: DateRange | undefined) => {
-            const start = range?.from ? range.from.toISOString().slice(0, 10) : null
-            const end = range?.to ? range.to.toISOString().slice(0, 10) : null
-            props.onDateRangeChange(start, end)
-          }}
-          numberOfMonths={1}
-          className="rounded-md"
-        />
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                'flex w-full items-center gap-2 rounded border border-input bg-background px-2 py-1.5 text-xs transition-colors hover:bg-secondary/50',
+                (props.dateRangeStart || props.dateRangeEnd) ? 'text-foreground' : 'text-muted-foreground'
+              )}
+            >
+              <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">
+                {props.dateRangeStart && props.dateRangeEnd
+                  ? `${formatDate(props.dateRangeStart, isEn)} – ${formatDate(props.dateRangeEnd, isEn)}`
+                  : props.dateRangeStart
+                    ? `${formatDate(props.dateRangeStart, isEn)} –`
+                    : isEn ? 'Select dates' : '日付を選択'}
+              </span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="p-0" side="right" align="start">
+            <Calendar
+              mode="range"
+              selected={{
+                from: props.dateRangeStart ? new Date(props.dateRangeStart) : undefined,
+                to: props.dateRangeEnd ? new Date(props.dateRangeEnd) : undefined,
+              }}
+              onSelect={(range: DateRange | undefined) => {
+                const start = range?.from ? range.from.toISOString().slice(0, 10) : null
+                const end = range?.to ? range.to.toISOString().slice(0, 10) : null
+                props.onDateRangeChange(start, end)
+              }}
+              numberOfMonths={1}
+            />
+          </PopoverContent>
+        </Popover>
         {(props.dateRangeStart || props.dateRangeEnd) && (
           <button
             type="button"
             onClick={() => props.onDateRangeChange(null, null)}
-            className="mt-2 w-full text-xs px-2 py-1 rounded border border-border/50 hover:bg-secondary/50 transition-colors"
+            className="mt-1.5 w-full text-xs px-2 py-1 rounded border border-border/50 hover:bg-secondary/50 transition-colors"
           >
             {isEn ? 'Clear' : 'クリア'}
           </button>
