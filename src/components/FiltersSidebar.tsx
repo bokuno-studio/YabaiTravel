@@ -392,8 +392,7 @@ export function FilterChipBar({
   raceTypes,
   onRaceTypeToggle,
   raceTypeLabel,
-  availableMonths,
-}: Pick<FiltersSidebarProps, 'availableRaceTypes' | 'raceTypes' | 'onRaceTypeToggle' | 'raceTypeLabel' | 'availableMonths'>) {
+}: Pick<FiltersSidebarProps, 'availableRaceTypes' | 'raceTypes' | 'onRaceTypeToggle' | 'raceTypeLabel'>) {
   return (
     <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-none">
       <div className="flex shrink-0 gap-1.5">

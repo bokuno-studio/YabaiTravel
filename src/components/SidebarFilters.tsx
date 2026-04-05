@@ -49,7 +49,6 @@ function countActiveFilters(props: FiltersSidebarProps): number {
   let count = 0
   if (props.raceTypes.size > 0) count++
   if (props.dateRangeStart || props.dateRangeEnd) count++
-  if (props.selectedCategories.size > 0) count++
   if (props.distanceRanges.size > 0) count++
   if (props.timeLimitMin) count++
   if (props.costMin > 0 || props.costMax < Infinity) count++
@@ -68,7 +67,6 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
     // Clear all filters by toggling off each active one
     for (const type of props.raceTypes) props.onRaceTypeToggle(type)
     props.onDateRangeChange(null, null)
-    for (const c of props.selectedCategories) props.onCategoryToggle(c)
     for (const idx of props.distanceRanges) props.onDistanceRangeToggle(idx)
     if (props.timeLimitMin) props.onTimeLimitChange('')
     if (props.costMin > 0 || props.costMax < Infinity) props.onCostRangeChange(0, Infinity)
