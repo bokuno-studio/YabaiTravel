@@ -293,20 +293,6 @@ function EventList() {
     return RACE_TYPE_ORDER.filter((t) => types.has(t))
   }, [events])
 
-  /** 選択中のレース種別に応じたカテゴリ一覧（#28） */
-  const availableCategories = useMemo(() => {
-    const filteredEvts =
-      raceTypes.size > 0
-        ? events.filter((e) => e.race_type && raceTypes.has(e.race_type))
-        : events
-    const names = new Set<string>()
-    filteredEvts.forEach((e) => {
-      (e.categories ?? []).forEach((c) => {
-        if (c.name) names.add(c.name)
-      })
-    })
-    return [...names].sort()
-  }, [events, raceTypes])
 
   const toggleRaceType = (t: string) => {
     setRaceTypes((prev) => {
@@ -368,7 +354,6 @@ function EventList() {
   const getMatchingCategories = (event: EventWithCategories): Category[] => {
     const cats = event.categories ?? []
     return cats.filter((cat) => {
-      if (selectedCategories.size > 0 && !selectedCategories.has(cat.name)) return false
       return categoryMatchesFilter(cat)
     })
   }
@@ -378,8 +363,6 @@ function EventList() {
   // #2: Reset all filters
   const resetAllFilters = useCallback(() => {
     setRaceTypes(new Set())
-    setSelectedCategories(new Set())
-    setSelectedMonths(new Set())
     setDistanceRanges(new Set())
     setTimeLimitMin('')
     setCostMin(0)
@@ -453,7 +436,6 @@ function EventList() {
     raceTypes,
     onRaceTypeToggle: toggleRaceType,
     raceTypeLabel,
-    availableCategories,
     availableMonths,
     dateRangeStart,
     dateRangeEnd,

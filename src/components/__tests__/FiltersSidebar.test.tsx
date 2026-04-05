@@ -9,12 +9,10 @@ function makeDefaultProps(overrides: Partial<FiltersSidebarProps> = {}): Filters
     raceTypes: new Set<string>(),
     onRaceTypeToggle: vi.fn(),
     raceTypeLabel: (type: string | null) => type || 'other',
-    availableCategories: ['50km', '100km'],
-    selectedCategories: new Set<string>(),
-    onCategoryToggle: vi.fn(),
     availableMonths: ['2025-06', '2025-07'],
-    selectedMonths: new Set<string>(),
-    onMonthToggle: vi.fn(),
+    dateRangeStart: null,
+    dateRangeEnd: null,
+    onDateRangeChange: vi.fn(),
     distanceRanges: new Set<number>(),
     onDistanceRangeToggle: vi.fn(),
     distanceRangeOptions: [
@@ -61,9 +59,9 @@ describe('FilterBar', () => {
     expect(screen.getByText('trail')).toBeInTheDocument()
   })
 
-  it('displays active filter chips for selected months', () => {
-    render(<FilterBar {...makeDefaultProps({ selectedMonths: new Set(['2025-06']) })} />)
-    expect(screen.getByText('2025年6月')).toBeInTheDocument()
+  it('displays active filter chip for date range', () => {
+    render(<FilterBar {...makeDefaultProps({ dateRangeStart: '2025-06-01', dateRangeEnd: '2025-06-30' })} />)
+    expect(screen.getByText('2025年6月~6月')).toBeInTheDocument()
   })
 
   it('shows active count badge when filters are applied', () => {
