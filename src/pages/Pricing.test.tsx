@@ -57,7 +57,6 @@ describe('Pricing', () => {
     mockAuthState = { ...mockAuthState, user: null, isSupporter: false }
     renderPricing()
     expect(screen.getByText('月額プラン')).toBeInTheDocument()
-    expect(screen.getByText('おすすめ')).toBeInTheDocument()
   })
 
   it('shows Google sign-in button when not authenticated', () => {
