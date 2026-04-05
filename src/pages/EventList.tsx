@@ -113,11 +113,11 @@ function EventList() {
     return new Set(saved.raceTypes)
   })
   const [dateRangeStart, setDateRangeStart] = useState<string | null>(() => {
-    const fromParams = searchParams.get('month_from')
+    const fromParams = searchParams.get('date_from')
     return fromParams ?? (saved.dateRangeStart ?? null)
   })
   const [dateRangeEnd, setDateRangeEnd] = useState<string | null>(() => {
-    const fromParams = searchParams.get('month_to')
+    const fromParams = searchParams.get('date_to')
     return fromParams ?? (saved.dateRangeEnd ?? null)
   })
 
@@ -161,8 +161,8 @@ function EventList() {
     })
     const params = new URLSearchParams()
     if (raceTypes.size > 0) params.set('raceTypes', [...raceTypes].join(','))
-    if (dateRangeStart) params.set('month_from', dateRangeStart)
-    if (dateRangeEnd) params.set('month_to', dateRangeEnd)
+    if (dateRangeStart) params.set('date_from', dateRangeStart)
+    if (dateRangeEnd) params.set('date_to', dateRangeEnd)
     // Old: if (selectedMonths.size > 0) params.set('months', [dateRangeStart, dateRangeEnd]].join(','))
     if (distanceRanges.size > 0) params.set('distances', [...distanceRanges].join(','))
     if (timeLimitMin) params.set('timeLimitMin', timeLimitMin)
@@ -373,9 +373,8 @@ function EventList() {
     if (!showPastEvents && event.event_date && event.event_date < today) return false
     if (raceTypes.size > 0 && (event.race_type == null || !raceTypes.has(event.race_type))) return false
     if ((dateRangeStart || dateRangeEnd) && event.event_date) {
-      const ym = event.event_date.slice(0, 7)
-      if (dateRangeStart && ym < dateRangeStart) return false
-      if (dateRangeEnd && ym > dateRangeEnd) return false
+      if (dateRangeStart && event.event_date < dateRangeStart) return false
+      if (dateRangeEnd && event.event_date > dateRangeEnd) return false
     }
     if (entryStatus) {
       if (entryStatus === 'active') {

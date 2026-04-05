@@ -2,16 +2,11 @@ import { useState } from 'react'
 import { ChevronDown, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import PriceHistogramSlider from '@/components/PriceHistogramSlider'
+import { Calendar } from '@/components/ui/calendar'
+import type { DateRange } from 'react-day-picker'
 import type { FiltersSidebarProps } from '@/components/FiltersSidebar'
 
 /** Format year-month for display: "2026年3月" or "2026/03" */
-function formatYearMonth(ym: string, lang: string | undefined): string {
-  const [year, month] = ym.split('-')
-  const m = parseInt(month, 10)
-  if (lang === 'en') return `${year}/${month}`
-  return `${year}年${m}月`
-}
-
 
 /** Collapsible section wrapper */
 function FilterSection({
@@ -113,67 +108,31 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
       )}
 
       {/* Date Range Picker */}
-      {props.availableMonths.length > 0 && (
-        <FilterSection title={isEn ? 'Date Range' : '開催時期'} defaultOpen>
-          <div className="space-y-3">
-            <div>
-              <label htmlFor="dateRangeStart" className="block text-xs font-medium mb-1">
-                {isEn ? 'From' : '開始月'}
-              </label>
-              <select
-                id="dateRangeStart"
-                value={props.dateRangeStart ?? ''}
-                onChange={(e) => {
-                  const val = e.target.value || null
-                  const correctedEnd = props.dateRangeEnd && val && val > props.dateRangeEnd ? val : props.dateRangeEnd
-                  props.onDateRangeChange(val, correctedEnd)
-                }}
-                className="w-full rounded border border-input bg-background px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
-                aria-label={isEn ? 'Start month' : '開始月'}
-              >
-                <option value="">{isEn ? '---' : '指定なし'}</option>
-                {props.availableMonths.map((ym) => (
-                  <option key={`start-${ym}`} value={ym}>
-                    {formatYearMonth(ym, props.lang)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="dateRangeEnd" className="block text-xs font-medium mb-1">
-                {isEn ? 'To' : '終了月'}
-              </label>
-              <select
-                id="dateRangeEnd"
-                value={props.dateRangeEnd ?? ''}
-                onChange={(e) => {
-                  const val = e.target.value || null
-                  const correctedStart = props.dateRangeStart && val && val < props.dateRangeStart ? val : props.dateRangeStart
-                  props.onDateRangeChange(correctedStart, val)
-                }}
-                className="w-full rounded border border-input bg-background px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
-                aria-label={isEn ? 'End month' : '終了月'}
-              >
-                <option value="">{isEn ? '---' : '指定なし'}</option>
-                {props.availableMonths.map((ym) => (
-                  <option key={`end-${ym}`} value={ym}>
-                    {formatYearMonth(ym, props.lang)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {(props.dateRangeStart || props.dateRangeEnd) && (
-              <button
-                type="button"
-                onClick={() => props.onDateRangeChange(null, null)}
-                className="w-full text-xs px-2 py-1 rounded border border-border/50 hover:bg-secondary/50 transition-colors"
-              >
-                {isEn ? 'Clear' : 'クリア'}
-              </button>
-            )}
-          </div>
-        </FilterSection>
-      )}
+      <FilterSection title={isEn ? 'Date Range' : '開催時期'} defaultOpen>
+        <Calendar
+          mode="range"
+          selected={{
+            from: props.dateRangeStart ? new Date(props.dateRangeStart) : undefined,
+            to: props.dateRangeEnd ? new Date(props.dateRangeEnd) : undefined,
+          }}
+          onSelect={(range: DateRange | undefined) => {
+            const start = range?.from ? range.from.toISOString().slice(0, 10) : null
+            const end = range?.to ? range.to.toISOString().slice(0, 10) : null
+            props.onDateRangeChange(start, end)
+          }}
+          numberOfMonths={1}
+          className="rounded-md"
+        />
+        {(props.dateRangeStart || props.dateRangeEnd) && (
+          <button
+            type="button"
+            onClick={() => props.onDateRangeChange(null, null)}
+            className="mt-2 w-full text-xs px-2 py-1 rounded border border-border/50 hover:bg-secondary/50 transition-colors"
+          >
+            {isEn ? 'Clear' : 'クリア'}
+          </button>
+        )}
+      </FilterSection>
 
       {/* Distance */}
       <FilterSection title={props.t('filter.distance')}>
