@@ -303,12 +303,6 @@ function EventList() {
     })
   }
 
-  const onDateRangeChange = (start: string | null, end: string | null) => {
-    setDateRangeStart(start)
-    setDateRangeEnd(end)
-  }
-
-
   /** イベント日付から利用可能な月一覧を生成 */
   const availableMonths = useMemo(() => {
     const months = new Set<string>()
