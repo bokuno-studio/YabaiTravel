@@ -274,39 +274,6 @@ export function FilterBar(props: FiltersSidebarProps) {
                 </div>
               )}
 
-
-
-              {/* Category */}
-              {props.availableCategories.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {props.t('filter.category')}
-                  </h3>
-                  <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto">
-                    {props.availableCategories.slice(0, 20).map((name) => (
-                      <Badge
-                        key={name}
-                        variant={props.selectedCategories.has(name) ? 'default' : 'outline'}
-                        className={cn(
-                          'cursor-pointer select-none transition-all text-xs',
-                          props.selectedCategories.has(name)
-                            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                            : 'hover:bg-secondary',
-                        )}
-                        onClick={() => props.onCategoryToggle(name)}
-                      >
-                        {name}
-                      </Badge>
-                    ))}
-                    {props.availableCategories.length > 20 && (
-                      <span className="self-center text-xs text-muted-foreground">
-                        {props.lang === 'en' ? `+${props.availableCategories.length - 20} more` : `他${props.availableCategories.length - 20}件`}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-
               {/* Distance */}
               <div className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
