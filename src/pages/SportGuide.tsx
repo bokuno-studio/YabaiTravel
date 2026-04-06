@@ -103,6 +103,10 @@ const FALLBACK_GUIDES: Record<string, { ja: { title: string; body: string }; en:
     ja: { title: 'アドベンチャーレース', body: 'アドベンチャーレースはチーム制の長距離複合レースです。' },
     en: { title: 'Adventure Racing', body: 'Adventure racing is a team-based multidiscipline endurance event.' },
   },
+  endurance: {
+    ja: { title: 'エンデュランスレース', body: 'エンデュランスレースは、長距離耐久系のレースの総称です。トレイルランニング、トライアスロン、ウルトラマラソン、HYROX、オブスタクルレース等が含まれます。' },
+    en: { title: 'Endurance Racing', body: 'Endurance racing encompasses long-distance racing events including trail running, triathlon, ultramarathon, HYROX, obstacle course racing, and more.' },
+  },
 }
 
 const SPORT_TITLES: Record<string, { ja: string; en: string }> = {
@@ -116,6 +120,7 @@ const SPORT_TITLES: Record<string, { ja: string; en: string }> = {
   duathlon: { ja: 'デュアスロン', en: 'Duathlon' },
   rogaining: { ja: 'ロゲイニング', en: 'Rogaining' },
   adventure: { ja: 'アドベンチャーレース', en: 'Adventure Racing' },
+  endurance: { ja: 'エンデュランスレース', en: 'Endurance Racing' },
 }
 
 // --- Section labels ---
