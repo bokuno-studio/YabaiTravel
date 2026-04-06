@@ -489,10 +489,10 @@ function EventList() {
 
   return (
     <>
-      <title>{isEn ? 'Find Endurance Events | yabai.travel' : 'エンデュランス大会を探す | yabai.travel'}</title>
-      <meta name="description" content={isEn ? 'Compare trail running, Spartan, HYROX, marathon and other endurance events with access and accommodation costs.' : 'トレラン・スパルタン・HYROX・マラソンなどエンデュランス系大会の情報、アクセス・宿泊コストをまとめて比較できるポータルサイト。'} />
-      <meta property="og:title" content={isEn ? 'Find Endurance Events | yabai.travel' : 'エンデュランス大会を探す | yabai.travel'} />
-      <meta property="og:description" content={isEn ? 'Compare trail running, Spartan, HYROX, marathon and other endurance events with access and accommodation costs.' : 'トレラン・スパルタン・HYROX・マラソンなどエンデュランス系大会の情報、アクセス・宿泊コストをまとめて比較できるポータルサイト。'} />
+      <title>{isEn ? 'Endurance Races Near Tokyo | yabai.travel' : 'トレラン・HYROX・スパルタン大会を探す | yabai.travel'}</title>
+      <meta name="description" content={isEn ? 'Search trail running, HYROX, Spartan and marathon races in Japan with travel costs from Tokyo. Day trip or overnight — all in one place.' : '東京起点の交通アクセス・宿泊コスト付きで、トレラン・HYROX・スパルタンレース・マラソン大会を検索。日帰り判定や宿泊必要性まで一括確認。39+ソースから自動収集。'} />
+      <meta property="og:title" content={isEn ? 'Endurance Races Near Tokyo | yabai.travel' : 'トレラン・HYROX・スパルタン大会を探す | yabai.travel'} />
+      <meta property="og:description" content={isEn ? 'Search trail running, HYROX, Spartan and marathon races in Japan with travel costs from Tokyo. Day trip or overnight — all in one place.' : '東京起点の交通アクセス・宿泊コスト付きで、トレラン・HYROX・スパルタンレース・マラソン大会を検索。日帰り判定や宿泊必要性まで一括確認。39+ソースから自動収集。'} />
       <meta property="og:url" content={`https://yabai.travel/${lang || 'ja'}`} />
       <link rel="canonical" href={`https://yabai.travel${location.pathname}`} />
       <link rel="alternate" hrefLang="ja" href={`https://yabai.travel${location.pathname.replace(/^\/(ja|en)/, '/ja')}`} />
