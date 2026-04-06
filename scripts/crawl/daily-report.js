@@ -324,55 +324,36 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   lines.push('[Step2] イベント詳細（AI Batch）')
   lines.push(`  母数: ${fmt(stats.totalEvents)}件`)
   lines.push(`  完了: ${fmt(stats.enrichedEvents)}件 (${pct(stats.enrichedEvents, stats.totalEvents)})`)
-  lines.push(`  未処理: ${fmt(stats.totalEvents - stats.enrichedEvents)}件`)
+  const step2Remaining = stats.totalEvents - stats.enrichedEvents
+  const step2Pending = stats.batchPendingByStep['enrich-event'] || 0
+  const step2Waiting = Math.max(0, step2Remaining - step2Pending)
+  lines.push(`  未処理: ${fmt(step2Remaining)}件`)
+  if (step2Pending > 0) lines.push(`    うち API待ち（Batch処理中）: ${fmt(step2Pending)}件`)
+  if (step2Waiting > 0) lines.push(`    うち Cron待ち: ${fmt(step2Waiting)}件`)
   lines.push('')
   lines.push('[Step3] カテゴリ詳細（AI）')
   lines.push(`  母数: ${fmt(stats.catBase)}件（Step2完了イベントのカテゴリ）`)
   lines.push(`  完了: ${fmt(stats.catDone)}件 (${pct(stats.catDone, stats.catBase)})`)
-  lines.push(`  未処理: ${fmt(stats.catBase - stats.catDone)}件`)
-  lines.push(`    うち 要処理（未来イベント）: ${fmt(stats.catUncollectedFuture)}件`)
-  lines.push(`    うち 対象外（過去開催）:    ${fmt(stats.catUncollectedPast)}件`)
+  const step3Remaining = stats.catBase - stats.catDone
+  const step3Pending = stats.batchPendingByStep['enrich-category-detail'] || 0
+  const step3Future = stats.catUncollectedFuture
+  const step3Past = stats.catUncollectedPast
+  const step3Waiting = Math.max(0, step3Remaining - step3Pending - step3Future - step3Past)
+  lines.push(`  未処理: ${fmt(step3Remaining)}件`)
+  if (step3Pending > 0) lines.push(`    うち API待ち（Batch処理中）: ${fmt(step3Pending)}件`)
+  if (step3Waiting > 0)  lines.push(`    うち Cron待ち（未来イベント）: ${fmt(step3Waiting)}件`)
+  if (step3Past > 0)     lines.push(`    うち 対象外（過去開催）:       ${fmt(step3Past)}件`)
   lines.push('')
   lines.push('[Step4] ロジ情報（AI）')
   lines.push(`  母数: ${fmt(stats.logiBase)}件（location有りイベント）`)
   lines.push(`  完了: ${fmt(stats.accessRoutes)}件 (${pct(stats.accessRoutes, stats.logiBase)})`)
+  const step4Pending = stats.batchPendingByStep['enrich-logi'] || 0
+  const step4Waiting = Math.max(0, stats.logiPending - step4Pending)
   lines.push(`  未処理: ${fmt(stats.logiPending)}件`)
-  lines.push('')
-  lines.push('[AI Batch処理状況]')
-  lines.push(`  ${'ステップ'.padEnd(18)} ${'総数'.padStart(5)}  ${'処理済み'.padStart(6)}  ${'処理中'.padStart(5)}  ${'未処理'.padStart(5)}`)
-  const batchSteps = [
-    { label: 'Step2 イベント詳細', type: 'enrich-event',           total: stats.totalEvents,  done: stats.enrichedEvents },
-    { label: 'Step3 カテゴリ詳細', type: 'enrich-category-detail', total: stats.catBase,       done: stats.catDone },
-    { label: 'Step4 ロジ情報',     type: 'enrich-logi',            total: stats.logiBase,      done: stats.accessRoutes },
-  ]
-  for (const s of batchSteps) {
-    const inProgress = stats.batchPendingByStep[s.type] || 0
-    const notYet = Math.max(0, s.total - s.done - inProgress)
-    lines.push(`  ${s.label.padEnd(18)} ${fmt(s.total).padStart(5)}  ${fmt(s.done).padStart(6)}  ${fmt(inProgress).padStart(5)}  ${fmt(notYet).padStart(5)}`)
-  }
-  lines.push('')
-
-  // --- Summary ---
-  lines.push('■ 全体サマリー')
-  lines.push(`  レース数:        ${fmt(stats.totalEvents)}${diff(stats.totalEvents, yesterday?.total_events)}`)
-  lines.push(`  カテゴリ数:     ${fmt(stats.totalCategories)}${diff(stats.totalCategories, yesterday?.total_categories)}`)
-  lines.push('')
-
-  // --- Enrich progress ---
-  lines.push('■ Enrich進捗')
-  lines.push(`  ${padEndW('', 14)} ${'完了'.padStart(5)}  ${'未完了'.padStart(5)}  ${'完了率'.padStart(6)}  ${'前日比'.padStart(5)}`)
-
-  const enrichRows = [
-    { label: 'イベント基本情報', done: stats.enrichedEvents, total: stats.totalEvents, prevDone: yesterday?.enriched_events },
-    { label: 'カテゴリ詳細', done: stats.catDone, total: stats.totalCategories, prevDone: yesterday?.enriched_categories },
-    { label: 'アクセス情報', done: stats.accessRoutes, total: stats.enrichedEvents, prevDone: yesterday?.access_routes_count },
-    { label: '宿泊情報', done: stats.accommodations, total: stats.enrichedEvents, prevDone: yesterday?.accommodations_count },
-  ]
-  for (const r of enrichRows) {
-    const remaining = r.total - r.done
-    const dayDiff = r.prevDone != null ? diff(r.done, r.prevDone) : ''
-    lines.push(`  ${padEndW(r.label, 14)} ${fmt(r.done).padStart(5)}  ${fmt(remaining).padStart(5)}  ${pct(r.done, r.total).padStart(6)}  ${dayDiff.padStart(5)}`)
-  }
+  if (step4Pending > 0) lines.push(`    うち API待ち（Batch処理中）: ${fmt(step4Pending)}件`)
+  if (step4Waiting > 0) lines.push(`    うち Cron待ち: ${fmt(step4Waiting)}件`)
+  const locationMissing = stats.enrichedEvents - stats.logiBase
+  if (locationMissing > 0) lines.push(`  対象外（location未取得）: ${fmt(locationMissing)}件`)
   lines.push('')
 
   // --- Backlog estimate ---
