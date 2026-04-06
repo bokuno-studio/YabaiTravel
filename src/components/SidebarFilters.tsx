@@ -7,6 +7,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import type { DateRange } from 'react-day-picker'
 import type { FiltersSidebarProps } from '@/components/FiltersSidebar'
 
+/** Convert a Date to a local YYYY-MM-DD string (avoids UTC timezone shift) */
+const toLocalDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
 /** Format date for display: "4/5" or "Apr 5" */
 function formatDate(dateStr: string, isEn: boolean): string {
   const d = new Date(dateStr)
@@ -125,8 +129,8 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
                 to: props.dateRangeEnd ? new Date(props.dateRangeEnd) : undefined,
               }}
               onSelect={(range: DateRange | undefined) => {
-                const start = range?.from ? range.from.toISOString().slice(0, 10) : null
-                const end = range?.to ? range.to.toISOString().slice(0, 10) : null
+                const start = range?.from ? toLocalDate(range.from) : null
+                const end = range?.to ? toLocalDate(range.to) : null
                 props.onDateRangeChange(start, end)
               }}
               numberOfMonths={2}
@@ -137,15 +141,14 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
             />
           </PopoverContent>
         </Popover>
-        {(props.dateRangeStart || props.dateRangeEnd) && (
-          <button
-            type="button"
-            onClick={() => props.onDateRangeChange(null, null)}
-            className="mt-1.5 w-full text-xs px-2 py-1 rounded border border-border/50 hover:bg-secondary/50 transition-colors"
-          >
-            {isEn ? 'Clear' : 'クリア'}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => props.onDateRangeChange(null, null)}
+          disabled={!props.dateRangeStart && !props.dateRangeEnd}
+          className="mt-1.5 w-full text-xs px-2 py-1 rounded border border-border/50 hover:bg-secondary/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {isEn ? 'Clear' : 'クリア'}
+        </button>
       </FilterSection>
 
       {/* Race Type */}
