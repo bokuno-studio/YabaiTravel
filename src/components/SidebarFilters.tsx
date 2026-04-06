@@ -96,28 +96,6 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
         )}
       </div>
 
-      {/* Race Type */}
-      {props.availableRaceTypes.length > 0 && (
-        <FilterSection title={isEn ? 'Race Type' : 'レース種別'} defaultOpen>
-          <div className="space-y-0.5">
-            {props.availableRaceTypes.map((type) => (
-              <label
-                key={type}
-                className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-secondary/50 transition-colors"
-              >
-                <input
-                  type="checkbox"
-                  checked={props.raceTypes.has(type)}
-                  onChange={() => props.onRaceTypeToggle(type)}
-                  className="h-3.5 w-3.5 rounded border-input text-primary accent-primary"
-                />
-                <span className="text-xs">{props.raceTypeLabel(type)}</span>
-              </label>
-            ))}
-          </div>
-        </FilterSection>
-      )}
-
       {/* Date Range Picker — Popover */}
       <FilterSection title={isEn ? 'Date Range' : '開催時期'} defaultOpen>
         <Popover>
@@ -169,6 +147,28 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
           </button>
         )}
       </FilterSection>
+
+      {/* Race Type */}
+      {props.availableRaceTypes.length > 0 && (
+        <FilterSection title={isEn ? 'Race Type' : 'レース種別'} defaultOpen>
+          <div className="space-y-0.5">
+            {props.availableRaceTypes.map((type) => (
+              <label
+                key={type}
+                className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-secondary/50 transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  checked={props.raceTypes.has(type)}
+                  onChange={() => props.onRaceTypeToggle(type)}
+                  className="h-3.5 w-3.5 rounded border-input text-primary accent-primary"
+                />
+                <span className="text-xs">{props.raceTypeLabel(type)}</span>
+              </label>
+            ))}
+          </div>
+        </FilterSection>
+      )}
 
       {/* Distance */}
       <FilterSection title={props.t('filter.distance')}>
