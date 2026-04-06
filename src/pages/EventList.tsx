@@ -487,12 +487,22 @@ function EventList() {
     )
   }
 
+  const isSingleRaceType = (type: string) => raceTypes.size === 1 && raceTypes.has(type)
+
+  const pageTitle = isSingleRaceType('hyrox')
+    ? (isEn ? 'HYROX Japan 2026 | Schedule, Venues & Travel from Tokyo — yabai.travel' : 'HYROX日本大会 2026 — スケジュール・会場・交通アクセス | yabai.travel')
+    : (isEn ? 'Endurance Races Near Tokyo | yabai.travel' : 'トレラン・HYROX・スパルタン大会を探す | yabai.travel')
+
+  const pageDescription = isSingleRaceType('hyrox')
+    ? (isEn ? 'HYROX Japan race schedule, entry fees, and travel guide from Tokyo. Find venues in Chiba and more with access and accommodation costs.' : 'HYROX日本大会（千葉など）のスケジュール・参加費・東京からのアクセス・宿泊情報を一括確認。初心者から上級者まで対応。')
+    : (isEn ? 'Search trail running, HYROX, Spartan and marathon races in Japan with travel costs from Tokyo. Day trip or overnight — all in one place.' : '東京起点の交通アクセス・宿泊コスト付きで、トレラン・HYROX・スパルタンレース・マラソン大会を検索。日帰り判定や宿泊必要性まで一括確認。39+ソースから自動収集。')
+
   return (
     <>
-      <title>{isEn ? 'Endurance Races Near Tokyo | yabai.travel' : 'トレラン・HYROX・スパルタン大会を探す | yabai.travel'}</title>
-      <meta name="description" content={isEn ? 'Search trail running, HYROX, Spartan and marathon races in Japan with travel costs from Tokyo. Day trip or overnight — all in one place.' : '東京起点の交通アクセス・宿泊コスト付きで、トレラン・HYROX・スパルタンレース・マラソン大会を検索。日帰り判定や宿泊必要性まで一括確認。39+ソースから自動収集。'} />
-      <meta property="og:title" content={isEn ? 'Endurance Races Near Tokyo | yabai.travel' : 'トレラン・HYROX・スパルタン大会を探す | yabai.travel'} />
-      <meta property="og:description" content={isEn ? 'Search trail running, HYROX, Spartan and marathon races in Japan with travel costs from Tokyo. Day trip or overnight — all in one place.' : '東京起点の交通アクセス・宿泊コスト付きで、トレラン・HYROX・スパルタンレース・マラソン大会を検索。日帰り判定や宿泊必要性まで一括確認。39+ソースから自動収集。'} />
+      <title>{pageTitle}</title>
+      <meta name="description" content={pageDescription} />
+      <meta property="og:title" content={pageTitle} />
+      <meta property="og:description" content={pageDescription} />
       <meta property="og:url" content={`https://yabai.travel/${lang || 'ja'}`} />
       <link rel="canonical" href={`https://yabai.travel${location.pathname}`} />
       <link rel="alternate" hrefLang="ja" href={`https://yabai.travel${location.pathname.replace(/^\/(ja|en)/, '/ja')}`} />
