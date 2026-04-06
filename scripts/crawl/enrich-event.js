@@ -18,7 +18,7 @@ import {
   extractRelevantLinks, callLlm, fetchTavilySearch, isPortalUrl,
   reclassifyRaceType, AGGREGATOR_DOMAINS, extractAndSaveCourseMap,
 } from './lib/enrich-utils.js'
-import { runBatch } from './lib/batch-utils.js'
+import { runBatch, createBatch } from './lib/batch-utils.js'
 
 loadEnv()
 const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
@@ -799,6 +799,7 @@ async function runCli() {
 async function runBatchCli() {
   const args = process.argv.slice(2)
   const DRY_RUN = args.includes('--dry-run')
+  const SEND_ONLY = args.includes('--send-only')
   const rows = await fetchEventTargets(args)
 
   if (rows.length === 0) {
@@ -879,6 +880,12 @@ async function runBatchCli() {
       // チャンク内のバッチを送信・結果処理
       let chunkResults = new Map()
       if (chunkRequests.length > 0 && !DRY_RUN) {
+        // SEND_ONLY=true の場合: createBatch()のみ呼んでbatch_id返す
+        if (SEND_ONLY) {
+          const batchId = await createBatch(anthropic, chunkRequests)
+          console.log(`[batch-send] batch_id=${batchId}`)
+          return batchId  // batch_idを返して終了
+        }
         chunkResults = await runBatch(anthropic, chunkRequests)
         console.log(`[batch] チャンク ${chunkNumber}: ${chunkRequests.length} 件送信完了`)
       } else if (DRY_RUN && chunkRequests.length > 0) {
