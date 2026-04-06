@@ -139,7 +139,7 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
               </span>
             </button>
           </PopoverTrigger>
-          <PopoverContent className="p-0" side="right" align="start">
+          <PopoverContent className="p-0" side="bottom" align="start">
             <Calendar
               mode="range"
               selected={{
@@ -151,7 +151,11 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
                 const end = range?.to ? range.to.toISOString().slice(0, 10) : null
                 props.onDateRangeChange(start, end)
               }}
-              numberOfMonths={1}
+              numberOfMonths={2}
+              classNames={{
+                day_button: 'h-11 w-11',
+                day: 'h-11 w-11',
+              }}
             />
           </PopoverContent>
         </Popover>
