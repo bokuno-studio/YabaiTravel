@@ -85,6 +85,20 @@ async function run() {
   // Batch モード判定: BATCH フラグが有効でかつ ②-A を処理する場合
   const useBatchMode = BATCH && !CATEGORY_ONLY
 
+  // ②-A Batch モード時: 前回 pending確認（24h以内pending → スキップ）
+  if (useBatchMode) {
+    const { rows: [pending] } = await client.query(
+      `SELECT batch_id FROM ${SCHEMA}.batch_jobs WHERE status='pending' AND created_at > NOW() - interval '24 hours' LIMIT 1`
+    )
+    if (pending) {
+      console.log(`[batch] 前回バッチ処理中 (batch_id: ${pending.batch_id})。スキップします`)
+      await client.end()
+      return
+    }
+  }
+
+  await client.end()
+
   // マージ（モードに応じてフィルタ）
   const seenIds = new Set()
   const pendingEvents = []
