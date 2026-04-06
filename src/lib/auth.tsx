@@ -44,8 +44,31 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
 
   if (error) {
     // 認証エラーの場合は自動サインアウト
+    // ただし、一度だけリトライを試みる
     if (isAuthError(error)) {
-      await handleAuthError(supabase)
+      try {
+        // リトライ: 1秒待機後に再試行
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        const { data: retryData, error: retryError } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle()
+
+        if (!retryError) {
+          return retryData as UserProfile
+        }
+
+        // リトライも失敗した場合のみサインアウト
+        if (isAuthError(retryError)) {
+          await handleAuthError(supabase)
+        } else {
+          console.error('Failed to fetch user profile (retry):', retryError.message)
+        }
+      } catch {
+        // リトライ処理自体の失敗は無視
+        console.error('Profile fetch retry failed:', error.message)
+      }
       return null
     }
     // その他のエラーはコンソールに出力
@@ -109,10 +132,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Listen for auth changes
       const { data: { subscription: sub } } = supabase.auth.onAuthStateChange(
-        (_event, s) => {
-          setSession(s)
-          setUser(s?.user ?? null)
-          loadProfile(s?.user ?? null)
+        (event, s) => {
+          // TOKEN_REFRESHED: refresh token の自動更新成功
+          // SIGNED_IN: ログイン完了
+          // SIGNED_OUT: ログアウト
+          if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+            setSession(s)
+            setUser(s?.user ?? null)
+            loadProfile(s?.user ?? null)
+          } else if (event === 'TOKEN_REFRESH_FAILED') {
+            // refresh token 失効: セッションをクリアして再ログイン誘導
+            // Sentry には送らない（既知の正常な失効フロー）
+            setSession(null)
+            setUser(null)
+            setProfile(null)
+          } else if (event === 'SIGNED_OUT') {
+            setSession(null)
+            setUser(null)
+            setProfile(null)
+          }
         },
       )
       subscription = sub

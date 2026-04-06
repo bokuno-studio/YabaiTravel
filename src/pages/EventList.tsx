@@ -91,7 +91,7 @@ function EventList() {
   const isEn = lang === 'en'
   const location = useLocation()
   const langPrefix = `/${lang || 'ja'}`
-  const { isSupporter } = useAuth()
+  const { isSupporter, loading: authLoading } = useAuth()
   const DISTANCE_RANGES = useMemo(() => getDistanceRanges(isEn), [isEn])
   useScrollDepth('event_list')
 
@@ -643,7 +643,7 @@ function EventList() {
         )}
 
         {/* Crew CTA */}
-        {!isSupporter && (
+        {!authLoading && !isSupporter && (
           <div className="mb-6 rounded-lg border border-primary/30 bg-primary/5 p-4 text-center">
             <p className="font-medium">
               {isEn ? 'More with Crew' : 'Crew なら、もっと便利に'}

@@ -17,6 +17,13 @@ init({
     if (message.includes('runtime.sendMessage')) {
       return null
     }
+    // refresh token 失効は既知の正常フロー。Sentryノイズ除去
+    if (
+      message.toLowerCase().includes('invalid refresh token') ||
+      message.toLowerCase().includes('refresh token not found')
+    ) {
+      return null
+    }
     return event
   },
 })
