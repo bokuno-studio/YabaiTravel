@@ -13,6 +13,8 @@ export function parse(html, url, cheerioLoad, ctx) {
   const excludedTitlePatterns = [
     /\d+\s+courses$/i,  // "[數字] courses" pattern (e.g., "juillet736 courses", "Trail4 267 courses")
     /^Toutes les courses$/i,  // "All races" menu
+    /^Voir toutes les courses$/i,  // "See all races" link
+    /^Tous les types de course/i,  // "All race types" page
     /^Courses virtuelles$/i,  // Virtual races category
     // Race type categories (navigation pages, not actual races)
     /^Marche$/i,
@@ -33,7 +35,12 @@ export function parse(html, url, cheerioLoad, ctx) {
     /^Gravel Ultra Distance$/i,
     /^Ultra Cyclisme$/i,
     // Navigation items
-    /^Types de course$/i
+    /^Types de course$/i,
+    // Tag/category filters (emoji + category name)
+    /^⛰\s+Montagne$/i,
+    /^🏞\s+Nature$/i,
+    /^🏘️\s+En ville$/i,
+    /^🌲\s+Forêt$/i
   ]
 
   $('a[href]').each((_, el) => {
@@ -44,7 +51,9 @@ export function parse(html, url, cheerioLoad, ctx) {
     const fullUrl = href.startsWith('http') ? href : new URL(href, url).href
 
     // Filter by URL pattern (list/filter pages)
-    if (/\/(tag|tags|category|categories|results|calendar|month)/i.test(fullUrl)) return
+    if (/\/(tag|tags|category|categories|results|calendar|month|disciplines)/i.test(fullUrl)) return
+    // Filter by query parameter (filter/search pages)
+    if (/[?&](tag|tags|category|categories|disciplines|search)=/i.test(fullUrl)) return
 
     // Verify domain is finishers.com
     try {
