@@ -117,7 +117,7 @@ export default function SidebarFilters(props: FiltersSidebarProps) {
               </span>
             </button>
           </PopoverTrigger>
-          <PopoverContent className="p-0 w-auto max-w-[280px]" side="bottom" align="start">
+          <PopoverContent className="p-0 w-auto max-w-[280px]" side="bottom" align="start" sideOffset={4} avoidCollisions={false}>
             <Calendar
               mode="range"
               selected={{
