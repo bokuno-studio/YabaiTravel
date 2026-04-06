@@ -345,15 +345,15 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   if (step3Past > 0)     lines.push(`    うち 対象外（過去開催）:       ${fmt(step3Past)}件`)
   lines.push('')
   lines.push('[Step4] ロジ情報（AI）')
-  lines.push(`  母数: ${fmt(stats.logiBase)}件（location有りイベント）`)
-  lines.push(`  完了: ${fmt(stats.accessRoutes)}件 (${pct(stats.accessRoutes, stats.logiBase)})`)
+  lines.push(`  母数: ${fmt(stats.enrichedEvents)}件（Step2完了イベント）`)
+  lines.push(`  完了: ${fmt(stats.accessRoutes)}件 (${pct(stats.accessRoutes, stats.enrichedEvents)})`)
+  const step4Remaining = stats.enrichedEvents - stats.accessRoutes
+  const step4LocationMissing = stats.enrichedEvents - stats.logiBase
   const step4Pending = stats.batchPendingByStep['enrich-logi'] || 0
   const step4Waiting = Math.max(0, stats.logiPending - step4Pending)
-  lines.push(`  未処理: ${fmt(stats.logiPending)}件`)
-  if (step4Pending > 0) lines.push(`    うち API待ち（Batch処理中）: ${fmt(step4Pending)}件`)
-  if (step4Waiting > 0) lines.push(`    うち Cron待ち: ${fmt(step4Waiting)}件`)
-  const locationMissing = stats.enrichedEvents - stats.logiBase
-  if (locationMissing > 0) lines.push(`  対象外（location未取得）: ${fmt(locationMissing)}件`)
+  lines.push(`  未処理: ${fmt(step4Remaining)}件`)
+  if (step4LocationMissing > 0) lines.push(`    うち location未取得: ${fmt(step4LocationMissing)}件`)
+  if (step4Waiting > 0 || step4Pending > 0) lines.push(`    うち Cron待ち: ${fmt(step4Waiting)}件（+ API待ち${fmt(step4Pending)}件）`)
   lines.push('')
 
   // --- Backlog estimate ---
