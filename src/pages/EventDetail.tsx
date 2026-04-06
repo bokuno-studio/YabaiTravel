@@ -377,10 +377,10 @@ function EventDetail() {
                   </Button>
                 )}
                 {event.entry_url && (
-                  <Button asChild variant="outline" size="sm">
+                  <Button asChild variant="default" size="sm" className="min-h-[44px]">
                     <a href={event.entry_url} target="_blank" rel="noreferrer">
                       <FileEdit className="mr-1.5 h-3.5 w-3.5" />
-                      {isEn ? 'Entry' : '申込'}
+                      {isEn ? 'Apply Now' : '申込みページへ'}
                     </a>
                   </Button>
                 )}
