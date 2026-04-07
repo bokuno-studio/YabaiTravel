@@ -51,3 +51,6 @@ error-analysis.js
 run-*.sh
 dev.db
 *.db
+
+# Supabase CLI cache
+supabase/.temp/
