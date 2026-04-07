@@ -80,8 +80,6 @@ async function run() {
      ORDER BY e.updated_at ASC${limitClause}`
   )
 
-  await client.end()
-
   // Batch モード判定: BATCH フラグが有効でかつ ②-A を処理する場合
   const useBatchMode = BATCH && !CATEGORY_ONLY
 
