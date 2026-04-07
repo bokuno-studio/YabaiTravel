@@ -26,7 +26,7 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - name: カテゴリ詳細収集（Batch API）
-        run: node scripts/crawl/enrich-category-detail.js --batch --limit ${{ github.event.inputs.limit || '50' }}
+        run: node scripts/crawl/enrich-category-detail.js --batch --limit ${{ github.event.inputs.limit || '200' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_SCHEMA: yabai_travel
