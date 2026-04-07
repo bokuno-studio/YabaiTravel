@@ -140,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSession(s)
             setUser(s?.user ?? null)
             loadProfile(s?.user ?? null)
-          } else if (event === 'TOKEN_REFRESH_FAILED') {
+          } else if ((event as string) === 'TOKEN_REFRESH_FAILED') {
             // refresh token 失効: セッションをクリアして再ログイン誘導
             // Sentry には送らない（既知の正常な失効フロー）
             setSession(null)
