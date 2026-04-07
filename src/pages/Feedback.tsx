@@ -424,7 +424,7 @@ function NewFeedbackForm({
 function Feedback() {
   const { lang } = useParams<{ lang: string }>()
   const isEn = lang === 'en'
-  const { user, isSupporter } = useAuth()
+  const { user } = useAuth()
 
   const statusLabels = isEn ? STATUS_LABEL_EN : STATUS_LABEL_JA
 
@@ -485,10 +485,8 @@ function Feedback() {
     }
   }
 
-  // Filter out bug feedbacks for non-supporters
-  const visibleFeedbacks = feedbacks.filter(
-    (f) => f.feedback_type !== 'bug' || isSupporter
-  )
+  // All users can view feedbacks (both bugs and features)
+  const visibleFeedbacks = feedbacks
 
   return (
     <>
@@ -499,8 +497,8 @@ function Feedback() {
         name="description"
         content={
           isEn
-            ? 'Ideas from Crew members.'
-            : 'Crewからのみんなのアイデアです。'
+            ? 'Share your ideas and report bugs.'
+            : 'アイデアを共有したりバグを報告できます。'
         }
       />
 
@@ -532,26 +530,11 @@ function Feedback() {
           </p>
         )}
 
-        {/* Crew membership link */}
-        {!isSupporter && !isEn && (
-          <div className="mb-6 rounded-lg border border-border bg-muted/30 p-4">
-            <p className="text-sm">
-              {'Crewメンバーは掲示板でコメントができます'}
-              {' '}
-              <Link to={`/${lang || 'ja'}/pricing`} className="text-primary hover:underline font-medium">
-                {'詳しく見る'}
-              </Link>
-            </p>
-          </div>
-        )}
-
         {/* Filter chips */}
         <div className="flex flex-wrap gap-2 mb-6">
           {/* Type filters */}
           <div className="flex gap-1">
-            {(['all', 'feature', 'bug'] as const)
-              .filter((t) => t !== 'bug' || isSupporter)
-              .map((t) => (
+            {(['all', 'feature', 'bug'] as const).map((t) => (
                 <button
                   key={t}
                   onClick={() => setTypeFilter(t)}

@@ -3,7 +3,7 @@ import type { PostgrestError, AuthError, SupabaseClient } from '@supabase/supaba
 /**
  * 認証エラーを検知する
  * - PGRST301: Refresh Token Not Found
- * - AuthApiError: Invalid Refresh Token
+ * - AuthApiError: Invalid Refresh Token（ただし他のエラーと区別）
  */
 export function isAuthError(error: PostgrestError | AuthError | null | undefined): boolean {
   if (!error) return false
@@ -14,9 +14,11 @@ export function isAuthError(error: PostgrestError | AuthError | null | undefined
   }
 
   // Supabase Auth エラー（Invalid Refresh Token など）
+  // ただし、一時的なネットワークエラーは対象外
   if ('message' in error && typeof error.message === 'string') {
     const msg = error.message.toLowerCase()
-    if (msg.includes('invalid refresh token') || msg.includes('refresh token not found')) {
+    if ((msg.includes('invalid refresh token') || msg.includes('refresh token not found')) &&
+        !msg.includes('network') && !msg.includes('timeout')) {
       return true
     }
   }

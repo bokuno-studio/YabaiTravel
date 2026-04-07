@@ -68,7 +68,7 @@ export default function MyRaceCalendarPage() {
           .order('created_at')
 
         if (queryError) {
-          console.error('Failed to fetch going races:', queryError.message)
+          console.error('Failed to fetch going races:', queryError.code, queryError.message, queryError.details, queryError.hint)
           setError('レースの読み込みに失敗しました')
           return
         }

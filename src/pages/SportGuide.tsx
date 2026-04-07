@@ -573,19 +573,6 @@ function SportGuide() {
     )
   }
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="event-list-page">
-        <header className="app-header">
-          <h1><Link to={langPrefix} style={{ textDecoration: 'none', color: 'inherit' }}>yabai.travel</Link></h1>
-          <p className="app-subtitle">{isEn ? 'Sports Guide' : 'スポーツガイド'}</p>
-        </header>
-        <p className="text-slate-500">{isEn ? 'Loading...' : '読み込み中...'}</p>
-      </div>
-    )
-  }
-
   // If DB content exists, show structured view
   if (dbContent) {
     const readingTimeMin = Math.max(1, Math.round(JSON.stringify(dbContent).length / 500))
@@ -679,6 +666,7 @@ function SportGuide() {
     )
   }
 
+  // Render fallback content (SSR-friendly)
   return (
     <div className="event-list-page">
       <title>{fallbackContent.title} {isEn ? '- Sports Guide | yabai.travel' : '- スポーツガイド | yabai.travel'}</title>
