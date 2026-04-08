@@ -186,6 +186,7 @@ function EventList() {
           const { data: page, error: err } = await supabase
             .from('events')
             .select('*, categories(*)')
+            .is('deleted_at', null)
             .order('event_date', { ascending: true, nullsFirst: false })
             .range(from, from + PAGE_SIZE - 1)
           if (err) {
@@ -209,7 +210,7 @@ function EventList() {
             : e && typeof e === 'object' && 'message' in e
               ? String((e as { message: unknown }).message)
               : String(e)
-        console.error('[EventList] 取得エラー:', e)
+        console.error('[EventList] 取得エラー:', e instanceof Error ? e.message : JSON.stringify(e))
         setError(msg || '取得に失敗しました')
       } finally {
         setLoading(false)
