@@ -189,7 +189,7 @@ async function run() {
         // Delete the duplicate event
         console.log(`  DELETE event: ${deleteId}`)
         if (!DRY_RUN) {
-          await client.query(`DELETE FROM ${SCHEMA}.events WHERE id = $1`, [deleteId])
+          await client.query(`UPDATE ${SCHEMA}.events SET deleted_at = NOW() WHERE id = $1`, [deleteId])
         }
         totalDeleted++
       }
@@ -211,7 +211,7 @@ async function run() {
         await client.query(`DELETE FROM ${SCHEMA}.categories WHERE event_id = $1`, [junkId])
         await client.query(`DELETE FROM ${SCHEMA}.access_routes WHERE event_id = $1`, [junkId])
         await client.query(`DELETE FROM ${SCHEMA}.accommodations WHERE event_id = $1`, [junkId])
-        await client.query(`DELETE FROM ${SCHEMA}.events WHERE id = $1`, [junkId])
+        await client.query(`UPDATE ${SCHEMA}.events SET deleted_at = NOW() WHERE id = $1`, [junkId])
       }
       totalDeleted++
     }

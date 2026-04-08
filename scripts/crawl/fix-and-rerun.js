@@ -28,11 +28,11 @@ async function run() {
 
   try {
     const del = await client.query(`
-      DELETE FROM yabai_travel.events
+      UPDATE yabai_travel.events SET deleted_at = NOW()
       WHERE official_url LIKE '%a-extremo.com%' OR official_url LIKE '%goldentrailseries.com%'
       RETURNING id
     `)
-    console.log(`Deleted ${del.rowCount} events`)
+    console.log(`Soft-deleted ${del.rowCount} events`)
   } finally {
     await client.end()
   }

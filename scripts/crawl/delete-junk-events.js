@@ -41,6 +41,9 @@ const JUNK_URL_PATTERNS = [
   /le-sportif\.com.*\/result/i,
   /timeoutdoors\.com.*\/categor/i,
   /finishers\.com.*\/tag/i,
+  /courses\?tags=/i,
+  /disciplines(\/|$)/i,
+  /case_studies\//i,
 ]
 
 function isJunkUrl(url) {
@@ -67,12 +70,12 @@ async function run() {
   toDelete.forEach((r) => console.log(`  - ${r.name?.slice(0, 50)}... (${r.official_url})`))
 
   for (const r of toDelete) {
-    await client.query('DELETE FROM yabai_travel.events WHERE id = $1', [r.id])
-    console.log(`削除: ${r.name?.slice(0, 40)}`)
+    await client.query('UPDATE yabai_travel.events SET deleted_at = NOW() WHERE id = $1', [r.id])
+    console.log(`論理削除: ${r.name?.slice(0, 40)}`)
   }
 
   await client.end()
-  console.log(`\n完了: ${toDelete.length} 件削除`)
+  console.log(`\n完了: ${toDelete.length} 件論理削除`)
 }
 
 run().catch((e) => {

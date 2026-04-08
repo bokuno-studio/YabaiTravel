@@ -68,7 +68,7 @@ async function main() {
     if (isJunkUrl(row.official_url)) {
       console.log(`  DELETE (junk URL): ${label}`)
       if (!DRY_RUN) {
-        await client.query(`DELETE FROM ${SCHEMA}.events WHERE id = $1`, [row.id])
+        await client.query(`UPDATE ${SCHEMA}.events SET deleted_at = NOW() WHERE id = $1`, [row.id])
       }
       deleted++
       continue
@@ -93,7 +93,7 @@ async function main() {
       if (status === 404 || status === 403 || status === 0) {
         console.log(`  DELETE (HTTP ${status}): ${label}`)
         if (!DRY_RUN) {
-          await client.query(`DELETE FROM ${SCHEMA}.events WHERE id = $1`, [row.id])
+          await client.query(`UPDATE ${SCHEMA}.events SET deleted_at = NOW() WHERE id = $1`, [row.id])
         }
         deleted++
       } else {

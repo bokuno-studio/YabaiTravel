@@ -62,6 +62,7 @@ async function run() {
     `SELECT id, name, official_url, location, country, country_en, race_type, FALSE as event_done
      FROM ${SCHEMA}.events
      WHERE collected_at IS NULL
+       AND deleted_at IS NULL
        AND attempt_count < 3
      ORDER BY
        CASE WHEN attempt_count = 0 THEN 0 ELSE 1 END,
@@ -73,6 +74,7 @@ async function run() {
     `SELECT e.id, e.name, e.official_url, e.location, e.country, e.country_en, e.race_type, TRUE as event_done
      FROM ${SCHEMA}.events e
      WHERE e.collected_at IS NOT NULL
+       AND e.deleted_at IS NULL
        AND EXISTS (
          SELECT 1 FROM ${SCHEMA}.categories c
          WHERE c.event_id = e.id AND c.collected_at IS NULL AND c.attempt_count < 3

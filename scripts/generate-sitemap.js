@@ -93,7 +93,7 @@ async function generateSitemap() {
     await client.connect()
 
     const { rows: events } = await client.query(
-      `SELECT id, updated_at FROM ${SCHEMA}.events WHERE collected_at IS NOT NULL ORDER BY updated_at DESC`
+      `SELECT id, updated_at FROM ${SCHEMA}.events WHERE collected_at IS NOT NULL AND deleted_at IS NULL ORDER BY updated_at DESC`
     )
 
     for (const event of events) {
