@@ -112,7 +112,7 @@ async function generateSitemap() {
     const { rows: categories } = await client.query(
       `SELECT c.id, c.event_id, c.updated_at FROM ${SCHEMA}.categories c
        JOIN ${SCHEMA}.events e ON e.id = c.event_id
-       WHERE e.collected_at IS NOT NULL AND c.collected_at IS NOT NULL
+       WHERE e.collected_at IS NOT NULL AND e.deleted_at IS NULL AND c.collected_at IS NOT NULL
        ORDER BY c.updated_at DESC`
     )
 

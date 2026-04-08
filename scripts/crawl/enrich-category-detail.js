@@ -559,7 +559,7 @@ async function fetchTargets(args) {
     const { rows } = await client.query(
       `SELECT c.id, c.name, c.distance_km, e.id as event_id, e.name as event_name, e.official_url, e.entry_url, e.race_type, e.country_en
        FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id
-       WHERE c.id = $1`,
+       WHERE c.id = $1 AND e.deleted_at IS NULL`,
       [CAT_ID]
     )
     targets = rows.map((r) => ({
@@ -596,7 +596,7 @@ async function fetchTargets(args) {
     const { rows } = await client.query(
       `SELECT c.id, c.name, c.distance_km, e.id as event_id, e.name as event_name, e.official_url, e.entry_url, e.race_type, e.country_en
        FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id
-       WHERE e.collected_at IS NOT NULL
+       WHERE e.collected_at IS NOT NULL AND e.deleted_at IS NULL
        ${collectedFilter} ${attemptFilter} ${feeFilter}
        AND (e.event_date IS NULL OR e.event_date >= CURRENT_DATE)
        ${domainFilter}
