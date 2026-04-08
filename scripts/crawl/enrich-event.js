@@ -29,12 +29,28 @@ const PRICE_LEVEL_TO_JPY = { 1: 5000, 2: 10000, 3: 15000, 4: 25000 }
 
 // --- 海上座標判定（日本国内イベントのみ対象） ---
 function isSeaCoordinate(lat, lng) {
-  // 注意: 本来は沖縄周辺でも陸上座標がある可能性があるため、
-  // より正確には Google Geocoding の location_type を使用すべき
-  // ここは明らかに異常な座標（緯度経度の値がほぼ0,0付近）のみリセット対象
+  // 日本bbox: 緯度24-46、経度122-155
+  // 日本の陸上領土に対応する厳密な範囲（沖縄含む、離島も大部分カバー）
+  const JAPAN_LAT_MIN = 24
+  const JAPAN_LAT_MAX = 46
+  const JAPAN_LNG_MIN = 122
+  const JAPAN_LNG_MAX = 155
 
-  // 異常な座標（赤道・本初子午線付近）
-  if ((lat > -1 && lat < 1) && (lng > -1 && lng < 1)) return true
+  // チェック1: bbox外 → 海上確定
+  if (lat < JAPAN_LAT_MIN || lat > JAPAN_LAT_MAX ||
+      lng < JAPAN_LNG_MIN || lng > JAPAN_LNG_MAX) {
+    return true
+  }
+
+  // チェック2: 赤道・本初子午線付近（異常座標）
+  if ((lat > -1 && lat < 1) && (lng > -1 && lng < 1)) {
+    return true
+  }
+
+  // チェック3: 緯度≈経度（対角線上の異常パターン）
+  if (Math.abs(lat - lng) < 0.1) {
+    return true
+  }
 
   return false
 }
@@ -49,8 +65,9 @@ async function geocodeLocation(location, apiKey, countryEn = null) {
   const locationType = result.geometry.location_type
   if (locationType === 'GEOMETRIC_CENTER' || locationType === 'APPROXIMATE') return null
   const coords = result.geometry.location
-  // 海上座標チェック: 日本国内イベントのみ適用
-  if (countryEn === 'Japan' && isSeaCoordinate(coords.lat, coords.lng)) return null
+  // 海上座標チェック: 日本国内イベント（country='Japan' または location に「日本」を含む）のみ適用
+  const isJapanEvent = countryEn === 'Japan' || location?.includes('日本')
+  if (isJapanEvent && isSeaCoordinate(coords.lat, coords.lng)) return null
   return coords // { lat, lng }
 }
 
