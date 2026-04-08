@@ -119,13 +119,13 @@ function Legal() {
             value={
               isEn ? (
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Crew Membership: ¥500/month (tax included)</li>
+                  <li>YabaiTravel Supporter: $3/month (tax included) or $30/year (tax included)</li>
                   <li>Comment: Currently free (subject to change)</li>
                   <li>One-time Donation: Any amount (JPY)</li>
                 </ul>
               ) : (
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Crew メンバーシップ: ¥500/月（税込）</li>
+                  <li>YabaiTravel サポーター: $3/月（税込）または $30/年（税込）</li>
                   <li>コメント: 現在無料（将来変更の可能性あり）</li>
                   <li>単発寄付: 任意の金額（JPY）</li>
                 </ul>
@@ -163,7 +163,7 @@ function Legal() {
                 <ul className="list-disc pl-5 space-y-1">
                   <li>No returns or refunds are accepted as this is a digital service.</li>
                   <li>
-                    Crew Membership can be cancelled at any time from the{' '}
+                    Crew Membership can be cancelled with one click from the{' '}
                     <Link to={`${langPrefix}/pricing`} className="text-primary underline">
                       Pricing page
                     </Link>.
@@ -178,7 +178,7 @@ function Legal() {
                     <Link to={`${langPrefix}/pricing`} className="text-primary underline">
                       Pricing ページ
                     </Link>
-                    からいつでもキャンセル可能です。
+                    から1クリックでキャンセル可能です。
                   </li>
                   <li>キャンセル後、残りの期間は引き続きサービスをご利用いただけます。</li>
                 </ul>

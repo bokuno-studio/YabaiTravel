@@ -20,7 +20,6 @@ function Pricing() {
   const [subscriptionLoading, setSubscriptionLoading] = useState(false)
   const [cancelLoading, setCancelLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [cancelConfirm, setCancelConfirm] = useState(false)
   const [pendingCrewCheckout, setPendingCrewCheckout] = useState(false)
   const [showCrewConfirm, setShowCrewConfirm] = useState(false)
 
@@ -73,11 +72,6 @@ function Pricing() {
   }
 
   const handleCancel = async () => {
-    if (!cancelConfirm) {
-      setCancelConfirm(true)
-      return
-    }
-
     setCancelLoading(true)
     setError(null)
     try {
@@ -91,7 +85,6 @@ function Pricing() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
       setCancelLoading(false)
-      setCancelConfirm(false)
     }
   }
 
@@ -351,46 +344,17 @@ function Pricing() {
                     &#10003; {isEn ? "You're Crew!" : 'Crewメンバーです'}
                   </Badge>
                 </div>
-                {cancelConfirm ? (
-                  <div className="space-y-2">
-                    <p className="text-sm text-center text-muted-foreground">
-                      {isEn
-                        ? 'Are you sure? You can continue using Crew benefits until the end of the current billing period.'
-                        : '本当にキャンセルしますか？現在の請求期間の終了まで引き続きCrew特典をご利用いただけます。'}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        className="flex-1"
-                        size="sm"
-                        variant="destructive"
-                        onClick={handleCancel}
-                        disabled={cancelLoading}
-                      >
-                        {cancelLoading
-                          ? (isEn ? 'Cancelling...' : 'キャンセル中...')
-                          : (isEn ? 'Yes, cancel' : 'はい、キャンセル')}
-                      </Button>
-                      <Button
-                        className="flex-1"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setCancelConfirm(false)}
-                        disabled={cancelLoading}
-                      >
-                        {isEn ? 'Keep membership' : '継続する'}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <Button
-                    className="w-full"
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleCancel}
-                  >
-                    {isEn ? 'Cancel membership' : 'メンバーシップをキャンセル'}
-                  </Button>
-                )}
+                <Button
+                  className="w-full"
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleCancel}
+                  disabled={cancelLoading}
+                >
+                  {cancelLoading
+                    ? (isEn ? 'Cancelling...' : 'キャンセル中...')
+                    : (isEn ? 'Cancel membership' : 'メンバーシップをキャンセル')}
+                </Button>
               </div>
             ) : !user ? (
               <>
