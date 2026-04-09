@@ -62,7 +62,7 @@ describe('Pricing', () => {
   it('shows Google sign-in button when not authenticated', () => {
     mockAuthState = { ...mockAuthState, user: null, isSupporter: false }
     renderPricing()
-    expect(screen.getByText('Googleでログインして Crew になる')).toBeInTheDocument()
+    expect(screen.getByText('Googleでログインして登録する')).toBeInTheDocument()
   })
 
   it('shows subscribe button when authenticated but not supporter', () => {
