@@ -12,6 +12,11 @@ vi.mock('../lib/supabaseClient', () => ({
       if (table === 'events') {
         return {
           select: vi.fn().mockReturnValue({
+            is: vi.fn().mockReturnValue({
+              order: vi.fn().mockReturnValue({
+                range: vi.fn().mockResolvedValue({ data: [], error: null }),
+              }),
+            }),
             order: vi.fn().mockReturnValue({
               range: vi.fn().mockResolvedValue({ data: [], error: null }),
             }),

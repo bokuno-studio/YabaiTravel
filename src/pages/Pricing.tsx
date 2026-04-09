@@ -275,39 +275,17 @@ function Pricing() {
               ))}
             </ul>
 
-            {/* Total Value Table */}
-            <div className="mb-4">
+            {/* What you can do */}
+            <div className="mb-4 rounded-lg bg-muted/40 p-3">
               <h3 className="text-sm font-semibold mb-2 text-foreground">
-                {isEn ? 'Total Value' : '総合価値'}
+                {isEn ? 'What you can do as Crew' : 'Crewでできること'}
               </h3>
-              <table className="w-full text-sm border-collapse">
-                <tbody>
-                  <tr className="border-b border-border/40">
-                    <td className="py-2 pr-2 text-muted-foreground">
-                      {isEn ? 'Favorites feature' : 'お気に入り保存機能'}
-                    </td>
-                    <td className="py-2 text-right font-medium">¥200</td>
-                  </tr>
-                  <tr className="border-b border-border/40">
-                    <td className="py-2 pr-2 text-muted-foreground">
-                      {isEn ? 'Community access' : 'コミュニティ参加'}
-                    </td>
-                    <td className="py-2 text-right font-medium">¥150</td>
-                  </tr>
-                  <tr className="border-b border-border/40">
-                    <td className="py-2 pr-2 text-muted-foreground">
-                      {isEn ? 'Crew badge' : 'Crewバッジ'}
-                    </td>
-                    <td className="py-2 text-right font-medium">¥150</td>
-                  </tr>
-                  <tr className="bg-primary/5">
-                    <td className="py-2 pr-2 font-semibold text-foreground">
-                      {isEn ? 'Total Value' : '合計価値'}
-                    </td>
-                    <td className="py-2 text-right font-bold text-primary">¥500+</td>
-                  </tr>
-                </tbody>
-              </table>
+              <ul className="text-sm space-y-1 text-muted-foreground">
+                <li>{isEn ? '→ Save races to your personal calendar' : '→ レースをマイカレンダーに保存'}</li>
+                <li>{isEn ? '→ Post feature requests and bug reports' : '→ 要望・バグ報告を投稿'}</li>
+                <li>{isEn ? '→ Show your Crew badge on the community board' : '→ 掲示板にCrew バッジを表示'}</li>
+                <li>{isEn ? '→ Support keeping this service free for all' : '→ サービスの無料維持を支援'}</li>
+              </ul>
             </div>
           </CardContent>
 
@@ -363,7 +341,7 @@ function Pricing() {
                   size="lg"
                   onClick={() => { trackCtaClick('google_login', '/pricing'); setPendingCrewCheckout(true); signInWithGoogle() }}
                 >
-                  {isEn ? 'Sign in with Google to join Crew' : 'Googleでログインして Crew になる'}
+                  {isEn ? 'Sign in with Google to get started' : 'Googleでログインして登録する'}
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">
                   {isEn
