@@ -512,6 +512,40 @@ function EventList() {
 
       <div className="mx-auto max-w-7xl px-4 py-6 md:px-6">
 
+        {/* Hero Section — /en only */}
+        {isEn && (
+          <div className="mb-8 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 px-6 py-8 text-center">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              Find Your Next Endurance Race in Japan
+            </h1>
+            <p className="mt-3 text-base text-muted-foreground max-w-xl mx-auto">
+              Race information + travel planning in one place. Tokyo-based access times, accommodation costs, and day-trip feasibility — all included.
+            </p>
+            <a
+              href="#race-list"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Explore Races ↓
+            </a>
+
+            {/* Value Props */}
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-lg bg-background/60 px-4 py-3">
+                <p className="font-semibold text-foreground">39+ Race Sources</p>
+                <p className="text-sm text-muted-foreground">All endurance races in Japan, aggregated</p>
+              </div>
+              <div className="rounded-lg bg-background/60 px-4 py-3">
+                <p className="font-semibold text-foreground">Tokyo-Based Access</p>
+                <p className="text-sm text-muted-foreground">Travel time &amp; transport from Tokyo included</p>
+              </div>
+              <div className="rounded-lg bg-background/60 px-4 py-3">
+                <p className="font-semibold text-foreground">Accommodation + Transport</p>
+                <p className="text-sm text-muted-foreground">Plan your whole trip in one place</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Crew Banner */}
         {!isEn && (
           <div className="mb-6 rounded-lg border border-primary/30 bg-primary/5 p-4 flex items-center justify-between">
@@ -528,7 +562,7 @@ function EventList() {
         )}
 
         {/* Active filter chips + toolbar */}
-        <div className="mb-4 space-y-2">
+        <div id="race-list" className="mb-4 space-y-2">
           {/* Active filter chips row */}
           <div className="flex items-center gap-2">
             {/* Mobile-only filter button */}
