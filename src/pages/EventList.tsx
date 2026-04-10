@@ -546,6 +546,31 @@ function EventList() {
           </div>
         )}
 
+        {/* Getting Started Section — /en only */}
+        {isEn && (
+          <div className="mb-8 rounded-xl border border-border bg-background px-6 py-6">
+            <h2 className="text-lg font-semibold text-foreground mb-4">New to Japanese Endurance Racing?</h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <a href="/en/blog/trail-running-near-tokyo-2026" className="rounded-lg border border-border bg-muted/40 px-4 py-3 hover:bg-muted/70 transition-colors">
+                <p className="font-medium text-foreground text-sm">Trail Running Near Tokyo</p>
+                <p className="text-xs text-muted-foreground mt-1">10 day-trip races from the city</p>
+              </a>
+              <a href="/en/blog/hyrox-japan-guide-en-2026" className="rounded-lg border border-border bg-muted/40 px-4 py-3 hover:bg-muted/70 transition-colors">
+                <p className="font-medium text-foreground text-sm">HYROX Japan 2026</p>
+                <p className="text-xs text-muted-foreground mt-1">Complete guide for international participants</p>
+              </a>
+              <a href="/en/blog/spartan-race-japan-guide-2026" className="rounded-lg border border-border bg-muted/40 px-4 py-3 hover:bg-muted/70 transition-colors">
+                <p className="font-medium text-foreground text-sm">Spartan Race Japan 2026</p>
+                <p className="text-xs text-muted-foreground mt-1">Venues, distances &amp; travel tips</p>
+              </a>
+              <a href="/en/blog/endurance-races-japan-2026" className="rounded-lg border border-border bg-muted/40 px-4 py-3 hover:bg-muted/70 transition-colors">
+                <p className="font-medium text-foreground text-sm">Endurance Races in Japan</p>
+                <p className="text-xs text-muted-foreground mt-1">The complete 2026 guide</p>
+              </a>
+            </div>
+          </div>
+        )}
+
         {/* Crew Banner */}
         {!isEn && (
           <div className="mb-6 rounded-lg border border-primary/30 bg-primary/5 p-4 flex items-center justify-between">
