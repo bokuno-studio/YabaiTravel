@@ -81,6 +81,9 @@ async function collectStats(client) {
     tokyoAccessRoutes,
     catUncollectedFuture,
     catUncollectedPast,
+    todayProcessedStep2,
+    todayProcessedStep3,
+    todayProcessedStep4,
   ] = await Promise.all([
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories`),
@@ -106,6 +109,9 @@ async function collectStats(client) {
     queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.access_routes WHERE origin_type = 'tokyo'`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id WHERE e.collected_at IS NOT NULL AND c.collected_at IS NULL AND (e.event_date IS NULL OR e.event_date >= CURRENT_DATE)`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id WHERE e.collected_at IS NOT NULL AND c.collected_at IS NULL AND e.event_date IS NOT NULL AND e.event_date < CURRENT_DATE`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE collected_at >= CURRENT_DATE AND deleted_at IS NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE updated_at >= CURRENT_DATE AND distance_km IS NOT NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.access_routes WHERE updated_at >= CURRENT_DATE`),
   ])
 
   // batch_jobs: 現在処理中（status='pending'）のrequest_countをscript_typeごとに取得
@@ -152,6 +158,9 @@ async function collectStats(client) {
     tokyoAccessRoutes,
     catUncollectedFuture,
     catUncollectedPast,
+    todayProcessedStep2,
+    todayProcessedStep3,
+    todayProcessedStep4,
     batchPendingByStep,
   }
 }
@@ -328,6 +337,7 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   const step2Pending = stats.batchPendingByStep['enrich-event'] || 0
   const step2Waiting = Math.max(0, step2Remaining - step2Pending)
   lines.push(`  未処理: ${fmt(step2Remaining)}件`)
+  lines.push(`  当日処理: ${fmt(stats.todayProcessedStep2)}件 (消化率${pct(stats.todayProcessedStep2, step2Remaining)})`)
   if (step2Pending > 0) lines.push(`    うち API待ち（Batch処理中）: ${fmt(step2Pending)}件`)
   if (step2Waiting > 0) lines.push(`    うち Cron待ち: ${fmt(step2Waiting)}件`)
   lines.push('')
@@ -340,6 +350,7 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   const step3Past = stats.catUncollectedPast
   const step3Waiting = Math.max(0, step3Remaining - step3Pending - step3Future - step3Past)
   lines.push(`  未処理: ${fmt(step3Remaining)}件`)
+  lines.push(`  当日処理: ${fmt(stats.todayProcessedStep3)}件 (消化率${pct(stats.todayProcessedStep3, step3Remaining)})`)
   if (step3Pending > 0) lines.push(`    うち API待ち（Batch処理中）: ${fmt(step3Pending)}件`)
   if (step3Waiting > 0)  lines.push(`    うち Cron待ち（未来イベント）: ${fmt(step3Waiting)}件`)
   if (step3Past > 0)     lines.push(`    うち 対象外（過去開催）:       ${fmt(step3Past)}件`)
@@ -352,6 +363,7 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   const step4Pending = stats.batchPendingByStep['enrich-logi'] || 0
   const step4Waiting = Math.max(0, stats.logiPending - step4Pending)
   lines.push(`  未処理: ${fmt(step4Remaining)}件`)
+  lines.push(`  当日処理: ${fmt(stats.todayProcessedStep4)}件 (消化率${pct(stats.todayProcessedStep4, step4Remaining)})`)
   if (step4LocationMissing > 0) lines.push(`    うち location未取得: ${fmt(step4LocationMissing)}件`)
   if (step4Waiting > 0 || step4Pending > 0) lines.push(`    うち Cron待ち: ${fmt(step4Waiting)}件（+ API待ち${fmt(step4Pending)}件）`)
   lines.push('')

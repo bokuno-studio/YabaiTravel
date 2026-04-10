@@ -71,7 +71,7 @@ function cleanEventName(name) {
 
 // --- ジャンク除去 ---
 
-const JUNK_NAMES = /^(shopping_cart|Sign in|Orders|Online Shop|主催者の皆さまへ|大会主催者の方へ|エントリーガイド|OCR World Champs|SPARTAN TRAIL)$/i
+const JUNK_NAMES = /^(shopping_cart|Sign in|Orders|Online Shop|主催者の皆さまへ|大会主催者の方へ|エントリーガイド|OCR World Champs|SPARTAN TRAIL|Race-Time Predictor|Practical Ways|Check Early Bird|Distance Running|Training Plans|Running Stores|Medal gallery|Maps Gallery|Apparel Gallery|Trail Maintenance|Events Standards|Contact Us|Contact|News from|ATM Event Calendar)$/i
 const JUNK_PATTERNS = [
   /^エントリー\s*\d{4}\.\d{2}\.\d{2}/m,
   /^【スポーツの話題はこちら】/,
@@ -93,6 +93,13 @@ const JUNK_URL_PATTERNS = [
   /\/(terms|privacy|legal|cgu|cgv|mentions-legales|contact|about|faq|help|blog(?!\/[a-z])|news|press|sponsors?)(\/|$|\?)/i,
   /\/(login|signup|register|cart|checkout|account)(\/|$|\?)/i,
   /\/(archives?|page\/\d+)(\/|$|\?)/i,
+  // 非レースコンテンツ
+  /\/(predictor|practical-ways|gallery|articles|check-early-bird|obstacle-run-calender|how-to-book|results-archive|training-plan|trainingsplaene|organized-by|use-cases|running-stores|events-standards-program|trail-news|about-atra|contact-us)(\/|$|\?)/i,
+  // ジャンルページ（特定大会URLではない）
+  /\/distance-running\//i,
+  /\/marathon-laufen\//i,
+  // ブログ・ニュース系
+  /(blog-entry|newscast\.jp|newsdigest\.de)/i,
 ]
 
 /** ドメイン別ノイズパターン */
