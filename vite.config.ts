@@ -19,7 +19,11 @@ export default defineConfig(({ isSsrBuild }) => ({
           'vendor-supabase': ['@supabase/supabase-js'],
           'vendor-ui': ['lucide-react', 'class-variance-authority', 'clsx', 'tailwind-merge'],
           'vendor-i18n': ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
-          'vendor-maps': ['@vis.gl/react-google-maps', '@react-google-maps/api'],
+          // Note: Google Maps libraries (@vis.gl/react-google-maps, @react-google-maps/api)
+          // are intentionally NOT in manualChunks. Listing them here forces modulepreload
+          // on the entry HTML even though EventMap is lazy-loaded, which loads ~176KB on
+          // every page. Leaving them out lets Vite emit them as async chunks that are
+          // only fetched when EventMap actually mounts.
           'vendor-sentry': ['@sentry/react'],
         },
       },
