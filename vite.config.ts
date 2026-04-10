@@ -19,7 +19,7 @@ export default defineConfig(({ isSsrBuild }) => ({
           'vendor-supabase': ['@supabase/supabase-js'],
           'vendor-ui': ['lucide-react', 'class-variance-authority', 'clsx', 'tailwind-merge'],
           'vendor-i18n': ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
-          'vendor-maps': ['@vis.gl/react-google-maps'],
+          'vendor-maps': ['@vis.gl/react-google-maps', '@react-google-maps/api'],
           'vendor-sentry': ['@sentry/react'],
         },
       },

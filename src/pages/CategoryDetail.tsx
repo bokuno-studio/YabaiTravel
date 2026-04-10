@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, lazy, Suspense } from 'react'
 import { useParams, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { categoryToJsonLd } from '../lib/jsonld'
@@ -37,10 +37,12 @@ import AccessInfo from '@/components/category/AccessInfo'
 import AccommodationInfo from '@/components/category/AccommodationInfo'
 import CostBreakdown from '@/components/category/CostBreakdown'
 import CourseMap from '@/components/category/CourseMap'
-import EventMap from '@/components/category/EventMap'
 import PastEditions from '@/components/category/PastEditions'
 import SectionCard from '@/components/category/SectionCard'
 import DLRow from '@/components/category/DLRow'
+
+// Lazy load EventMap (Google Maps library) for performance
+const EventMap = lazy(() => import('@/components/category/EventMap'))
 
 const raceTypeColors: Record<string, string> = {
   trail: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -640,13 +642,15 @@ function CategoryDetail() {
         {/* 地図 */}
         {event.latitude && event.longitude && (
           <SectionCard title={isEn ? 'Map' : '地図'}>
-            <EventMap
-              latitude={event.latitude}
-              longitude={event.longitude}
-              accommodations={accommodations}
-              accessRoutes={accessRoutes}
-              isEn={isEn}
-            />
+            <Suspense fallback={<Skeleton className="w-full h-[300px]" />}>
+              <EventMap
+                latitude={event.latitude}
+                longitude={event.longitude}
+                accommodations={accommodations}
+                accessRoutes={accessRoutes}
+                isEn={isEn}
+              />
+            </Suspense>
           </SectionCard>
         )}
 

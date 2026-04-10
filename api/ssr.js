@@ -21,10 +21,10 @@ import { Calendar as Calendar$1, MapPin, Banknote, XIcon, ChevronLeft, ChevronRi
 import { DayPicker } from "react-day-picker";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { createPortal } from "react-dom";
-import { useJsApiLoader, GoogleMap, Marker, Polyline } from "@react-google-maps/api";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { APIProvider, Map as Map$1, Marker as Marker$1, InfoWindow } from "@vis.gl/react-google-maps";
+import { APIProvider, Map as Map$1, Marker, InfoWindow } from "@vis.gl/react-google-maps";
+import { useJsApiLoader, GoogleMap, Marker as Marker$1, Polyline } from "@react-google-maps/api";
 function isAuthError(error) {
   if (!error) return false;
   if ("code" in error && error.code === "PGRST301") {
@@ -1407,7 +1407,7 @@ function useScrollDepth(pageType) {
     return () => window.removeEventListener("scroll", handler);
   }, [pageType]);
 }
-const EventMap$3 = lazy(() => Promise.resolve().then(() => EventMap$1));
+const EventMap$5 = lazy(() => Promise.resolve().then(() => EventMap$3));
 function parseIntervalHours(v) {
   if (!v) return null;
   const hms = v.match(/^(\d+):(\d+):(\d+)/);
@@ -1943,7 +1943,7 @@ function EventList() {
           minHeight: "300px",
           rootMargin: "100px",
           placeholder: /* @__PURE__ */ jsx("div", { className: "flex h-[300px] items-center justify-center rounded-xl border border-border/40 bg-muted/30", children: /* @__PURE__ */ jsx(MapIcon, { className: "h-8 w-8 animate-pulse text-muted-foreground/40" }) }),
-          children: /* @__PURE__ */ jsx(Suspense, { fallback: /* @__PURE__ */ jsx("div", { className: "flex h-[300px] items-center justify-center rounded-xl border border-border/40 bg-muted/30", children: /* @__PURE__ */ jsx(MapIcon, { className: "h-8 w-8 animate-pulse text-muted-foreground/40" }) }), children: /* @__PURE__ */ jsx(EventMap$3, { events: filtered, langPrefix, raceTypeLabel, lang }) })
+          children: /* @__PURE__ */ jsx(Suspense, { fallback: /* @__PURE__ */ jsx("div", { className: "flex h-[300px] items-center justify-center rounded-xl border border-border/40 bg-muted/30", children: /* @__PURE__ */ jsx(MapIcon, { className: "h-8 w-8 animate-pulse text-muted-foreground/40" }) }), children: /* @__PURE__ */ jsx(EventMap$5, { events: filtered, langPrefix, raceTypeLabel, lang }) })
         }
       ),
       !authLoading && !isSupporter && /* @__PURE__ */ jsxs("div", { className: "mb-6 rounded-lg border border-primary/30 bg-primary/5 p-4 text-center", children: [
@@ -3432,158 +3432,6 @@ function CourseMap({ event: event2, courseMapFiles, isEn }) {
     /* @__PURE__ */ jsx("a", { href: event2.course_map_url, target: "_blank", rel: "noreferrer", className: "break-all text-sm text-primary hover:underline", children: event2.course_map_url })
   ] }) : /* @__PURE__ */ jsx("p", { className: "text-sm italic text-muted-foreground/60", children: "—" }) });
 }
-const containerStyle = { width: "100%", height: "300px" };
-function EventMap$2({ latitude, longitude, accommodations, accessRoutes, isEn }) {
-  const apiKey = (process.env.VITE_GOOGLE_MAPS_KEY || "");
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: apiKey
-  });
-  const center = useMemo(() => {
-    if (!latitude || !longitude) return { lat: 35.68, lng: 139.76 };
-    return { lat: latitude, lng: longitude };
-  }, [latitude, longitude]);
-  const ROUTE_COLORS = ["#ef4444", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"];
-  const polylineGroups = useMemo(() => {
-    const groups = [];
-    for (const ar of accessRoutes) {
-      if (!ar.route_polyline) continue;
-      if (isEn && ar.origin_type !== "venue_access") continue;
-      if (!isEn && ar.origin_type !== "tokyo") continue;
-      try {
-        const polylines = JSON.parse(ar.route_polyline);
-        const polys = Array.isArray(polylines) ? polylines : [polylines];
-        if (isEn) {
-          for (let i = 0; i < polys.length; i++) {
-            if (typeof polys[i] !== "string") continue;
-            groups.push({ paths: [decodePolyline(polys[i])], color: ROUTE_COLORS[i % ROUTE_COLORS.length] });
-          }
-        } else {
-          const paths = [];
-          for (const encoded of polys) {
-            if (typeof encoded !== "string") continue;
-            paths.push(decodePolyline(encoded));
-          }
-          if (paths.length > 0) groups.push({ paths, color: ROUTE_COLORS[0] });
-        }
-      } catch {
-      }
-    }
-    return groups;
-  }, [accessRoutes, isEn]);
-  const transitMarkers = useMemo(() => {
-    if (!isEn) return [];
-    const markers = [];
-    for (const ar of accessRoutes) {
-      if (ar.origin_type !== "venue_access" || !ar.route_detail_en) continue;
-      try {
-        const data = JSON.parse(ar.route_detail_en);
-        if (data.airport_1_lat && data.airport_1_lng) {
-          markers.push({ lat: data.airport_1_lat, lng: data.airport_1_lng, label: data.airport_1_name || "Airport" });
-        }
-        if (data.airport_2_lat && data.airport_2_lng) {
-          markers.push({ lat: data.airport_2_lat, lng: data.airport_2_lng, label: data.airport_2_name || "Airport" });
-        }
-        if (data.station_lat && data.station_lng) {
-          markers.push({ lat: data.station_lat, lng: data.station_lng, label: data.station_name || "Station" });
-        }
-      } catch {
-      }
-    }
-    return markers;
-  }, [accessRoutes, isEn]);
-  const onLoad = useCallback((map) => {
-    const bounds = new google.maps.LatLngBounds();
-    if (latitude && longitude) bounds.extend({ lat: latitude, lng: longitude });
-    for (const a of accommodations) {
-      if (a.latitude && a.longitude) bounds.extend({ lat: a.latitude, lng: a.longitude });
-    }
-    for (const m of transitMarkers) {
-      bounds.extend({ lat: m.lat, lng: m.lng });
-    }
-    if (!bounds.isEmpty()) {
-      map.fitBounds(bounds, 40);
-      const listener = google.maps.event.addListener(map, "idle", () => {
-        if (map.getZoom() > 13) map.setZoom(13);
-        google.maps.event.removeListener(listener);
-      });
-    }
-  }, [latitude, longitude, accommodations, transitMarkers]);
-  if (!latitude || !longitude) return null;
-  if (!isLoaded) return /* @__PURE__ */ jsx("div", { className: "h-[300px] w-full animate-pulse rounded-lg bg-muted" });
-  return /* @__PURE__ */ jsxs(GoogleMap, { mapContainerStyle: containerStyle, center, zoom: 10, onLoad, children: [
-    /* @__PURE__ */ jsx(
-      Marker,
-      {
-        position: center,
-        title: isEn ? "Venue" : "会場",
-        label: { text: "📍", fontSize: "24px" },
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 0
-        }
-      }
-    ),
-    accommodations.filter((a) => a.latitude && a.longitude).map((a, i) => /* @__PURE__ */ jsx(
-      Marker,
-      {
-        position: { lat: a.latitude, lng: a.longitude },
-        title: isEn ? a.recommended_area_en ?? a.recommended_area ?? "Hotel" : a.recommended_area ?? "ホテル",
-        label: { text: "🏨", fontSize: "20px" },
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 0
-        }
-      },
-      `hotel-${i}`
-    )),
-    transitMarkers.map((m, i) => /* @__PURE__ */ jsx(
-      Marker,
-      {
-        position: { lat: m.lat, lng: m.lng },
-        title: m.label,
-        label: { text: m.label.toLowerCase().includes("airport") ? "✈️" : "🚉", fontSize: "20px" },
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 0
-        }
-      },
-      `transit-${i}`
-    )),
-    polylineGroups.map(
-      (group, gi) => group.paths.map((path, pi) => /* @__PURE__ */ jsx(
-        Polyline,
-        {
-          path,
-          options: { strokeColor: group.color, strokeWeight: 5, strokeOpacity: 0.8 }
-        },
-        `route-${gi}-${pi}`
-      ))
-    )
-  ] });
-}
-function decodePolyline(encoded) {
-  const points = [];
-  let index = 0, lat = 0, lng = 0;
-  while (index < encoded.length) {
-    let b, shift = 0, result = 0;
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 31) << shift;
-      shift += 5;
-    } while (b >= 32);
-    lat += result & 1 ? ~(result >> 1) : result >> 1;
-    shift = 0;
-    result = 0;
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 31) << shift;
-      shift += 5;
-    } while (b >= 32);
-    lng += result & 1 ? ~(result >> 1) : result >> 1;
-    points.push({ lat: lat / 1e5, lng: lng / 1e5 });
-  }
-  return points;
-}
 function PastEditions({ event: event2, category, pastEditions, isEn, formatDate: formatDate2 }) {
   return /* @__PURE__ */ jsxs(Fragment, { children: [
     event2.previous_edition_url && /* @__PURE__ */ jsx(SectionCard, { title: isEn ? "Previous edition" : "去年のレース", children: /* @__PURE__ */ jsx(
@@ -3633,6 +3481,7 @@ function PastEditions({ event: event2, category, pastEditions, isEn, formatDate:
     ] })
   ] });
 }
+const EventMap$4 = lazy(() => Promise.resolve().then(() => EventMap$1));
 const raceTypeColors = {
   trail: "bg-emerald-50 text-emerald-700 border-emerald-200",
   hyrox: "bg-amber-50 text-amber-700 border-amber-200",
@@ -4118,8 +3967,8 @@ function CategoryDetail() {
             visaInfo: displayVisaInfo
           }
         ),
-        event2.latitude && event2.longitude && /* @__PURE__ */ jsx(SectionCard, { title: isEn ? "Map" : "地図", children: /* @__PURE__ */ jsx(
-          EventMap$2,
+        event2.latitude && event2.longitude && /* @__PURE__ */ jsx(SectionCard, { title: isEn ? "Map" : "地図", children: /* @__PURE__ */ jsx(Suspense, { fallback: /* @__PURE__ */ jsx(Skeleton, { className: "w-full h-[300px]" }), children: /* @__PURE__ */ jsx(
+          EventMap$4,
           {
             latitude: event2.latitude,
             longitude: event2.longitude,
@@ -4127,7 +3976,7 @@ function CategoryDetail() {
             accessRoutes,
             isEn
           }
-        ) }),
+        ) }) }),
         /* @__PURE__ */ jsx(
           AccommodationInfo,
           {
@@ -7870,7 +7719,7 @@ function render(url2) {
   return { html };
 }
 const API_KEY = (process.env.VITE_GOOGLE_MAPS_KEY || "");
-function EventMap({ events, langPrefix, raceTypeLabel, lang: langProp }) {
+function EventMap$2({ events, langPrefix, raceTypeLabel, lang: langProp }) {
   const isEn = langProp === "en";
   const [selectedEvent, setSelectedEvent] = useState(null);
   const mappable = events.filter((e) => e.latitude != null && e.longitude != null);
@@ -7888,7 +7737,7 @@ function EventMap({ events, langPrefix, raceTypeLabel, lang: langProp }) {
       disableDefaultUI: false,
       children: [
         mappable.map((event2) => /* @__PURE__ */ jsx(
-          Marker$1,
+          Marker,
           {
             position: { lat: event2.latitude, lng: event2.longitude },
             onClick: () => handleMarkerClick(event2)
@@ -7915,6 +7764,162 @@ function EventMap({ events, langPrefix, raceTypeLabel, lang: langProp }) {
     }
   ) }) });
 }
+const EventMap$3 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: EventMap$2
+}, Symbol.toStringTag, { value: "Module" }));
+const containerStyle = { width: "100%", height: "300px" };
+function EventMap({ latitude, longitude, accommodations, accessRoutes, isEn }) {
+  const apiKey = (process.env.VITE_GOOGLE_MAPS_KEY || "");
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: apiKey
+  });
+  const center = useMemo(() => {
+    if (!latitude || !longitude) return { lat: 35.68, lng: 139.76 };
+    return { lat: latitude, lng: longitude };
+  }, [latitude, longitude]);
+  const ROUTE_COLORS = ["#ef4444", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"];
+  const polylineGroups = useMemo(() => {
+    const groups = [];
+    for (const ar of accessRoutes) {
+      if (!ar.route_polyline) continue;
+      if (isEn && ar.origin_type !== "venue_access") continue;
+      if (!isEn && ar.origin_type !== "tokyo") continue;
+      try {
+        const polylines = JSON.parse(ar.route_polyline);
+        const polys = Array.isArray(polylines) ? polylines : [polylines];
+        if (isEn) {
+          for (let i = 0; i < polys.length; i++) {
+            if (typeof polys[i] !== "string") continue;
+            groups.push({ paths: [decodePolyline(polys[i])], color: ROUTE_COLORS[i % ROUTE_COLORS.length] });
+          }
+        } else {
+          const paths = [];
+          for (const encoded of polys) {
+            if (typeof encoded !== "string") continue;
+            paths.push(decodePolyline(encoded));
+          }
+          if (paths.length > 0) groups.push({ paths, color: ROUTE_COLORS[0] });
+        }
+      } catch {
+      }
+    }
+    return groups;
+  }, [accessRoutes, isEn]);
+  const transitMarkers = useMemo(() => {
+    if (!isEn) return [];
+    const markers = [];
+    for (const ar of accessRoutes) {
+      if (ar.origin_type !== "venue_access" || !ar.route_detail_en) continue;
+      try {
+        const data = JSON.parse(ar.route_detail_en);
+        if (data.airport_1_lat && data.airport_1_lng) {
+          markers.push({ lat: data.airport_1_lat, lng: data.airport_1_lng, label: data.airport_1_name || "Airport" });
+        }
+        if (data.airport_2_lat && data.airport_2_lng) {
+          markers.push({ lat: data.airport_2_lat, lng: data.airport_2_lng, label: data.airport_2_name || "Airport" });
+        }
+        if (data.station_lat && data.station_lng) {
+          markers.push({ lat: data.station_lat, lng: data.station_lng, label: data.station_name || "Station" });
+        }
+      } catch {
+      }
+    }
+    return markers;
+  }, [accessRoutes, isEn]);
+  const onLoad = useCallback((map) => {
+    const bounds = new google.maps.LatLngBounds();
+    if (latitude && longitude) bounds.extend({ lat: latitude, lng: longitude });
+    for (const a of accommodations) {
+      if (a.latitude && a.longitude) bounds.extend({ lat: a.latitude, lng: a.longitude });
+    }
+    for (const m of transitMarkers) {
+      bounds.extend({ lat: m.lat, lng: m.lng });
+    }
+    if (!bounds.isEmpty()) {
+      map.fitBounds(bounds, 40);
+      const listener = google.maps.event.addListener(map, "idle", () => {
+        if (map.getZoom() > 13) map.setZoom(13);
+        google.maps.event.removeListener(listener);
+      });
+    }
+  }, [latitude, longitude, accommodations, transitMarkers]);
+  if (!latitude || !longitude) return null;
+  if (!isLoaded) return /* @__PURE__ */ jsx("div", { className: "h-[300px] w-full animate-pulse rounded-lg bg-muted" });
+  return /* @__PURE__ */ jsxs(GoogleMap, { mapContainerStyle: containerStyle, center, zoom: 10, onLoad, children: [
+    /* @__PURE__ */ jsx(
+      Marker$1,
+      {
+        position: center,
+        title: isEn ? "Venue" : "会場",
+        label: { text: "📍", fontSize: "24px" },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 0
+        }
+      }
+    ),
+    accommodations.filter((a) => a.latitude && a.longitude).map((a, i) => /* @__PURE__ */ jsx(
+      Marker$1,
+      {
+        position: { lat: a.latitude, lng: a.longitude },
+        title: isEn ? a.recommended_area_en ?? a.recommended_area ?? "Hotel" : a.recommended_area ?? "ホテル",
+        label: { text: "🏨", fontSize: "20px" },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 0
+        }
+      },
+      `hotel-${i}`
+    )),
+    transitMarkers.map((m, i) => /* @__PURE__ */ jsx(
+      Marker$1,
+      {
+        position: { lat: m.lat, lng: m.lng },
+        title: m.label,
+        label: { text: m.label.toLowerCase().includes("airport") ? "✈️" : "🚉", fontSize: "20px" },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 0
+        }
+      },
+      `transit-${i}`
+    )),
+    polylineGroups.map(
+      (group, gi) => group.paths.map((path, pi) => /* @__PURE__ */ jsx(
+        Polyline,
+        {
+          path,
+          options: { strokeColor: group.color, strokeWeight: 5, strokeOpacity: 0.8 }
+        },
+        `route-${gi}-${pi}`
+      ))
+    )
+  ] });
+}
+function decodePolyline(encoded) {
+  const points = [];
+  let index = 0, lat = 0, lng = 0;
+  while (index < encoded.length) {
+    let b, shift = 0, result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 31) << shift;
+      shift += 5;
+    } while (b >= 32);
+    lat += result & 1 ? ~(result >> 1) : result >> 1;
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 31) << shift;
+      shift += 5;
+    } while (b >= 32);
+    lng += result & 1 ? ~(result >> 1) : result >> 1;
+    points.push({ lat: lat / 1e5, lng: lng / 1e5 });
+  }
+  return points;
+}
 const EventMap$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: EventMap
@@ -7925,7 +7930,7 @@ export {
 
 // --- End SSR bundle ---
 
-const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png\" />\n    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>yabai.travel</title>\n    <meta name=\"description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:title\" content=\"yabai.travel\" />\n    <meta property=\"og:description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Preconnect to critical origins -->\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link rel=\"dns-prefetch\" href=\"https://maps.googleapis.com\" />\n    <link rel=\"dns-prefetch\" href=\"https://supabase.co\" />\n    <!-- Font display swap for system font fallback during load -->\n    <style>\n      @font-face {\n        font-family: 'Inter';\n        font-display: swap;\n        src: local('Inter');\n      }\n    </style>\n    <!-- Google Search Console verification: add meta tag here after registration -->\n    <!-- Google tag (gtag.js) - deferred to reduce TBT -->\n    <script>\n      window.addEventListener('load', function() {\n        var s = document.createElement('script');\n        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';\n        s.async = true;\n        document.head.appendChild(s);\n        s.onload = function() {\n          window.dataLayer = window.dataLayer || [];\n          function gtag(){dataLayer.push(arguments);}\n          gtag('js', new Date());\n          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });\n        };\n      });\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-QrGX2VvM.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-react-CEChUk-l.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-i18n-5xXoTvtS.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-ui-yJeg2EDs.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-xPOXoC3h.css\">\n  </head>\n  <body>\n    <div id=\"root\"><!--ssr-outlet--></div>\n  </body>\n</html>\n"
+const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png\" />\n    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>yabai.travel</title>\n    <meta name=\"description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:title\" content=\"yabai.travel\" />\n    <meta property=\"og:description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Preconnect to critical origins -->\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link rel=\"dns-prefetch\" href=\"https://maps.googleapis.com\" />\n    <link rel=\"dns-prefetch\" href=\"https://supabase.co\" />\n    <!-- Font display swap for system font fallback during load -->\n    <style>\n      @font-face {\n        font-family: 'Inter';\n        font-display: swap;\n        src: local('Inter');\n      }\n    </style>\n    <!-- Google Search Console verification: add meta tag here after registration -->\n    <!-- Google tag (gtag.js) - deferred to reduce TBT -->\n    <script>\n      window.addEventListener('load', function() {\n        var s = document.createElement('script');\n        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';\n        s.async = true;\n        document.head.appendChild(s);\n        s.onload = function() {\n          window.dataLayer = window.dataLayer || [];\n          function gtag(){dataLayer.push(arguments);}\n          gtag('js', new Date());\n          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });\n        };\n      });\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-CCYk7wx3.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-react-CEChUk-l.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-maps-Do-SDavS.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-i18n-5xXoTvtS.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-ui-yJeg2EDs.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-xPOXoC3h.css\">\n  </head>\n  <body>\n    <div id=\"root\"><!--ssr-outlet--></div>\n  </body>\n</html>\n"
 
 // Prefetch events from Supabase for top page SSR data injection
 // Uses AbortController timeout to avoid blocking SSR if Supabase is slow
