@@ -285,14 +285,14 @@ A HYROX event is the perfect anchor for a fitness-focused trip to Japan. The Chi
 
 ### Planning Your Race Trip
 
-If you are traveling to Japan for HYROX or any endurance event, [yabai.travel](https://yabai.travel/en/) is built for exactly this purpose. The platform aggregates endurance race information across Japan and provides:
+If you are traveling to Japan for HYROX or any endurance event, [yabai.travel](https://yabai.travel/en/?utm_source=devto&utm_medium=devto_article) is built for exactly this purpose. The platform aggregates endurance race information across Japan and provides:
 
 - **Access routes from Tokyo** to every race venue
 - **Accommodation suggestions** near the event
 - **Day-trip feasibility** — see at a glance whether you can race and return to Tokyo the same day
 - **Bilingual support** — full English and Japanese coverage
 
-Whether you are planning a weekend around HYROX Chiba or building a two-week racing tour of Japan, yabai.travel takes the logistical guesswork out of race travel.
+Whether you are planning a weekend around HYROX Chiba or building a two-week racing tour of Japan, [yabai.travel](https://yabai.travel?utm_source=devto&utm_medium=devto_article) takes the logistical guesswork out of race travel.
 
 ---
 

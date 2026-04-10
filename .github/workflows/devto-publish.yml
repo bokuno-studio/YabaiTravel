@@ -1,52 +1,34 @@
-name: Dev.to Article Publishing
+name: Dev.to Auto Publish
 
 on:
-  push:
-    paths:
-      - 'content/blog/publish/devto/**'
-  workflow_dispatch:
-    inputs:
-      filename:
-        description: 'Article filename to publish (optional, otherwise publishes all ready articles)'
-        required: false
+  schedule:
+    - cron: '0 12 * * 1'  # Every Monday at 12:00 UTC
+  workflow_dispatch:      # Manual trigger
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Publish articles to Dev.to
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Publish to Dev.to
         env:
           DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+        run: node scripts/devto/publish.js
+
+      - name: Commit published status
         run: |
-          # Write env file for script
-          echo "DEVTO_API_KEY=$DEVTO_API_KEY" > .env.local
-
-          # If filename provided, publish that specific article
-          if [ -n "${{ github.event.inputs.filename }}" ]; then
-            node scripts/devto-publish.mjs publish "${{ github.event.inputs.filename }}"
-          else
-            # Otherwise, auto-publish all articles with published: true
-            echo "📅 Auto-publishing articles from content/blog/publish/devto/..."
-            node scripts/devto-publish.mjs publish
-          fi
-
-      - name: Commit updated frontmatter
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add content/blog/publish/devto/
-          git commit -m "ci: update dev.to article frontmatter (devto_id)" || true
-
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: main
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add content/devto/
+          git diff --staged --quiet || git commit -m "devto: mark articles as published"
+          git push

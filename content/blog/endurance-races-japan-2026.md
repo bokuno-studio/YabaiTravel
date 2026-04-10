@@ -222,7 +222,7 @@ Many trail race venues require Shinkansen plus local rail or bus (30-90 minutes 
 
 ### Planning Transport to Race Venues
 
-This is exactly the problem [yabai.travel](https://yabai.travel) was built to solve. For every endurance race in our database, we provide:
+This is exactly the problem [yabai.travel](https://yabai.travel?utm_source=devto&utm_medium=devto_article) was built to solve. For every endurance race in our database, we provide:
 
 - **Door-to-door route from Tokyo** — exact train lines, transfer stations, and travel times
 - **Day-trip feasibility assessment** — whether you can race and return to Tokyo the same day
@@ -332,7 +332,7 @@ Check the mandatory equipment list carefully — Japanese races enforce gear che
 
 ## How yabai.travel Can Help
 
-[yabai.travel](https://yabai.travel) aggregates endurance race information with Tokyo-based travel logistics in a single view.
+[yabai.travel](https://yabai.travel?utm_source=devto&utm_medium=devto_article) aggregates endurance race information with Tokyo-based travel logistics in a single view.
 
 For every race in our database, you get:
 
@@ -342,9 +342,9 @@ For every race in our database, you get:
 - **Nearby accommodation** — options near the venue sorted by distance and transit access
 - **Bilingual support** — race information available in both English and Japanese
 
-Whether you are a trail runner targeting Mt. Fuji 100, a first-time marathoner eyeing Tokyo Marathon, or an OCR enthusiast looking for your next Spartan Race, [yabai.travel](https://yabai.travel) takes the guesswork out of racing in Japan.
+Whether you are a trail runner targeting Mt. Fuji 100, a first-time marathoner eyeing Tokyo Marathon, or an OCR enthusiast looking for your next Spartan Race, [yabai.travel](https://yabai.travel?utm_source=devto&utm_medium=devto_article) takes the guesswork out of racing in Japan.
 
-Browse upcoming endurance races at [yabai.travel](https://yabai.travel) and start planning your next race trip.
+Browse upcoming endurance races at [yabai.travel](https://yabai.travel?utm_source=devto&utm_medium=devto_article) and start planning your next race trip.
 
 ---
 

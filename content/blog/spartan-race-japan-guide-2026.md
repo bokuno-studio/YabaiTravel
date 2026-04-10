@@ -239,9 +239,9 @@ Running a Spartan Race in Japan is a different experience from events in the US 
 
 ## Plan Your Spartan Race Trip to Japan
 
-Combining a Spartan Race with sightseeing? [yabai.travel](https://yabai.travel) lists Spartan Race venues alongside transport routes from Tokyo, nearby accommodation, and day-trip feasibility.
+Combining a Spartan Race with sightseeing? [yabai.travel](https://yabai.travel?utm_source=devto&utm_medium=devto_article) lists Spartan Race venues alongside transport routes from Tokyo, nearby accommodation, and day-trip feasibility.
 
-Ready to get muddy in Japan? Your adventure starts at [yabai.travel](https://yabai.travel).
+Ready to get muddy in Japan? Your adventure starts at [yabai.travel](https://yabai.travel?utm_source=devto&utm_medium=devto_article).
 
 ---
 
