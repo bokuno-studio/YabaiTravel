@@ -8,6 +8,7 @@
 import { jsx, jsxs, Fragment } from "react/jsx-runtime";
 import { renderToString } from "react-dom/server";
 import { Link, useParams, useLocation, useSearchParams, Navigate, StaticRouter, Routes, Route, Outlet } from "react-router-dom";
+import * as React from "react";
 import { createContext, useState, useCallback, useEffect, useContext, Component, useRef, useMemo, lazy, Suspense } from "react";
 import i18n from "i18next";
 import { initReactI18next, useTranslation } from "react-i18next";
@@ -16,12 +17,33 @@ import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { cva } from "class-variance-authority";
 import { Slot, Dialog } from "radix-ui";
-import { Calendar, MapPin, Banknote, XIcon, ChevronDown, X, SlidersHorizontal, RotateCcw, MapPinOff, MapIcon, Loader2, Send, ArrowLeft, Train, Sun, Moon, ExternalLink, FileEdit, Home, ChevronRight, ArrowRight, Heart, Pencil, TrendingUp, Mountain, Clock, Map as Map$1, Users, Plus, MessageSquare, ChevronUp, Bug, Lightbulb, LogOut, Menu, Search, BookOpen, Info, FileText } from "lucide-react";
+import { Calendar as Calendar$1, MapPin, Banknote, XIcon, ChevronLeft, ChevronRight, CalendarIcon, ChevronDown, X, SlidersHorizontal, RotateCcw, MapPinOff, MapIcon, Loader2, Send, ArrowLeft, Train, Sun, Moon, ExternalLink, FileEdit, Home, ArrowRight, Heart, Pencil, TrendingUp, Mountain, Clock, Map, Users, Plus, MessageSquare, ChevronUp, Bug, Lightbulb, LogOut, Menu, Search, BookOpen, CalendarDays, Info, FileText } from "lucide-react";
+import { DayPicker } from "react-day-picker";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { createPortal } from "react-dom";
 import { useJsApiLoader, GoogleMap, Marker, Polyline } from "@react-google-maps/api";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { APIProvider, Map as Map$2, Marker as Marker$1, InfoWindow } from "@vis.gl/react-google-maps";
+import { APIProvider, Map as Map$1, Marker as Marker$1, InfoWindow } from "@vis.gl/react-google-maps";
+function isAuthError(error) {
+  if (!error) return false;
+  if ("code" in error && error.code === "PGRST301") {
+    return true;
+  }
+  if ("message" in error && typeof error.message === "string") {
+    const msg = error.message.toLowerCase();
+    if ((msg.includes("invalid refresh token") || msg.includes("refresh token not found")) && !msg.includes("network") && !msg.includes("timeout")) {
+      return true;
+    }
+  }
+  return false;
+}
+async function handleAuthError(supabase2) {
+  try {
+    await supabase2.auth.signOut();
+  } catch {
+  }
+}
 const AuthContext = createContext({
   user: null,
   profile: null,
@@ -44,6 +66,23 @@ async function fetchProfile(userId) {
   const supabase2 = await getSupabase();
   const { data, error } = await supabase2.from("user_profiles").select("*").eq("id", userId).maybeSingle();
   if (error) {
+    if (isAuthError(error)) {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 1e3));
+        const { data: retryData, error: retryError } = await supabase2.from("user_profiles").select("*").eq("id", userId).maybeSingle();
+        if (!retryError) {
+          return retryData;
+        }
+        if (isAuthError(retryError)) {
+          await handleAuthError(supabase2);
+        } else {
+          console.error("Failed to fetch user profile (retry):", retryError.message);
+        }
+      } catch {
+        console.error("Profile fetch retry failed:", error.message);
+      }
+      return null;
+    }
     console.error("Failed to fetch user profile:", error.message);
     return null;
   }
@@ -93,10 +132,20 @@ function AuthProvider({ children }) {
         loadProfile(s?.user ?? null).finally(() => setLoading(false));
       });
       const { data: { subscription: sub } } = supabase2.auth.onAuthStateChange(
-        (_event, s) => {
-          setSession(s);
-          setUser(s?.user ?? null);
-          loadProfile(s?.user ?? null);
+        (event2, s) => {
+          if (event2 === "TOKEN_REFRESHED" || event2 === "SIGNED_IN") {
+            setSession(s);
+            setUser(s?.user ?? null);
+            loadProfile(s?.user ?? null);
+          } else if (event2 === "TOKEN_REFRESH_FAILED") {
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+          } else if (event2 === "SIGNED_OUT") {
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+          }
         }
       );
       subscription = sub;
@@ -477,7 +526,7 @@ function EventCard({
       /* @__PURE__ */ jsx("h3", { className: "truncate text-sm font-semibold text-foreground", children: displayName }),
       /* @__PURE__ */ jsxs("div", { className: "mt-1 flex items-center gap-4 text-xs text-muted-foreground", children: [
         dateText && /* @__PURE__ */ jsxs("span", { className: "flex items-center gap-1", children: [
-          /* @__PURE__ */ jsx(Calendar, { className: "h-3 w-3 shrink-0" }),
+          /* @__PURE__ */ jsx(Calendar$1, { className: "h-3 w-3 shrink-0" }),
           dateText
         ] }),
         displayCountry && /* @__PURE__ */ jsx("span", { children: displayCountry })
@@ -500,7 +549,7 @@ function EventCard({
       /* @__PURE__ */ jsx("h3", { className: "text-sm font-semibold text-foreground line-clamp-2 leading-snug mb-2", children: displayName }),
       /* @__PURE__ */ jsxs("div", { className: "space-y-1 mb-auto", children: [
         dateText && /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1.5 text-xs text-muted-foreground", children: [
-          /* @__PURE__ */ jsx(Calendar, { className: "h-3 w-3 shrink-0 text-primary/70" }),
+          /* @__PURE__ */ jsx(Calendar$1, { className: "h-3 w-3 shrink-0 text-primary/70" }),
           /* @__PURE__ */ jsx("span", { children: dateText })
         ] }),
         (displayCountry || displayLocation) && /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1.5 text-xs text-muted-foreground", children: [
@@ -623,25 +672,29 @@ const buttonVariants = cva(
     }
   }
 );
-function Button({
-  className,
-  variant = "default",
-  size = "default",
-  asChild = false,
-  ...props
-}) {
-  const Comp = asChild ? Slot.Root : "button";
-  return /* @__PURE__ */ jsx(
-    Comp,
-    {
-      "data-slot": "button",
-      "data-variant": variant,
-      "data-size": size,
-      className: cn(buttonVariants({ variant, size, className })),
-      ...props
-    }
-  );
-}
+const Button = React.forwardRef(
+  ({
+    className,
+    variant = "default",
+    size = "default",
+    asChild = false,
+    ...props
+  }, ref) => {
+    const Comp = asChild ? Slot.Root : "button";
+    return /* @__PURE__ */ jsx(
+      Comp,
+      {
+        ref,
+        "data-slot": "button",
+        "data-variant": variant,
+        "data-size": size,
+        className: cn(buttonVariants({ variant, size, className })),
+        ...props
+      }
+    );
+  }
+);
+Button.displayName = "Button";
 function Sheet({ ...props }) {
   return /* @__PURE__ */ jsx(Dialog.Root, { "data-slot": "sheet", ...props });
 }
@@ -816,7 +869,7 @@ function PriceHistogramSlider({ prices, min, max, onRangeChange, currency = "¥"
     ] })
   ] });
 }
-function formatYearMonth$1(ym, lang) {
+function formatYearMonth(ym, lang) {
   const [year, month] = ym.split("-");
   const m = parseInt(month, 10);
   if (lang === "en") return `${year}/${month}`;
@@ -831,19 +884,32 @@ function getActiveFilterChips(props) {
       onRemove: () => props.onRaceTypeToggle(type)
     });
   }
-  for (const ym of props.selectedMonths) {
-    chips.push({
-      key: `month-${ym}`,
-      label: formatYearMonth$1(ym, props.lang),
-      onRemove: () => props.onMonthToggle(ym)
-    });
-  }
-  for (const name of props.selectedCategories) {
-    chips.push({
-      key: `cat-${name}`,
-      label: name,
-      onRemove: () => props.onCategoryToggle(name)
-    });
+  if (props.dateRangeStart || props.dateRangeEnd) {
+    const isEn = props.lang === "en";
+    let label = "";
+    if (props.dateRangeStart && props.dateRangeEnd) {
+      const startMonth = parseInt(props.dateRangeStart.slice(5, 7), 10);
+      const endMonth = parseInt(props.dateRangeEnd.slice(5, 7), 10);
+      const startYear = props.dateRangeStart.slice(0, 4);
+      const endYear = props.dateRangeEnd.slice(0, 4);
+      if (isEn) {
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        label = startYear === endYear ? `${months[startMonth - 1]}~${months[endMonth - 1]} ${startYear}` : `${months[startMonth - 1]} ${startYear}~${months[endMonth - 1]} ${endYear}`;
+      } else {
+        label = startYear === endYear ? `${startYear}年${startMonth}月~${endMonth}月` : `${startYear}年${startMonth}月~${endYear}年${endMonth}月`;
+      }
+    } else if (props.dateRangeStart) {
+      label = isEn ? `${formatYearMonth(props.dateRangeStart, props.lang)}~` : `${formatYearMonth(props.dateRangeStart, props.lang)}~`;
+    } else if (props.dateRangeEnd) {
+      label = isEn ? `~${formatYearMonth(props.dateRangeEnd, props.lang)}` : `~${formatYearMonth(props.dateRangeEnd, props.lang)}`;
+    }
+    if (label) {
+      chips.push({
+        key: "dateRange",
+        label,
+        onRemove: () => props.onDateRangeChange(null, null)
+      });
+    }
   }
   for (const idx of props.distanceRanges) {
     const range = props.distanceRangeOptions[idx];
@@ -906,20 +972,81 @@ function getActiveFilterChips(props) {
   }
   return chips;
 }
-function formatYearMonth(ym, lang) {
-  const [year, month] = ym.split("-");
-  const m = parseInt(month, 10);
-  if (lang === "en") return `${year}/${month}`;
-  return `${year}年${m}月`;
+function Calendar({
+  className,
+  classNames,
+  showOutsideDays = true,
+  ...props
+}) {
+  return /* @__PURE__ */ jsx(
+    DayPicker,
+    {
+      showOutsideDays,
+      className: cn("p-1", className),
+      classNames: {
+        months: "flex flex-col gap-2",
+        month: "space-y-2",
+        month_caption: "flex justify-center pt-1 relative items-center h-8",
+        caption_label: "text-xs font-medium",
+        nav: "flex items-center gap-1",
+        button_previous: cn(
+          buttonVariants({ variant: "outline" }),
+          "absolute left-0 h-6 w-6 bg-transparent p-0 opacity-50 hover:opacity-100 z-10"
+        ),
+        button_next: cn(
+          buttonVariants({ variant: "outline" }),
+          "absolute right-0 h-6 w-6 bg-transparent p-0 opacity-50 hover:opacity-100 z-10"
+        ),
+        month_grid: "w-full border-collapse",
+        weekdays: "flex",
+        weekday: "text-muted-foreground rounded-md w-8 font-normal text-[0.7rem] text-center",
+        week: "flex w-full mt-1",
+        day: "h-8 w-8 text-center text-xs p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+        day_button: cn(
+          buttonVariants({ variant: "ghost" }),
+          "h-8 w-8 p-0 text-xs font-normal aria-selected:opacity-100"
+        ),
+        range_end: "day-range-end",
+        selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+        today: "font-semibold underline underline-offset-2",
+        outside: "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
+        disabled: "text-muted-foreground opacity-50",
+        range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+        hidden: "invisible",
+        ...classNames
+      },
+      components: {
+        Chevron: ({ orientation }) => orientation === "left" ? /* @__PURE__ */ jsx(ChevronLeft, { className: "h-3 w-3" }) : /* @__PURE__ */ jsx(ChevronRight, { className: "h-3 w-3" })
+      },
+      ...props
+    }
+  );
 }
-function groupMonthsByYear(months) {
-  const groups = /* @__PURE__ */ new Map();
-  for (const ym of months) {
-    const year = ym.slice(0, 4);
-    if (!groups.has(year)) groups.set(year, []);
-    groups.get(year).push(ym);
+Calendar.displayName = "Calendar";
+const Popover = PopoverPrimitive.Root;
+const PopoverTrigger = PopoverPrimitive.Trigger;
+const PopoverContent = React.forwardRef(({ className, align = "start", sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsx(PopoverPrimitive.Portal, { children: /* @__PURE__ */ jsx(
+  PopoverPrimitive.Content,
+  {
+    ref,
+    align,
+    sideOffset,
+    className: cn(
+      "z-50 w-auto rounded-md border border-border bg-background p-0 shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+      className
+    ),
+    ...props
   }
-  return groups;
+) }));
+PopoverContent.displayName = PopoverPrimitive.Content.displayName;
+const toLocalDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function formatDate(dateStr, isEn) {
+  const d = new Date(dateStr);
+  if (isEn) {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${months[d.getMonth()]} ${d.getDate()}`;
+  }
+  return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 function FilterSection({
   title,
@@ -949,39 +1076,10 @@ function FilterSection({
     open && /* @__PURE__ */ jsx("div", { className: "px-3 pb-3", children })
   ] });
 }
-function SubSection({
-  title,
-  defaultOpen = false,
-  children
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return /* @__PURE__ */ jsxs("div", { children: [
-    /* @__PURE__ */ jsxs(
-      "button",
-      {
-        type: "button",
-        onClick: () => setOpen(!open),
-        "aria-expanded": open,
-        className: "flex w-full items-center gap-1 py-1 text-sm text-foreground/80 hover:text-foreground transition-colors bg-transparent border-0 cursor-pointer",
-        children: [
-          /* @__PURE__ */ jsx(
-            ChevronDown,
-            {
-              className: cn("h-3 w-3 transition-transform", open ? "rotate-0" : "-rotate-90")
-            }
-          ),
-          /* @__PURE__ */ jsx("span", { children: title })
-        ]
-      }
-    ),
-    open && /* @__PURE__ */ jsx("div", { className: "ml-4 mt-1", children })
-  ] });
-}
 function countActiveFilters(props) {
   let count = 0;
   if (props.raceTypes.size > 0) count++;
-  if (props.selectedMonths.size > 0) count++;
-  if (props.selectedCategories.size > 0) count++;
+  if (props.dateRangeStart || props.dateRangeEnd) count++;
   if (props.distanceRanges.size > 0) count++;
   if (props.timeLimitMin) count++;
   if (props.costMin > 0 || props.costMax < Infinity) count++;
@@ -995,8 +1093,7 @@ function SidebarFilters(props) {
   const activeCount = countActiveFilters(props);
   const clearAll = () => {
     for (const type of props.raceTypes) props.onRaceTypeToggle(type);
-    for (const m of props.selectedMonths) props.onMonthToggle(m);
-    for (const c of props.selectedCategories) props.onCategoryToggle(c);
+    props.onDateRangeChange(null, null);
     for (const idx of props.distanceRanges) props.onDistanceRangeToggle(idx);
     if (props.timeLimitMin) props.onTimeLimitChange("");
     if (props.costMin > 0 || props.costMax < Infinity) props.onCostRangeChange(0, Infinity);
@@ -1004,11 +1101,58 @@ function SidebarFilters(props) {
     if (props.entryStatus !== "active") props.onEntryStatusChange("active");
     if (props.showPastEvents) props.onShowPastEventsChange(false);
   };
-  const yearGroups = groupMonthsByYear(props.availableMonths);
   return /* @__PURE__ */ jsxs("div", { className: "space-y-0", children: [
     /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between px-3 pb-1", children: [
       /* @__PURE__ */ jsx("p", { className: "text-xs text-muted-foreground uppercase tracking-wider", children: isEn ? "Filters" : "絞り込み" }),
       activeCount > 0 && /* @__PURE__ */ jsx("span", { className: "inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground", children: activeCount })
+    ] }),
+    /* @__PURE__ */ jsxs(FilterSection, { title: isEn ? "Date Range" : "開催時期", defaultOpen: true, children: [
+      /* @__PURE__ */ jsxs(Popover, { children: [
+        /* @__PURE__ */ jsx(PopoverTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(
+          "button",
+          {
+            type: "button",
+            className: cn(
+              "flex w-full items-center gap-2 rounded border border-input bg-background px-2 py-1.5 text-xs transition-colors hover:bg-secondary/50",
+              props.dateRangeStart || props.dateRangeEnd ? "text-foreground" : "text-muted-foreground"
+            ),
+            children: [
+              /* @__PURE__ */ jsx(CalendarIcon, { className: "h-3.5 w-3.5 shrink-0" }),
+              /* @__PURE__ */ jsx("span", { className: "truncate", children: props.dateRangeStart && props.dateRangeEnd ? `${formatDate(props.dateRangeStart, isEn)} – ${formatDate(props.dateRangeEnd, isEn)}` : props.dateRangeStart ? `${formatDate(props.dateRangeStart, isEn)} –` : isEn ? "Select dates" : "日付を選択" })
+            ]
+          }
+        ) }),
+        /* @__PURE__ */ jsx(PopoverContent, { className: "p-0 w-auto z-[9999] max-h-[85vh] overflow-y-auto overscroll-contain", side: "bottom", align: "start", sideOffset: 4, avoidCollisions: false, children: /* @__PURE__ */ jsx(
+          Calendar,
+          {
+            mode: "range",
+            selected: {
+              from: props.dateRangeStart ? new Date(props.dateRangeStart) : void 0,
+              to: props.dateRangeEnd ? new Date(props.dateRangeEnd) : void 0
+            },
+            onSelect: (range) => {
+              const start = range?.from ? toLocalDate(range.from) : null;
+              const end = range?.to ? toLocalDate(range.to) : null;
+              props.onDateRangeChange(start, end);
+            },
+            numberOfMonths: 2,
+            classNames: {
+              day_button: "h-9 w-9",
+              day: "h-9 w-9"
+            }
+          }
+        ) })
+      ] }),
+      /* @__PURE__ */ jsx(
+        "button",
+        {
+          type: "button",
+          onClick: () => props.onDateRangeChange(null, null),
+          disabled: !props.dateRangeStart && !props.dateRangeEnd,
+          className: "mt-1.5 w-full text-xs px-2 py-1 rounded border border-border/50 hover:bg-secondary/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+          children: isEn ? "Clear" : "クリア"
+        }
+      )
     ] }),
     props.availableRaceTypes.length > 0 && /* @__PURE__ */ jsx(FilterSection, { title: isEn ? "Race Type" : "レース種別", defaultOpen: true, children: /* @__PURE__ */ jsx("div", { className: "space-y-0.5", children: props.availableRaceTypes.map((type) => /* @__PURE__ */ jsxs(
       "label",
@@ -1029,52 +1173,6 @@ function SidebarFilters(props) {
       },
       type
     )) }) }),
-    props.availableMonths.length > 0 && /* @__PURE__ */ jsx(FilterSection, { title: isEn ? "Month" : "開催時期", defaultOpen: true, children: /* @__PURE__ */ jsx("div", { className: "space-y-1", children: [...yearGroups.entries()].map(([year, months], yearIdx) => /* @__PURE__ */ jsx(
-      SubSection,
-      {
-        title: isEn ? year : `${year}年`,
-        defaultOpen: yearIdx === 0,
-        children: /* @__PURE__ */ jsx("div", { className: "grid grid-cols-2 gap-x-1 gap-y-0.5", children: months.map((ym) => {
-          const m = parseInt(ym.slice(5, 7), 10);
-          return /* @__PURE__ */ jsxs(
-            "label",
-            {
-              className: "flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 hover:bg-secondary/50 transition-colors",
-              children: [
-                /* @__PURE__ */ jsx(
-                  "input",
-                  {
-                    type: "checkbox",
-                    checked: props.selectedMonths.has(ym),
-                    onChange: () => props.onMonthToggle(ym),
-                    className: "h-3.5 w-3.5 rounded border-input text-primary accent-primary"
-                  }
-                ),
-                /* @__PURE__ */ jsx("span", { className: "text-xs", children: isEn ? formatYearMonth(ym, props.lang) : `${m}月` })
-              ]
-            },
-            ym
-          );
-        }) })
-      },
-      year
-    )) }) }),
-    props.availableCategories.length > 0 && /* @__PURE__ */ jsx(FilterSection, { title: props.t("filter.category"), children: /* @__PURE__ */ jsxs("div", { className: "flex flex-wrap gap-1", children: [
-      props.availableCategories.slice(0, 20).map((name) => /* @__PURE__ */ jsx(
-        "button",
-        {
-          type: "button",
-          onClick: () => props.onCategoryToggle(name),
-          className: cn(
-            "rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors",
-            props.selectedCategories.has(name) ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-          ),
-          children: name
-        },
-        name
-      )),
-      props.availableCategories.length > 20 && /* @__PURE__ */ jsx("span", { className: "self-center text-[11px] text-muted-foreground", children: isEn ? `+${props.availableCategories.length - 20} more` : `他${props.availableCategories.length - 20}件` })
-    ] }) }),
     /* @__PURE__ */ jsx(FilterSection, { title: props.t("filter.distance"), children: /* @__PURE__ */ jsx("div", { className: "flex flex-wrap gap-1", children: props.distanceRangeOptions.map((range, idx) => /* @__PURE__ */ jsx(
       "button",
       {
@@ -1201,8 +1299,8 @@ function useSidebarStats() {
 const STORAGE_KEY$1 = "yabai_filters";
 const DEFAULT = {
   raceTypes: [],
-  selectedMonths: [],
-  selectedCategories: [],
+  dateRangeStart: null,
+  dateRangeEnd: null,
   distanceRanges: [],
   timeLimitMin: "",
   costMin: 0,
@@ -1220,8 +1318,8 @@ function loadFromSession() {
     const parsed = JSON.parse(raw);
     return {
       raceTypes: parsed.raceTypes ?? [],
-      selectedMonths: parsed.selectedMonths ?? [],
-      selectedCategories: parsed.selectedCategories ?? [],
+      dateRangeStart: parsed.dateRangeStart ?? null,
+      dateRangeEnd: parsed.dateRangeEnd ?? null,
       distanceRanges: parsed.distanceRanges ?? [],
       timeLimitMin: parsed.timeLimitMin ?? "",
       costMin: parsed.costMin ?? 0,
@@ -1363,7 +1461,7 @@ function EventList() {
   const isEn = lang === "en";
   const location = useLocation();
   const langPrefix = `/${lang || "ja"}`;
-  const { isSupporter } = useAuth();
+  const { isSupporter, loading: authLoading } = useAuth();
   const DISTANCE_RANGES = useMemo(() => getDistanceRanges(isEn), [isEn]);
   useScrollDepth("event_list");
   const ssrEvents = useMemo(() => getSSREvents(), []);
@@ -1379,13 +1477,13 @@ function EventList() {
     if (initialType) return /* @__PURE__ */ new Set([initialType]);
     return new Set(saved.raceTypes);
   });
-  const [selectedCategories, setSelectedCategories] = useState(() => {
-    const fromParams = parseSetParam(searchParams, "categories");
-    return fromParams.size > 0 ? fromParams : new Set(saved.selectedCategories);
+  const [dateRangeStart, setDateRangeStart] = useState(() => {
+    const fromParams = searchParams.get("date_from");
+    return fromParams ?? (saved.dateRangeStart ?? null);
   });
-  const [selectedMonths, setSelectedMonths] = useState(() => {
-    const fromParams = parseSetParam(searchParams, "months");
-    return fromParams.size > 0 ? fromParams : new Set(saved.selectedMonths);
+  const [dateRangeEnd, setDateRangeEnd] = useState(() => {
+    const fromParams = searchParams.get("date_to");
+    return fromParams ?? (saved.dateRangeEnd ?? null);
   });
   const [distanceRanges, setDistanceRanges] = useState(() => {
     const fromParams = parseNumSetParam(searchParams, "distances");
@@ -1410,8 +1508,8 @@ function EventList() {
   useEffect(() => {
     saveFilterState({
       raceTypes: [...raceTypes],
-      selectedMonths: [...selectedMonths],
-      selectedCategories: [...selectedCategories],
+      dateRangeStart,
+      dateRangeEnd,
       distanceRanges: [...distanceRanges],
       timeLimitMin,
       costMin,
@@ -1422,8 +1520,8 @@ function EventList() {
     });
     const params = new URLSearchParams();
     if (raceTypes.size > 0) params.set("raceTypes", [...raceTypes].join(","));
-    if (selectedMonths.size > 0) params.set("months", [...selectedMonths].join(","));
-    if (selectedCategories.size > 0) params.set("categories", [...selectedCategories].join(","));
+    if (dateRangeStart) params.set("date_from", dateRangeStart);
+    if (dateRangeEnd) params.set("date_to", dateRangeEnd);
     if (distanceRanges.size > 0) params.set("distances", [...distanceRanges].join(","));
     if (timeLimitMin) params.set("timeLimitMin", timeLimitMin);
     if (costMin > 0) params.set("costMin", String(costMin));
@@ -1432,7 +1530,7 @@ function EventList() {
     if (entryStatus !== "active") params.set("entryStatus", entryStatus);
     if (showPastEvents) params.set("showPast", "1");
     setSearchParams(params, { replace: true });
-  }, [raceTypes, selectedMonths, selectedCategories, distanceRanges, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents, setSearchParams]);
+  }, [raceTypes, dateRangeStart, dateRangeEnd, distanceRanges, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents, setSearchParams]);
   useEffect(() => {
     async function fetchEvents() {
       try {
@@ -1440,8 +1538,14 @@ function EventList() {
         let from = 0;
         const PAGE_SIZE = 1e3;
         while (true) {
-          const { data: page, error: err } = await supabase.from("events").select("*, categories(*)").order("event_date", { ascending: true, nullsFirst: false }).range(from, from + PAGE_SIZE - 1);
-          if (err) throw err;
+          const { data: page, error: err } = await supabase.from("events").select("*, categories(*)").is("deleted_at", null).order("event_date", { ascending: true, nullsFirst: false }).range(from, from + PAGE_SIZE - 1);
+          if (err) {
+            if (isAuthError(err)) {
+              await handleAuthError(supabase);
+              return;
+            }
+            throw err;
+          }
           if (!page || page.length === 0) break;
           allEvents.push(...page);
           if (page.length < PAGE_SIZE) break;
@@ -1450,17 +1554,29 @@ function EventList() {
         setEvents(allEvents);
       } catch (e) {
         const msg = e instanceof Error ? e.message : e && typeof e === "object" && "message" in e ? String(e.message) : String(e);
-        console.error("[EventList] 取得エラー:", e);
+        console.error("[EventList] 取得エラー:", e instanceof Error ? e.message : JSON.stringify(e));
         setError(msg || "取得に失敗しました");
       } finally {
         setLoading(false);
       }
     }
     async function fetchStats() {
-      const { data: lastRow } = await supabase.from("events").select("collected_at").not("collected_at", "is", null).order("collected_at", { ascending: false }).limit(1);
+      const { data: lastRow, error: lastRowErr } = await supabase.from("events").select("collected_at").not("collected_at", "is", null).order("collected_at", { ascending: false }).limit(1);
+      if (lastRowErr) {
+        if (isAuthError(lastRowErr)) {
+          await handleAuthError(supabase);
+          return;
+        }
+      }
       if (lastRow?.[0]?.collected_at) setSidebarLastUpdated(lastRow[0].collected_at);
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3).toISOString();
-      const { count } = await supabase.from("events").select("id", { count: "exact", head: true }).gte("updated_at", weekAgo);
+      const { count, error: countErr } = await supabase.from("events").select("id", { count: "exact", head: true }).gte("updated_at", weekAgo);
+      if (countErr) {
+        if (isAuthError(countErr)) {
+          await handleAuthError(supabase);
+          return;
+        }
+      }
       setSidebarWeeklyNewCount(count ?? 0);
     }
     if (ssrEvents) {
@@ -1505,37 +1621,11 @@ function EventList() {
     });
     return RACE_TYPE_ORDER.filter((t2) => types.has(t2));
   }, [events]);
-  const availableCategories = useMemo(() => {
-    const filteredEvts = raceTypes.size > 0 ? events.filter((e) => e.race_type && raceTypes.has(e.race_type)) : events;
-    const names = /* @__PURE__ */ new Set();
-    filteredEvts.forEach((e) => {
-      (e.categories ?? []).forEach((c) => {
-        if (c.name) names.add(c.name);
-      });
-    });
-    return [...names].sort();
-  }, [events, raceTypes]);
   const toggleRaceType = (t2) => {
     setRaceTypes((prev) => {
       const next = new Set(prev);
       if (next.has(t2)) next.delete(t2);
       else next.add(t2);
-      return next;
-    });
-  };
-  const toggleCategory = (name) => {
-    setSelectedCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      return next;
-    });
-  };
-  const toggleMonth = (m) => {
-    setSelectedMonths((prev) => {
-      const next = new Set(prev);
-      if (next.has(m)) next.delete(m);
-      else next.add(m);
       return next;
     });
   };
@@ -1578,15 +1668,12 @@ function EventList() {
   const getMatchingCategories = (event2) => {
     const cats = event2.categories ?? [];
     return cats.filter((cat) => {
-      if (selectedCategories.size > 0 && !selectedCategories.has(cat.name)) return false;
       return categoryMatchesFilter(cat);
     });
   };
-  const hasAnyFilter = raceTypes.size > 0 || selectedCategories.size > 0 || selectedMonths.size > 0 || distanceRanges.size > 0 || !!timeLimitMin || costMin > 0 || costMax < Infinity || !!poleFilter || entryStatus !== "active" || showPastEvents;
+  const hasAnyFilter = raceTypes.size > 0 || distanceRanges.size > 0 || !!timeLimitMin || costMin > 0 || costMax < Infinity || !!poleFilter || entryStatus !== "active" || showPastEvents;
   const resetAllFilters = useCallback(() => {
     setRaceTypes(/* @__PURE__ */ new Set());
-    setSelectedCategories(/* @__PURE__ */ new Set());
-    setSelectedMonths(/* @__PURE__ */ new Set());
     setDistanceRanges(/* @__PURE__ */ new Set());
     setTimeLimitMin("");
     setCostMin(0);
@@ -1600,14 +1687,9 @@ function EventList() {
     const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     if (!showPastEvents && event2.event_date && event2.event_date < today) return false;
     if (raceTypes.size > 0 && (event2.race_type == null || !raceTypes.has(event2.race_type))) return false;
-    if (selectedCategories.size > 0) {
-      const catNames = new Set((event2.categories ?? []).map((c) => c.name));
-      const hasMatch = [...selectedCategories].some((name) => catNames.has(name));
-      if (!hasMatch) return false;
-    }
-    if (selectedMonths.size > 0 && event2.event_date) {
-      const ym = event2.event_date.slice(0, 7);
-      if (!selectedMonths.has(ym)) return false;
+    if ((dateRangeStart || dateRangeEnd) && event2.event_date) {
+      if (dateRangeStart && event2.event_date < dateRangeStart) return false;
+      if (dateRangeEnd && event2.event_date > dateRangeEnd) return false;
     }
     if (entryStatus) {
       if (entryStatus === "active") {
@@ -1647,17 +1729,19 @@ function EventList() {
     setCostMin(newMin);
     setCostMax(newMax);
   };
+  const onDateRangeChange = (start, end) => {
+    setDateRangeStart(start);
+    setDateRangeEnd(end);
+  };
   const filterProps = {
     availableRaceTypes,
     raceTypes,
     onRaceTypeToggle: toggleRaceType,
     raceTypeLabel,
-    availableCategories,
-    selectedCategories,
-    onCategoryToggle: toggleCategory,
     availableMonths,
-    selectedMonths,
-    onMonthToggle: toggleMonth,
+    dateRangeStart,
+    dateRangeEnd,
+    onDateRangeChange,
     distanceRanges,
     onDistanceRangeToggle: toggleDistanceRange,
     distanceRangeOptions: DISTANCE_RANGES,
@@ -1680,8 +1764,8 @@ function EventList() {
   const { setFilterNode } = useSidebarFilter();
   const filterDepsKey = JSON.stringify([
     [...raceTypes],
-    [...selectedMonths],
-    [...selectedCategories],
+    dateRangeStart,
+    dateRangeEnd,
     [...distanceRanges],
     timeLimitMin,
     costMin,
@@ -1703,7 +1787,7 @@ function EventList() {
   const [visibleCount, setVisibleCount] = useState(INITIAL_RENDER_COUNT);
   useEffect(() => {
     setVisibleCount(INITIAL_RENDER_COUNT);
-  }, [raceTypes.size, selectedCategories.size, selectedMonths.size, distanceRanges.size, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents]);
+  }, [raceTypes.size, dateRangeStart, dateRangeEnd, distanceRanges.size, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents]);
   if (error) {
     return /* @__PURE__ */ jsx("div", { className: "mx-auto max-w-7xl px-4 py-12 text-center", children: /* @__PURE__ */ jsxs("p", { className: "text-destructive", children: [
       isEn ? "Error:" : "エラー:",
@@ -1711,17 +1795,46 @@ function EventList() {
       error
     ] }) });
   }
+  const isSingleRaceType = (type) => raceTypes.size === 1 && raceTypes.has(type);
+  const pageTitle = isSingleRaceType("hyrox") ? isEn ? "HYROX Japan 2026 | Schedule, Venues & Travel from Tokyo — yabai.travel" : "HYROX日本大会 2026 — スケジュール・会場・交通アクセス | yabai.travel" : isEn ? "Endurance Races Near Tokyo | yabai.travel" : "トレラン・HYROX・スパルタン大会を探す | yabai.travel";
+  const pageDescription = isSingleRaceType("hyrox") ? isEn ? "HYROX Japan race schedule, entry fees, and travel guide from Tokyo. Find venues in Chiba and more with access and accommodation costs." : "HYROX日本大会（千葉など）のスケジュール・参加費・東京からのアクセス・宿泊情報を一括確認。初心者から上級者まで対応。" : isEn ? "Search trail running, HYROX, Spartan and marathon races in Japan with travel costs from Tokyo. Day trip or overnight — all in one place." : "東京起点の交通アクセス・宿泊コスト付きで、トレラン・HYROX・スパルタンレース・マラソン大会を検索。日帰り判定や宿泊必要性まで一括確認。39+ソースから自動収集。";
   return /* @__PURE__ */ jsxs(Fragment, { children: [
-    /* @__PURE__ */ jsx("title", { children: isEn ? "Find Endurance Events | yabai.travel" : "エンデュランス大会を探す | yabai.travel" }),
-    /* @__PURE__ */ jsx("meta", { name: "description", content: isEn ? "Compare trail running, Spartan, HYROX, marathon and other endurance events with access and accommodation costs." : "トレラン・スパルタン・HYROX・マラソンなどエンデュランス系大会の情報、アクセス・宿泊コストをまとめて比較できるポータルサイト。" }),
-    /* @__PURE__ */ jsx("meta", { property: "og:title", content: isEn ? "Find Endurance Events | yabai.travel" : "エンデュランス大会を探す | yabai.travel" }),
-    /* @__PURE__ */ jsx("meta", { property: "og:description", content: isEn ? "Compare trail running, Spartan, HYROX, marathon and other endurance events with access and accommodation costs." : "トレラン・スパルタン・HYROX・マラソンなどエンデュランス系大会の情報、アクセス・宿泊コストをまとめて比較できるポータルサイト。" }),
+    /* @__PURE__ */ jsx("title", { children: pageTitle }),
+    /* @__PURE__ */ jsx("meta", { name: "description", content: pageDescription }),
+    /* @__PURE__ */ jsx("meta", { property: "og:title", content: pageTitle }),
+    /* @__PURE__ */ jsx("meta", { property: "og:description", content: pageDescription }),
     /* @__PURE__ */ jsx("meta", { property: "og:url", content: `https://yabai.travel/${lang || "ja"}` }),
     /* @__PURE__ */ jsx("link", { rel: "canonical", href: `https://yabai.travel${location.pathname}` }),
     /* @__PURE__ */ jsx("link", { rel: "alternate", hrefLang: "ja", href: `https://yabai.travel${location.pathname.replace(/^\/(ja|en)/, "/ja")}` }),
     /* @__PURE__ */ jsx("link", { rel: "alternate", hrefLang: "en", href: `https://yabai.travel${location.pathname.replace(/^\/(ja|en)/, "/en")}` }),
     /* @__PURE__ */ jsx("link", { rel: "alternate", hrefLang: "x-default", href: `https://yabai.travel${location.pathname.replace(/^\/(ja|en)/, "/en")}` }),
     /* @__PURE__ */ jsxs("div", { className: "mx-auto max-w-7xl px-4 py-6 md:px-6", children: [
+      isEn && /* @__PURE__ */ jsxs("div", { className: "mb-8 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 px-6 py-8 text-center", children: [
+        /* @__PURE__ */ jsx("h1", { className: "text-2xl font-bold tracking-tight text-foreground sm:text-3xl", children: "Find Your Next Endurance Race in Japan" }),
+        /* @__PURE__ */ jsx("p", { className: "mt-3 text-base text-muted-foreground max-w-xl mx-auto", children: "Race information + travel planning in one place. Tokyo-based access times, accommodation costs, and day-trip feasibility — all included." }),
+        /* @__PURE__ */ jsx(
+          "a",
+          {
+            href: "#race-list",
+            className: "mt-4 inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors",
+            children: "Explore Races ↓"
+          }
+        ),
+        /* @__PURE__ */ jsxs("div", { className: "mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3", children: [
+          /* @__PURE__ */ jsxs("div", { className: "rounded-lg bg-background/60 px-4 py-3", children: [
+            /* @__PURE__ */ jsx("p", { className: "font-semibold text-foreground", children: "39+ Race Sources" }),
+            /* @__PURE__ */ jsx("p", { className: "text-sm text-muted-foreground", children: "All endurance races in Japan, aggregated" })
+          ] }),
+          /* @__PURE__ */ jsxs("div", { className: "rounded-lg bg-background/60 px-4 py-3", children: [
+            /* @__PURE__ */ jsx("p", { className: "font-semibold text-foreground", children: "Tokyo-Based Access" }),
+            /* @__PURE__ */ jsx("p", { className: "text-sm text-muted-foreground", children: "Travel time & transport from Tokyo included" })
+          ] }),
+          /* @__PURE__ */ jsxs("div", { className: "rounded-lg bg-background/60 px-4 py-3", children: [
+            /* @__PURE__ */ jsx("p", { className: "font-semibold text-foreground", children: "Accommodation + Transport" }),
+            /* @__PURE__ */ jsx("p", { className: "text-sm text-muted-foreground", children: "Plan your whole trip in one place" })
+          ] })
+        ] })
+      ] }),
       !isEn && /* @__PURE__ */ jsxs("div", { className: "mb-6 rounded-lg border border-primary/30 bg-primary/5 p-4 flex items-center justify-between", children: [
         /* @__PURE__ */ jsxs("div", { children: [
           /* @__PURE__ */ jsx("p", { className: "font-semibold text-foreground", children: "Crew ¥500/月" }),
@@ -1729,7 +1842,7 @@ function EventList() {
         ] }),
         /* @__PURE__ */ jsx(Button, { asChild: true, children: /* @__PURE__ */ jsx("a", { href: `${langPrefix}/pricing`, children: "詳しく見る" }) })
       ] }),
-      /* @__PURE__ */ jsxs("div", { className: "mb-4 space-y-2", children: [
+      /* @__PURE__ */ jsxs("div", { id: "race-list", className: "mb-4 space-y-2", children: [
         /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2", children: [
           /* @__PURE__ */ jsxs(Sheet, { open: mobileFilterOpen, onOpenChange: setMobileFilterOpen, children: [
             /* @__PURE__ */ jsx(SheetTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(Button, { variant: "outline", size: "sm", className: "shrink-0 min-[960px]:hidden", children: [
@@ -1812,7 +1925,7 @@ function EventList() {
           children: /* @__PURE__ */ jsx(Suspense, { fallback: /* @__PURE__ */ jsx("div", { className: "flex h-[300px] items-center justify-center rounded-xl border border-border/40 bg-muted/30", children: /* @__PURE__ */ jsx(MapIcon, { className: "h-8 w-8 animate-pulse text-muted-foreground/40" }) }), children: /* @__PURE__ */ jsx(EventMap$3, { events: filtered, langPrefix, raceTypeLabel, lang }) })
         }
       ),
-      !isSupporter && /* @__PURE__ */ jsxs("div", { className: "mb-6 rounded-lg border border-primary/30 bg-primary/5 p-4 text-center", children: [
+      !authLoading && !isSupporter && /* @__PURE__ */ jsxs("div", { className: "mb-6 rounded-lg border border-primary/30 bg-primary/5 p-4 text-center", children: [
         /* @__PURE__ */ jsx("p", { className: "font-medium", children: isEn ? "More with Crew" : "Crew なら、もっと便利に" }),
         /* @__PURE__ */ jsx("p", { className: "mt-1 text-sm text-muted-foreground", children: isEn ? "Save favorites, join the discussion and more" : "お気に入り保存・掲示板コメント等" }),
         /* @__PURE__ */ jsx(
@@ -2068,7 +2181,7 @@ function EventComments({ eventId, categoryId, raceType: raceType2, isEn, limit }
       setSubmitting(false);
     }
   };
-  const formatDate = (d) => {
+  const formatDate2 = (d) => {
     try {
       const date = new Date(d);
       return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
@@ -2086,7 +2199,7 @@ function EventComments({ eventId, categoryId, raceType: raceType2, isEn, limit }
       loading ? /* @__PURE__ */ jsx("p", { className: "text-sm text-muted-foreground", children: isEn ? "Loading..." : "読み込み中..." }) : comments.length === 0 ? /* @__PURE__ */ jsx("p", { className: "text-sm text-muted-foreground", children: isEn ? "No reports yet. Be the first!" : "まだレポートはありません。最初の投稿者になりましょう！" }) : /* @__PURE__ */ jsx("div", { className: "space-y-4", children: comments.map((c) => /* @__PURE__ */ jsxs("div", { className: "border-b border-border/40 pb-3 last:border-0", children: [
         /* @__PURE__ */ jsxs("div", { className: "mb-1 flex items-center gap-2 text-xs text-muted-foreground", children: [
           /* @__PURE__ */ jsx("span", { className: "font-medium text-foreground", children: c.display_name || (isEn ? "Anonymous" : "匿名") }),
-          /* @__PURE__ */ jsx("span", { children: formatDate(c.created_at) })
+          /* @__PURE__ */ jsx("span", { children: formatDate2(c.created_at) })
         ] }),
         /* @__PURE__ */ jsx("p", { className: "whitespace-pre-line text-sm leading-relaxed text-muted-foreground", children: c.content })
       ] }, c.id)) }),
@@ -2257,6 +2370,10 @@ function EventDetail() {
           supabase.from("access_routes").select("*").eq("event_id", eventId).order("direction"),
           supabase.from("accommodations").select("*").eq("event_id", eventId)
         ]);
+        if (isAuthError(eventRes.error) || isAuthError(catRes.error) || isAuthError(routesRes.error) || isAuthError(accRes.error)) {
+          await handleAuthError(supabase);
+          return;
+        }
         if (eventRes.error) throw eventRes.error;
         setEvent(eventRes.data ?? null);
         setCategories(catRes.data ?? []);
@@ -2275,7 +2392,11 @@ function EventDetail() {
   useEffect(() => {
     if (!event2?.race_type || !event2.id) return;
     async function fetchRelated() {
-      const { data } = await supabase.from("events").select("*").eq("race_type", event2.race_type).neq("id", event2.id).not("location", "is", null).order("event_date", { ascending: true }).limit(3);
+      const { data, error: error2 } = await supabase.from("events").select("*").eq("race_type", event2.race_type).neq("id", event2.id).not("location", "is", null).order("event_date", { ascending: true }).limit(3);
+      if (isAuthError(error2)) {
+        await handleAuthError(supabase);
+        return;
+      }
       setRelatedEvents(data ?? []);
     }
     fetchRelated();
@@ -2367,7 +2488,7 @@ function EventDetail() {
           displayDescription && /* @__PURE__ */ jsx("p", { className: "mt-2 text-sm leading-relaxed text-muted-foreground", children: displayDescription }),
           /* @__PURE__ */ jsxs("div", { className: "mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground", children: [
             /* @__PURE__ */ jsxs("span", { className: "flex items-center gap-1.5", children: [
-              /* @__PURE__ */ jsx(Calendar, { className: "h-3.5 w-3.5 shrink-0 text-primary/70" }),
+              /* @__PURE__ */ jsx(Calendar$1, { className: "h-3.5 w-3.5 shrink-0 text-primary/70" }),
               dateDisplay
             ] }),
             displayLocation && /* @__PURE__ */ jsxs("span", { className: "flex items-center gap-1.5", children: [
@@ -2408,9 +2529,9 @@ function EventDetail() {
               /* @__PURE__ */ jsx(ExternalLink, { className: "mr-1.5 h-3.5 w-3.5" }),
               isEn ? "Visit Official Site" : "公式サイトを見る"
             ] }) }),
-            event2.entry_url && /* @__PURE__ */ jsx(Button, { asChild: true, variant: "outline", size: "sm", children: /* @__PURE__ */ jsxs("a", { href: event2.entry_url, target: "_blank", rel: "noreferrer", children: [
+            event2.entry_url && /* @__PURE__ */ jsx(Button, { asChild: true, variant: "default", size: "sm", className: "min-h-[44px]", children: /* @__PURE__ */ jsxs("a", { href: event2.entry_url, target: "_blank", rel: "noreferrer", children: [
               /* @__PURE__ */ jsx(FileEdit, { className: "mr-1.5 h-3.5 w-3.5" }),
-              isEn ? "Entry" : "申込"
+              isEn ? "Apply Now" : "申込みページへ"
             ] }) })
           ] })
         ] }),
@@ -2456,7 +2577,7 @@ function EventDetail() {
                       /* @__PURE__ */ jsx("p", { className: "text-sm font-medium text-foreground", children: reName }),
                       /* @__PURE__ */ jsxs("div", { className: "mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground", children: [
                         re.event_date && /* @__PURE__ */ jsxs("span", { className: "flex items-center gap-1", children: [
-                          /* @__PURE__ */ jsx(Calendar, { className: "h-3 w-3" }),
+                          /* @__PURE__ */ jsx(Calendar$1, { className: "h-3 w-3" }),
                           re.event_date
                         ] }),
                         reLoc && /* @__PURE__ */ jsxs("span", { className: "flex items-center gap-1", children: [
@@ -2516,7 +2637,7 @@ function EventDetail() {
         displayDescription && /* @__PURE__ */ jsx("p", { className: "mt-2 text-sm leading-relaxed text-muted-foreground", children: displayDescription }),
         /* @__PURE__ */ jsxs("div", { className: "mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground", children: [
           /* @__PURE__ */ jsxs("span", { className: "flex items-center gap-1.5", children: [
-            /* @__PURE__ */ jsx(Calendar, { className: "h-3.5 w-3.5 shrink-0 text-primary/70" }),
+            /* @__PURE__ */ jsx(Calendar$1, { className: "h-3.5 w-3.5 shrink-0 text-primary/70" }),
             event2.event_date
           ] }),
           displayLocation && /* @__PURE__ */ jsxs("span", { className: "flex items-center gap-1.5", children: [
@@ -3272,7 +3393,7 @@ function CostBreakdown({ event: event2, category, outbound, returnRoute, accommo
   );
 }
 function CourseMap({ event: event2, courseMapFiles, isEn }) {
-  return /* @__PURE__ */ jsx(SectionCard, { title: isEn ? "Course map" : "コースマップはある？", icon: /* @__PURE__ */ jsx(Map$1, { className: "h-4 w-4 text-primary" }), children: courseMapFiles.length > 0 ? /* @__PURE__ */ jsxs(Fragment, { children: [
+  return /* @__PURE__ */ jsx(SectionCard, { title: isEn ? "Course map" : "コースマップはある？", icon: /* @__PURE__ */ jsx(Map, { className: "h-4 w-4 text-primary" }), children: courseMapFiles.length > 0 ? /* @__PURE__ */ jsxs(Fragment, { children: [
     /* @__PURE__ */ jsx("p", { className: "mb-2 text-sm text-muted-foreground", children: isEn ? "Stored on site" : "サイト内保管" }),
     /* @__PURE__ */ jsx("ul", { className: "space-y-1.5", children: courseMapFiles.map((cm) => /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx(
       "a",
@@ -3442,7 +3563,7 @@ function decodePolyline(encoded) {
   }
   return points;
 }
-function PastEditions({ event: event2, category, pastEditions, isEn, formatDate }) {
+function PastEditions({ event: event2, category, pastEditions, isEn, formatDate: formatDate2 }) {
   return /* @__PURE__ */ jsxs(Fragment, { children: [
     event2.previous_edition_url && /* @__PURE__ */ jsx(SectionCard, { title: isEn ? "Previous edition" : "去年のレース", children: /* @__PURE__ */ jsx(
       "a",
@@ -3468,9 +3589,9 @@ function PastEditions({ event: event2, category, pastEditions, isEn, formatDate 
             pe.entry_start_typical && /* @__PURE__ */ jsxs(Fragment, { children: [
               /* @__PURE__ */ jsx("dt", { className: "text-muted-foreground", children: isEn ? "Entry period" : "申込期間" }),
               /* @__PURE__ */ jsxs("dd", { children: [
-                formatDate(pe.entry_start_typical),
+                formatDate2(pe.entry_start_typical),
                 "\\u301C",
-                formatDate(pe.entry_end_typical)
+                formatDate2(pe.entry_end_typical)
               ] })
             ] }),
             sameCat?.entry_fee != null && /* @__PURE__ */ jsxs(Fragment, { children: [
@@ -3586,6 +3707,10 @@ function CategoryDetail() {
           supabase.from("categories").select("*").eq("event_id", eventId).order("name"),
           supabase.from("course_map_files").select("*").eq("event_id", eventId).order("year", { ascending: false })
         ]);
+        if (isAuthError(eventRes.error) || isAuthError(catRes.error) || isAuthError(routesRes.error) || isAuthError(accRes.error) || isAuthError(allCatsRes.error) || isAuthError(courseMapsRes.error)) {
+          await handleAuthError(supabase);
+          return;
+        }
         if (eventRes.error) throw eventRes.error;
         if (catRes.error) throw catRes.error;
         const ev = eventRes.data ?? null;
@@ -3597,6 +3722,10 @@ function CategoryDetail() {
         setCourseMapFiles(courseMapsRes.data ?? []);
         if (ev?.event_series_id) {
           const pastRes = await supabase.from("events").select("*").eq("event_series_id", ev.event_series_id).lt("event_date", ev.event_date).order("event_date", { ascending: false }).limit(5);
+          if (isAuthError(pastRes.error)) {
+            await handleAuthError(supabase);
+            return;
+          }
           const pastEvents = pastRes.data ?? [];
           const pastWithMaps = [];
           for (const pe of pastEvents) {
@@ -3604,6 +3733,10 @@ function CategoryDetail() {
               supabase.from("course_map_files").select("*").eq("event_id", pe.id).order("year", { ascending: false }),
               supabase.from("categories").select("*").eq("event_id", pe.id).order("name")
             ]);
+            if (isAuthError(mapsRes.error) || isAuthError(catsRes.error)) {
+              await handleAuthError(supabase);
+              return;
+            }
             pastWithMaps.push({
               event: pe,
               courseMaps: mapsRes.data ?? [],
@@ -3625,7 +3758,11 @@ function CategoryDetail() {
   useEffect(() => {
     if (!event2?.race_type || !event2.id) return;
     async function fetchRelated() {
-      const { data } = await supabase.from("events").select("*").eq("race_type", event2.race_type).neq("id", event2.id).not("location", "is", null).order("event_date", { ascending: true }).limit(3);
+      const { data, error: error2 } = await supabase.from("events").select("*").eq("race_type", event2.race_type).neq("id", event2.id).not("location", "is", null).order("event_date", { ascending: true }).limit(3);
+      if (isAuthError(error2)) {
+        await handleAuthError(supabase);
+        return;
+      }
       setRelatedEvents(data ?? []);
     }
     fetchRelated();
@@ -3725,7 +3862,7 @@ function CategoryDetail() {
     }
     return v;
   };
-  const formatDate = (d) => {
+  const formatDate2 = (d) => {
     if (!d) return null;
     const m = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (m) return `${m[1]}/${parseInt(m[2], 10)}/${parseInt(m[3], 10)}`;
@@ -3773,6 +3910,7 @@ function CategoryDetail() {
   const isDayTrip = stayStatus === "day_trip";
   const dateDisplay = event2.event_date_end && event2.event_date_end !== event2.event_date ? `${event2.event_date}〜${event2.event_date_end}` : event2.event_date;
   const displayName = isEn ? event2.name_en ?? event2.name : event2.name;
+  const displayDescription = isEn ? event2.description_en ?? event2.description : event2.description;
   const displayCategoryName = isEn ? category.name_en ?? category.name : category.name;
   const displayLocation = isEn ? event2.location_en ?? event2.location : event2.location;
   const displayReceptionPlace = isEn ? category.reception_place_en ?? category.reception_place ?? event2.reception_place_en ?? event2.reception_place : category.reception_place ?? event2.reception_place;
@@ -3836,9 +3974,10 @@ function CategoryDetail() {
           " — ",
           displayCategoryName
         ] }),
+        displayDescription && /* @__PURE__ */ jsx("p", { className: "mt-2 text-sm leading-relaxed text-muted-foreground", children: displayDescription }),
         /* @__PURE__ */ jsxs("div", { className: "mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground", children: [
           /* @__PURE__ */ jsxs("span", { className: "flex items-center gap-1.5", children: [
-            /* @__PURE__ */ jsx(Calendar, { className: "h-3.5 w-3.5 shrink-0 text-primary/70" }),
+            /* @__PURE__ */ jsx(Calendar$1, { className: "h-3.5 w-3.5 shrink-0 text-primary/70" }),
             dateDisplay
           ] }),
           displayLocation && /* @__PURE__ */ jsxs("span", { className: "flex items-center gap-1.5", children: [
@@ -3937,9 +4076,9 @@ function CategoryDetail() {
           /* @__PURE__ */ jsx(DLRow, { label: isEn ? "Entry deadline?" : "申込み締切はいつ？", value: event2.entry_end }),
           /* @__PURE__ */ jsx("dt", { className: "text-muted-foreground", children: isEn ? "Typical entry period?" : "例年の申込時期は？" }),
           /* @__PURE__ */ jsx("dd", { className: event2.entry_start_typical ? "" : "italic text-muted-foreground/60", children: event2.entry_start_typical && event2.entry_end_typical ? /* @__PURE__ */ jsxs(Fragment, { children: [
-            formatDate(event2.entry_start_typical),
+            formatDate2(event2.entry_start_typical),
             "〜",
-            formatDate(event2.entry_end_typical),
+            formatDate2(event2.entry_end_typical),
             /* @__PURE__ */ jsx("span", { className: "mt-0.5 block text-xs text-muted-foreground", children: isEn ? "(reference for this year's entry period)" : "（今年の申込開始の目安）" })
           ] }) : "—" })
         ] }) }),
@@ -4005,7 +4144,7 @@ function CategoryDetail() {
             category,
             pastEditions,
             isEn,
-            formatDate
+            formatDate: formatDate2
           }
         ),
         displayWeatherForecast && /* @__PURE__ */ jsx(SectionCard, { title: isEn ? "Weather forecast" : "当日の天候は？", children: /* @__PURE__ */ jsx("dl", { className: "grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm", children: /* @__PURE__ */ jsx(DLRow, { label: isEn ? "Expected weather?" : "天気は？", value: displayWeatherForecast, eventId: event2.id, categoryId: category.id }) }) }),
@@ -4044,7 +4183,7 @@ function CategoryDetail() {
                     /* @__PURE__ */ jsx("p", { className: "text-sm font-medium text-foreground", children: reName }),
                     /* @__PURE__ */ jsxs("div", { className: "mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground", children: [
                       re.event_date && /* @__PURE__ */ jsxs("span", { className: "flex items-center gap-1", children: [
-                        /* @__PURE__ */ jsx(Calendar, { className: "h-3 w-3" }),
+                        /* @__PURE__ */ jsx(Calendar$1, { className: "h-3 w-3" }),
                         re.event_date
                       ] }),
                       reLoc && /* @__PURE__ */ jsxs("span", { className: "flex items-center gap-1", children: [
@@ -4082,14 +4221,11 @@ const SOURCES = [
   { name: "UTMB World Series", url: "https://utmb.world/utmb-world-series-events", types: "trail" },
   { name: "Strong Viking", url: "https://strongviking.com/en/tickets/", types: "obstacle" },
   { name: "Golden Trail Series", url: "https://goldentrailseries.com/", types: "trail" },
-  { name: "Hardrock 100 Qualifying Races", url: "https://hardrock100.com/hardrock-qualify.php", types: "trail" },
   { name: "Tough Mudder", url: "https://toughmudder.com/", types: "obstacle" },
   { name: "Devils Circuit", url: "https://www.devilscircuit.com/", types: "obstacle" },
   { name: "A-Extremo", url: "https://www.a-extremo.com/", types: "adventure" },
-  { name: "Albatros Adventure Marathons", url: "https://albatros-adventure-marathons.com/", types: "marathon" },
   { name: "Niseko Expedition", url: "https://nisekoexpedition.jp/", types: "adventure" },
   { name: "AR World Series", url: "https://arworldseries.com/races", types: "adventure" },
-  { name: "Adventure1 Series", url: "https://adventure1series.com/a1/", types: "adventure" },
   { name: "Total Warrior", url: "https://www.totalwarrior.co.uk/", types: "total_warrior" }
 ];
 function Sources() {
@@ -4162,6 +4298,10 @@ const FALLBACK_GUIDES = {
   adventure: {
     ja: { title: "アドベンチャーレース", body: "アドベンチャーレースはチーム制の長距離複合レースです。" },
     en: { title: "Adventure Racing", body: "Adventure racing is a team-based multidiscipline endurance event." }
+  },
+  endurance: {
+    ja: { title: "エンデュランスレース", body: "エンデュランスレースは、長距離耐久系のレースの総称です。トレイルランニング、トライアスロン、ウルトラマラソン、HYROX、オブスタクルレース等が含まれます。" },
+    en: { title: "Endurance Racing", body: "Endurance racing encompasses long-distance racing events including trail running, triathlon, ultramarathon, HYROX, obstacle course racing, and more." }
   }
 };
 const SPORT_TITLES = {
@@ -4174,7 +4314,8 @@ const SPORT_TITLES = {
   bike: { ja: "バイク", en: "Bike" },
   duathlon: { ja: "デュアスロン", en: "Duathlon" },
   rogaining: { ja: "ロゲイニング", en: "Rogaining" },
-  adventure: { ja: "アドベンチャーレース", en: "Adventure Racing" }
+  adventure: { ja: "アドベンチャーレース", en: "Adventure Racing" },
+  endurance: { ja: "エンデュランスレース", en: "Endurance Racing" }
 };
 const SECTION_LABELS = {
   ja: {
@@ -4481,15 +4622,6 @@ function SportGuide() {
       /* @__PURE__ */ jsx(Link, { to: langPrefix, children: isEn ? "Back to list" : "一覧に戻る" })
     ] });
   }
-  if (loading) {
-    return /* @__PURE__ */ jsxs("div", { className: "event-list-page", children: [
-      /* @__PURE__ */ jsxs("header", { className: "app-header", children: [
-        /* @__PURE__ */ jsx("h1", { children: /* @__PURE__ */ jsx(Link, { to: langPrefix, style: { textDecoration: "none", color: "inherit" }, children: "yabai.travel" }) }),
-        /* @__PURE__ */ jsx("p", { className: "app-subtitle", children: isEn ? "Sports Guide" : "スポーツガイド" })
-      ] }),
-      /* @__PURE__ */ jsx("p", { className: "text-slate-500", children: isEn ? "Loading..." : "読み込み中..." })
-    ] });
-  }
   if (dbContent) {
     const readingTimeMin = Math.max(1, Math.round(JSON.stringify(dbContent).length / 500));
     const otherGuides = Object.keys(SPORT_TITLES).filter((k) => k !== sport).slice(0, 4);
@@ -4627,14 +4759,21 @@ function Pricing() {
   const { user, session, isSupporter, signInWithGoogle } = useAuth();
   useScrollDepth("pricing");
   const [donationAmount, setDonationAmount] = useState("500");
-  useEffect(() => {
-    trackPricingView();
-  }, []);
   const [donationLoading, setDonationLoading] = useState(false);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [pendingCrewCheckout, setPendingCrewCheckout] = useState(false);
+  const [showCrewConfirm, setShowCrewConfirm] = useState(false);
+  useEffect(() => {
+    trackPricingView();
+  }, []);
+  useEffect(() => {
+    if (user && pendingCrewCheckout) {
+      setPendingCrewCheckout(false);
+      setShowCrewConfirm(true);
+    }
+  }, [user, pendingCrewCheckout]);
   const handleDonate = async () => {
     setDonationLoading(true);
     setError(null);
@@ -4672,10 +4811,6 @@ function Pricing() {
     }
   };
   const handleCancel = async () => {
-    if (!cancelConfirm) {
-      setCancelConfirm(true);
-      return;
-    }
     setCancelLoading(true);
     setError(null);
     try {
@@ -4688,7 +4823,6 @@ function Pricing() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       setCancelLoading(false);
-      setCancelConfirm(false);
     }
   };
   const supporterFeatures = isEn ? [
@@ -4793,10 +4927,7 @@ function Pricing() {
       ] }),
       /* @__PURE__ */ jsxs(Card, { className: "flex flex-col border-primary/50", children: [
         /* @__PURE__ */ jsxs(CardHeader, { children: [
-          /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2", children: [
-            /* @__PURE__ */ jsx(CardTitle, { className: "text-xl", children: isEn ? "Crew Membership" : "Crew" }),
-            /* @__PURE__ */ jsx(Badge, { variant: "default", children: isEn ? "Recommended" : "おすすめ" })
-          ] }),
+          /* @__PURE__ */ jsx(CardTitle, { className: "text-xl", children: isEn ? "Crew Membership" : "Crew" }),
           /* @__PURE__ */ jsx(CardDescription, { children: isEn ? "Monthly subscription" : "月額プラン" })
         ] }),
         /* @__PURE__ */ jsxs(CardContent, { className: "flex-1", children: [
@@ -4809,26 +4940,39 @@ function Pricing() {
             /* @__PURE__ */ jsx("span", { className: "mt-0.5 text-green-600", children: "✓" }),
             /* @__PURE__ */ jsx("span", { children: feature })
           ] }, feature)) }),
-          /* @__PURE__ */ jsxs("div", { className: "mb-4", children: [
-            /* @__PURE__ */ jsx("h3", { className: "text-sm font-semibold mb-2 text-foreground", children: isEn ? "Total Value" : "総合価値" }),
-            /* @__PURE__ */ jsx("table", { className: "w-full text-sm border-collapse", children: /* @__PURE__ */ jsxs("tbody", { children: [
-              /* @__PURE__ */ jsxs("tr", { className: "border-b border-border/40", children: [
-                /* @__PURE__ */ jsx("td", { className: "py-2 pr-2 text-muted-foreground", children: isEn ? "Favorites feature" : "お気に入り保存機能" }),
-                /* @__PURE__ */ jsx("td", { className: "py-2 text-right font-medium", children: "¥200" })
-              ] }),
-              /* @__PURE__ */ jsxs("tr", { className: "border-b border-border/40", children: [
-                /* @__PURE__ */ jsx("td", { className: "py-2 pr-2 text-muted-foreground", children: isEn ? "Community access" : "コミュニティ参加" }),
-                /* @__PURE__ */ jsx("td", { className: "py-2 text-right font-medium", children: "¥150" })
-              ] }),
-              /* @__PURE__ */ jsxs("tr", { className: "border-b border-border/40", children: [
-                /* @__PURE__ */ jsx("td", { className: "py-2 pr-2 text-muted-foreground", children: isEn ? "Crew badge" : "Crewバッジ" }),
-                /* @__PURE__ */ jsx("td", { className: "py-2 text-right font-medium", children: "¥150" })
-              ] }),
-              /* @__PURE__ */ jsxs("tr", { className: "bg-primary/5", children: [
-                /* @__PURE__ */ jsx("td", { className: "py-2 pr-2 font-semibold text-foreground", children: isEn ? "Total Value" : "合計価値" }),
-                /* @__PURE__ */ jsx("td", { className: "py-2 text-right font-bold text-primary", children: "¥500+" })
-              ] })
-            ] }) })
+          /* @__PURE__ */ jsxs("div", { className: "mb-4 rounded-lg bg-muted/40 p-3", children: [
+            /* @__PURE__ */ jsx("h3", { className: "text-sm font-semibold mb-2 text-foreground", children: isEn ? "What you can do as Crew" : "Crewでできること" }),
+            /* @__PURE__ */ jsxs("ul", { className: "text-sm space-y-1 text-muted-foreground", children: [
+              /* @__PURE__ */ jsx("li", { children: isEn ? "→ Save races to your personal calendar" : "→ レースをマイカレンダーに保存" }),
+              /* @__PURE__ */ jsx("li", { children: isEn ? "→ Post feature requests and bug reports" : "→ 要望・バグ報告を投稿" }),
+              /* @__PURE__ */ jsx("li", { children: isEn ? "→ Show your Crew badge on the community board" : "→ 掲示板にCrew バッジを表示" }),
+              /* @__PURE__ */ jsx("li", { children: isEn ? "→ Support keeping this service free for all" : "→ サービスの無料維持を支援" })
+            ] })
+          ] })
+        ] }),
+        showCrewConfirm && /* @__PURE__ */ jsxs("div", { className: "mx-6 mb-4 rounded-lg border border-primary/30 bg-primary/5 p-4 text-center space-y-3", children: [
+          /* @__PURE__ */ jsx("p", { className: "text-sm font-medium", children: isEn ? "You're signed in. Ready to subscribe to Crew for ¥500/mo?" : "ログインしました。Crew（¥500/月）の決済に進みますか？" }),
+          /* @__PURE__ */ jsxs("div", { className: "flex gap-2 justify-center", children: [
+            /* @__PURE__ */ jsx(
+              Button,
+              {
+                onClick: () => {
+                  setShowCrewConfirm(false);
+                  handleSubscribe();
+                },
+                size: "sm",
+                children: isEn ? "Continue to payment" : "決済に進む"
+              }
+            ),
+            /* @__PURE__ */ jsx(
+              Button,
+              {
+                variant: "outline",
+                size: "sm",
+                onClick: () => setShowCrewConfirm(false),
+                children: isEn ? "Cancel" : "キャンセル"
+              }
+            )
           ] })
         ] }),
         /* @__PURE__ */ jsx(CardFooter, { className: "flex-col gap-3", children: isSupporter ? /* @__PURE__ */ jsxs("div", { className: "w-full space-y-3", children: [
@@ -4836,40 +4980,15 @@ function Pricing() {
             "✓ ",
             isEn ? "You're Crew!" : "Crewメンバーです"
           ] }) }),
-          cancelConfirm ? /* @__PURE__ */ jsxs("div", { className: "space-y-2", children: [
-            /* @__PURE__ */ jsx("p", { className: "text-sm text-center text-muted-foreground", children: isEn ? "Are you sure? You can continue using Crew benefits until the end of the current billing period." : "本当にキャンセルしますか？現在の請求期間の終了まで引き続きCrew特典をご利用いただけます。" }),
-            /* @__PURE__ */ jsxs("div", { className: "flex gap-2", children: [
-              /* @__PURE__ */ jsx(
-                Button,
-                {
-                  className: "flex-1",
-                  size: "sm",
-                  variant: "destructive",
-                  onClick: handleCancel,
-                  disabled: cancelLoading,
-                  children: cancelLoading ? isEn ? "Cancelling..." : "キャンセル中..." : isEn ? "Yes, cancel" : "はい、キャンセル"
-                }
-              ),
-              /* @__PURE__ */ jsx(
-                Button,
-                {
-                  className: "flex-1",
-                  size: "sm",
-                  variant: "outline",
-                  onClick: () => setCancelConfirm(false),
-                  disabled: cancelLoading,
-                  children: isEn ? "Keep membership" : "継続する"
-                }
-              )
-            ] })
-          ] }) : /* @__PURE__ */ jsx(
+          /* @__PURE__ */ jsx(
             Button,
             {
               className: "w-full",
               size: "sm",
               variant: "ghost",
               onClick: handleCancel,
-              children: isEn ? "Cancel membership" : "メンバーシップをキャンセル"
+              disabled: cancelLoading,
+              children: cancelLoading ? isEn ? "Cancelling..." : "キャンセル中..." : isEn ? "Cancel membership" : "メンバーシップをキャンセル"
             }
           )
         ] }) : !user ? /* @__PURE__ */ jsxs(Fragment, { children: [
@@ -4880,9 +4999,10 @@ function Pricing() {
               size: "lg",
               onClick: () => {
                 trackCtaClick("google_login", "/pricing");
+                setPendingCrewCheckout(true);
                 signInWithGoogle();
               },
-              children: isEn ? "Sign in with Google to join Crew" : "Googleでログインして Crew になる"
+              children: isEn ? "Sign in with Google to get started" : "Googleでログインして登録する"
             }
           ),
           /* @__PURE__ */ jsx("p", { className: "text-xs text-muted-foreground text-center", children: isEn ? "Sign in first, then subscribe to become Crew." : "まずGoogleでログインし、その後サブスクリプション登録に進みます。" })
@@ -5044,7 +5164,7 @@ function Legal() {
             value: isEn ? /* @__PURE__ */ jsxs("ul", { className: "list-disc pl-5 space-y-1", children: [
               /* @__PURE__ */ jsx("li", { children: "No returns or refunds are accepted as this is a digital service." }),
               /* @__PURE__ */ jsxs("li", { children: [
-                "Crew Membership can be cancelled at any time from the",
+                "Crew Membership can be cancelled with one click from the",
                 " ",
                 /* @__PURE__ */ jsx(Link, { to: `${langPrefix}/pricing`, className: "text-primary underline", children: "Pricing page" }),
                 "."
@@ -5055,7 +5175,7 @@ function Legal() {
               /* @__PURE__ */ jsxs("li", { children: [
                 "Crew メンバーシップは、",
                 /* @__PURE__ */ jsx(Link, { to: `${langPrefix}/pricing`, className: "text-primary underline", children: "Pricing ページ" }),
-                "からいつでもキャンセル可能です。"
+                "から1クリックでキャンセル可能です。"
               ] }),
               /* @__PURE__ */ jsx("li", { children: "キャンセル後、残りの期間は引き続きサービスをご利用いただけます。" })
             ] })
@@ -5442,7 +5562,7 @@ function NewFeedbackForm({
 function Feedback() {
   const { lang } = useParams();
   const isEn = lang === "en";
-  const { user, isSupporter } = useAuth();
+  const { user } = useAuth();
   const statusLabels = isEn ? STATUS_LABEL_EN : STATUS_LABEL_JA;
   const [feedbacks, setFeedbacks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -5493,16 +5613,14 @@ function Feedback() {
     } catch {
     }
   };
-  const visibleFeedbacks = feedbacks.filter(
-    (f) => f.feedback_type !== "bug" || isSupporter
-  );
+  const visibleFeedbacks = feedbacks;
   return /* @__PURE__ */ jsxs(Fragment, { children: [
     /* @__PURE__ */ jsx("title", { children: isEn ? "Ideas | yabai.travel" : "みんなのアイデア | yabai.travel" }),
     /* @__PURE__ */ jsx(
       "meta",
       {
         name: "description",
-        content: isEn ? "Ideas from Crew members." : "Crewからのみんなのアイデアです。"
+        content: isEn ? "Share your ideas and report bugs." : "アイデアを共有したりバグを報告できます。"
       }
     ),
     /* @__PURE__ */ jsxs("div", { className: "mx-auto max-w-3xl px-4 py-6", children: [
@@ -5515,13 +5633,8 @@ function Feedback() {
       ] }),
       user && /* @__PURE__ */ jsx("p", { className: "text-sm text-muted-foreground mb-4", children: isEn ? "Share your feedback or improvement ideas about races." : "レースに関するフィードバックや改善提案を共有してください。" }),
       !user && /* @__PURE__ */ jsx("p", { className: "text-sm text-muted-foreground mb-4", children: isEn ? "Sign in to post feedback." : "フィードバックを投稿するにはログインしてください。" }),
-      !isSupporter && !isEn && /* @__PURE__ */ jsx("div", { className: "mb-6 rounded-lg border border-border bg-muted/30 p-4", children: /* @__PURE__ */ jsxs("p", { className: "text-sm", children: [
-        "Crewメンバーは掲示板でコメントができます",
-        " ",
-        /* @__PURE__ */ jsx(Link, { to: `/${lang || "ja"}/pricing`, className: "text-primary hover:underline font-medium", children: "詳しく見る" })
-      ] }) }),
       /* @__PURE__ */ jsxs("div", { className: "flex flex-wrap gap-2 mb-6", children: [
-        /* @__PURE__ */ jsx("div", { className: "flex gap-1", children: ["all", "feature", "bug"].filter((t) => t !== "bug" || isSupporter).map((t) => /* @__PURE__ */ jsx(
+        /* @__PURE__ */ jsx("div", { className: "flex gap-1", children: ["all", "feature", "bug"].map((t) => /* @__PURE__ */ jsx(
           "button",
           {
             onClick: () => setTypeFilter(t),
@@ -5648,7 +5761,7 @@ function PaymentSuccess() {
   const getMessage = () => {
     switch (paymentType) {
       case "donation":
-        return isEn ? "Thank you for your support. Your donation helps keep this service running." : "ご支援ありがとうございます。あなたのサポートがサービスの継続を支えています。";
+        return isEn ? "Thank you for your support. Your donation goes to server and API costs." : "ご支援ありがとうございます。いただいたご寄付はサーバー費用・API費用に充てられます。";
       case "comment":
         return isEn ? "Your payment was successful. Please check your comment submission." : "コメントの決済が完了しました。投稿内容を確認してください。";
       case "crew_subscription":
@@ -5659,7 +5772,7 @@ function PaymentSuccess() {
   const getDescription = () => {
     switch (paymentType) {
       case "donation":
-        return isEn ? "Thank you for your support. Your donation helps keep this service running." : "ご支援ありがとうございます。あなたのサポートがサービスの継続を支えています。";
+        return isEn ? "Thank you for your support. Your donation goes to server and API costs." : "ご支援ありがとうございます。いただいたご寄付はサーバー費用・API費用に充てられます。";
       case "comment":
         return isEn ? "Payment successful. Your comment will be posted." : "お支払い完了。コメントが投稿されます。";
       case "crew_subscription":
@@ -5919,7 +6032,7 @@ Many trail race venues require Shinkansen plus local rail or bus (30-90 minutes 
 
 ### Planning Transport to Race Venues
 
-This is exactly the problem [yabai.travel](https://yabai.travel) was built to solve. For every endurance race in our database, we provide:
+This is exactly the problem [yabai.travel](https://yabai.travel?utm_source=devto&utm_medium=devto_article) was built to solve. For every endurance race in our database, we provide:
 
 - **Door-to-door route from Tokyo** — exact train lines, transfer stations, and travel times
 - **Day-trip feasibility assessment** — whether you can race and return to Tokyo the same day
@@ -6029,7 +6142,7 @@ Check the mandatory equipment list carefully — Japanese races enforce gear che
 
 ## How yabai.travel Can Help
 
-[yabai.travel](https://yabai.travel) aggregates endurance race information with Tokyo-based travel logistics in a single view.
+[yabai.travel](https://yabai.travel?utm_source=devto&utm_medium=devto_article) aggregates endurance race information with Tokyo-based travel logistics in a single view.
 
 For every race in our database, you get:
 
@@ -6039,9 +6152,9 @@ For every race in our database, you get:
 - **Nearby accommodation** — options near the venue sorted by distance and transit access
 - **Bilingual support** — race information available in both English and Japanese
 
-Whether you are a trail runner targeting Mt. Fuji 100, a first-time marathoner eyeing Tokyo Marathon, or an OCR enthusiast looking for your next Spartan Race, [yabai.travel](https://yabai.travel) takes the guesswork out of racing in Japan.
+Whether you are a trail runner targeting Mt. Fuji 100, a first-time marathoner eyeing Tokyo Marathon, or an OCR enthusiast looking for your next Spartan Race, [yabai.travel](https://yabai.travel?utm_source=devto&utm_medium=devto_article) takes the guesswork out of racing in Japan.
 
-Browse upcoming endurance races at [yabai.travel](https://yabai.travel) and start planning your next race trip.
+Browse upcoming endurance races at [yabai.travel](https://yabai.travel?utm_source=devto&utm_medium=devto_article) and start planning your next race trip.
 
 ---
 
@@ -6580,14 +6693,14 @@ A HYROX event is the perfect anchor for a fitness-focused trip to Japan. The Chi
 
 ### Planning Your Race Trip
 
-If you are traveling to Japan for HYROX or any endurance event, [yabai.travel](https://yabai.travel/en/) is built for exactly this purpose. The platform aggregates endurance race information across Japan and provides:
+If you are traveling to Japan for HYROX or any endurance event, [yabai.travel](https://yabai.travel/en/?utm_source=devto&utm_medium=devto_article) is built for exactly this purpose. The platform aggregates endurance race information across Japan and provides:
 
 - **Access routes from Tokyo** to every race venue
 - **Accommodation suggestions** near the event
 - **Day-trip feasibility** — see at a glance whether you can race and return to Tokyo the same day
 - **Bilingual support** — full English and Japanese coverage
 
-Whether you are planning a weekend around HYROX Chiba or building a two-week racing tour of Japan, yabai.travel takes the logistical guesswork out of race travel.
+Whether you are planning a weekend around HYROX Chiba or building a two-week racing tour of Japan, [yabai.travel](https://yabai.travel?utm_source=devto&utm_medium=devto_article) takes the logistical guesswork out of race travel.
 
 ---
 
@@ -6882,15 +6995,15 @@ Running a Spartan Race in Japan is a different experience from events in the US 
 
 ## Plan Your Spartan Race Trip to Japan
 
-Combining a Spartan Race with sightseeing? [yabai.travel](https://yabai.travel) lists Spartan Race venues alongside transport routes from Tokyo, nearby accommodation, and day-trip feasibility.
+Combining a Spartan Race with sightseeing? [yabai.travel](https://yabai.travel?utm_source=devto&utm_medium=devto_article) lists Spartan Race venues alongside transport routes from Tokyo, nearby accommodation, and day-trip feasibility.
 
-Ready to get muddy in Japan? Your adventure starts at [yabai.travel](https://yabai.travel).
+Ready to get muddy in Japan? Your adventure starts at [yabai.travel](https://yabai.travel?utm_source=devto&utm_medium=devto_article).
 
 ---
 
 *Last updated: March 2026. Dates and venues reflect the official SRJ Inc. announcement. Always confirm on [jp.spartan.com/en](https://jp.spartan.com/en) before registering.*
 `;
-const __vite_glob_0_8 = '---\ntitle: "【2026年版】東京から日帰りで行けるトレイルランニング大会まとめ"\ndescription: "奥多摩・丹沢・箱根・秩父、東京から電車で日帰りできるトレイルランニング大会を網羅。初心者向け10kmから上級者向け100kmオーバーまで。"\nslug: "trail-running-day-trip-tokyo-2026"\nlang: "ja"\ndate: "2026-03-10"\ncategory: "guide"\n---\n\n# 【2026年版】東京から日帰りで行けるトレイルランニング大会まとめ\n\n*東京近郊には、朝出て夜には帰れるトレイルランニング大会が驚くほどたくさんある。奥多摩、丹沢、箱根、秩父――電車で1〜2時間の山域に、初心者向けの10kmから上級者向けの100kmオーバーまで揃っている。この記事では2026年に開催される主要大会を網羅し、「どの大会に出ればいいか分からない」という人が一歩踏み出せるようにまとめた。*\n\n---\n\n## 東京からの日帰りトレランが最高な理由\n\nトレイルランニングの大会に出てみたい。でも「遠い山奥まで行くのが大変そう」「前泊が必要なのでは」と感じている人は多い。\n\n実は東京近郊は日帰りトレランの宝庫だ。JR中央線で青梅・奥多摩エリアまで約1時間半、小田急線で丹沢の入口まで約1時間半、西武線で飯能・秩父エリアまで約1時間。いずれも始発に乗れば朝のスタートに十分間に合い、レース後にそのまま電車で帰宅できる。\n\nさらに関東の山は標高500〜1,500m前後のコースが多く、技術的に極端な難所が少ない。初めてのトレランレースにちょうどいい環境が整っている。\n\n---\n\n## エリア別ガイド：日帰り圏内の主要トレランエリア\n\n### 奥多摩・青梅エリア（東京都）\n\n東京都内でありながら本格的な山岳トレイルが広がるエリア。JR青梅線の各駅がそのままトレイルの入口になっているため、アクセスの良さは関東随一。標高400〜1,500m程度の里山から奥多摩の深い森まで、レベルに応じたコースが揃う。\n\n**アクセス**: JR新宿駅から青梅駅まで約70分（中央線〜青梅線直通）\n\n### 丹沢エリア（神奈川県）\n\n首都圏を代表する山岳エリア。塔ノ岳（1,491m）や丹沢山（1,567m）を中心に、急登と稜線走りが楽しめる。トレイルランナーにとっては「走力」と「登坂力」の両方が問われるタフなコースが多い。\n\n**アクセス**: 小田急線新宿駅から秦野駅まで約70分、本厚木駅まで約50分\n\n### 箱根エリア（神奈川県）\n\n観光地としての知名度に加え、芦ノ湖周辺や外輪山を使ったトレイルコースがある。レース後に温泉で疲れを癒せるのが箱根ならではの魅力。\n\n**アクセス**: 小田急ロマンスカーで新宿から箱根湯本まで約85分\n\n### 秩父・奥武蔵エリア（埼玉県）\n\n飯能から秩父にかけて広がる奥武蔵の里山エリア。累積標高が大きく走りごたえのあるコースが多い一方、エイドステーションが充実した大会が多く、初心者でも安心して参加できる環境が整っている。\n\n**アクセス**: 西武池袋線で池袋から飯能まで約50分\n\n### 高尾エリア（東京都）\n\n都心から最もアクセスが良いトレイルエリア。高尾山から陣馬山に至る縦走路はトレイルランナーの定番練習コースで、ここを舞台にした大会も開催されている。\n\n**アクセス**: 京王線新宿駅から高尾山口駅まで約50分\n\n---\n\n## 2026年 主要大会カレンダー\n\n以下は2026年に開催が確認されている関東近郊の主要トレイルランニング大会だ。日程は2026年3月時点の公式情報に基づく。\n\n### 3月\n\n**第18回 ハセツネ30K**\n- 日程: 2026年3月29日（日）\n- 会場: 東京都あきる野市 秋川渓谷リバーティオ\n- 距離: 約30km\n- 特徴: 秋のハセツネCUP（71.5km）の前哨戦として位置づけられる人気大会。奥多摩の山々を舞台に、本番さながらのコースを体験できる\n- 公式: https://www.hasetsune.jp/30K/about.html\n\n### 4月\n\n**THE FIRST TRAIL 2026**\n- 日程: 2026年4月4日（土）\n- 会場: 東京都青梅市 TCNスポーツパーク永山（JR青梅駅から徒歩7分）\n- 距離: 複数カテゴリあり（初心者向けの短距離あり）\n- 特徴: 「日本で1番やさしいトレラン大会」を掲げる、初心者に最適なイベント。走る距離・装備・雰囲気すべてが初参加者に配慮されている。TRAIL OPEN AIR DEMO（アウトドアギア展示会）と同時開催\n- 公式: https://thefirsttrail.jp/\n\n**第28回 青梅高水パラチノース国際トレイルラン**\n- 日程: 2026年4月5日（日）\n- 会場: 東京都青梅市 永山公園総合グランド（JR青梅駅から徒歩8分）\n- 距離: 30kmの部 / 15kmの部\n- 参加費: 30km 9,000円 / 15km 8,000円\n- 特徴: 1998年から続く歴史ある国際トレイルラン。15kmの部は中級者向け、30kmの部は上級者向け。TRAIL OPEN AIR DEMOと併設で、レース前後にギアの試着・購入も楽しめる\n- 公式: https://www.sportsentry.ne.jp/event/t/103358\n\n**箱根ランフェス2026**\n- 日程: 2026年4月18日（土）〜19日（日）\n- 会場: 神奈川県箱根町 芦ノ湖スカイエリア\n- 距離: 富士ビューランハーフ 22km / 三国峠ラン 約9km\n- 参加費: 22km 7,000円 / 9km 5,000円\n- 特徴: タイム計測なしのファンラン形式。制限時間5時間で途中折り返しも可能。富士山を望む最高標高1,028mのコースを自分のペースで楽しめる。レース後は箱根の温泉へ直行できる立地の良さも魅力\n- 公式: https://hakone-runfes.com/\n\n### 5月\n\n**第11回 トレニックワールド 100mile & 100km in 彩の国**\n- 日程: 2026年5月16日（土）〜17日（日）\n- 会場: 埼玉県入間郡越生町 ニューサンピア埼玉おごせ\n- 距離: 100マイル / 100km\n- 特徴: 越生の里山から奥武蔵の山々を舞台にした本格ウルトラトレイル。100kmと100マイルの2カテゴリで、上級者向け。エイドの充実度に定評がある\n- 公式: https://trainic-world.org/sainokuni/\n\n**第4回 奥武蔵ロングトレイル 105K / 35K / 20K**\n- 日程: 2026年5月30日（土）〜31日（日）\n- 会場: 埼玉県飯能市 飯能市中央公園（西武池袋線飯能駅から徒歩約20分）\n- 距離: 105km / 35km / 20km\n- 参加費: 105K 28,000円 / 35K 13,000円 / 20K 8,000円\n- 特徴: 20kmのチャレンジカテゴリは初めてのトレイルレースにも好適。35kmは累積標高2,000mでしっかり走りごたえあり。飯能駅から徒歩圏内というアクセスの良さも強み\n- 公式: https://okumusashi105k-race.com/\n\n### 10月（例年開催・2026年日程未発表）\n\n**ハセツネCUP（日本山岳耐久レース）**\n- 日程: 例年10月中旬（2026年日程は6月頃発表見込み）\n- 会場: 東京都あきる野市〜奥多摩\n- 距離: 71.5km / 累積標高差 4,582m\n- 特徴: 日本トレイルランニング界の最高峰レース。エイドなし・自己完結型という独自ルールで知られる。制限時間24時間。参加には相応の経験と準備が必要\n- 公式: https://www.hasetsune.jp/\n\n### 11月（例年開催・2026年日程未発表）\n\n**FunTrails Round 秩父&奥武蔵 100MILE / 100K / 50K**\n- 日程: 例年11月中旬（2025年は11月15〜16日開催）\n- 会場: 埼玉県秩父市周辺\n- 距離: 100マイル / 100km / 50km\n- 特徴: 秩父の寺社仏閣を巡りながら走る独特のコース設計。50kmカテゴリは中級者のステップアップに最適\n- 公式: https://fun-trails.com/race/100k/\n\n**第13回 トレニックワールド in 外秩父 50km & 45km**\n- 日程: 2026年11月29日（日）予定\n- 会場: 埼玉県寄居町〜越生町\n- 距離: 50km / 45km\n- 特徴: 外秩父の七峰を縦走するコース。45kmカテゴリは初めてのロングトレイルに挑戦する人に人気が高い\n- 公式: https://trainic-world.org/\n\n---\n\n## 大会選びのポイント\n\n### 距離と制限時間で選ぶ\n\n初めてのトレランレースなら、**10〜20km / 制限時間4時間以上**の大会を選ぼう。THE FIRST TRAILや奥武蔵ロングトレイル20Kがこのカテゴリに該当する。「完走できなかったらどうしよう」という不安は、余裕のある制限時間が解消してくれる。\n\n30km前後に挑戦するなら、ハセツネ30Kや青梅高水トレイルラン30kmの部が定番だ。15kmの部はその前のステップとしてもおすすめ。\n\n### 累積標高差をチェックする\n\n距離が同じでも、累積標高差によって体感の難易度は大きく変わる。目安として累積標高差1,000m以下なら初級、1,000〜2,000mなら中級、2,000m以上は上級と考えてよい。大会ページに必ず記載されているので確認しよう。\n\n### エイドステーションの充実度\n\nトレイルレースではエイド（給水・給食所）の数と内容が完走を左右する。初心者は**エイドが5km間隔以内**で設置されている大会が安心だ。逆にハセツネCUPのようにエイドなしの大会は、すべてを自分で背負う覚悟と経験が必要になる。\n\n### 参加者のレベル感\n\n大会によって参加者層は大きく異なる。THE FIRST TRAILや箱根ランフェスはファンラン寄りで初心者が多い。青梅高水やハセツネ30Kは中〜上級者が中心。大会の雰囲気が自分に合っているかも、選ぶときの大切な基準だ。\n\n---\n\n## 持ち物・装備チェックリスト\n\n大会ごとに必携装備（持っていないと出走できない装備）が指定されている。必ず大会要項を確認した上で、以下を参考にしてほしい。\n\n### 必携装備（多くの大会で共通）\n\n- [ ] トレイルランニングシューズ（ロードシューズは不可の大会が多い）\n- [ ] ザック / トレイルランニングベスト（5〜15L）\n- [ ] 携帯コップ（エイドで使用。紙コップ廃止の大会が増えている）\n- [ ] レインウェア上下（防水透湿素材）\n- [ ] ヘッドランプ（ナイトセクションがある大会は必須）\n- [ ] 携帯電話（緊急連絡用・フル充電で）\n- [ ] エマージェンシーシート（サバイバルブランケット）\n- [ ] 保険証のコピー\n\n### あると便利な装備\n\n- [ ] トレッキングポール（使用可の大会のみ。登りが楽になる）\n- [ ] 日焼け止め（稜線は紫外線が強い）\n- [ ] テーピングテープ（足首の捻挫予防）\n- [ ] 補給食（ジェル、羊羹、おにぎりなど。1時間あたり200〜300kcalが目安）\n- [ ] 塩分タブレット（夏場は必須）\n- [ ] モバイルバッテリー\n\n---\n\n## 当日の移動プラン\n\n### 電車で行く場合\n\n関東のトレイルラン大会は駅からのアクセスが良い大会が多いのが特徴だ。\n\n| 大会 | 最寄り駅 | 新宿からの所要時間 | 始発到着目安 |\n|------|---------|-------------------|------------|\n| 青梅高水トレイルラン | JR青梅駅 | 約70分 | 6:30頃着 |\n| THE FIRST TRAIL | JR青梅駅 | 約70分 | 6:30頃着 |\n| ハセツネ30K | JR武蔵五日市駅 | 約75分 | 6:40頃着 |\n| 箱根ランフェス | 箱根湯本駅+バス | 約120分 | 7:30頃着 |\n| 奥武蔵ロングトレイル | 西武線飯能駅 | 約50分 | 6:00頃着 |\n\nポイントは**始発電車の時刻を事前に調べておくこと**。受付締切はスタートの30分〜1時間前が一般的で、余裕を持って到着したい。ICカード（Suica / PASMO）は必ずチャージしておこう。\n\n### 車で行く場合\n\n大会によっては専用駐車場が用意されるが、台数に限りがあるケースがほとんどだ。事前申込制の大会も多いので、エントリー時に駐車場の有無を確認しよう。\n\n- **青梅エリア**: 圏央道青梅ICから約15分。青梅市営駐車場あり\n- **秩父・飯能エリア**: 圏央道狭山日高ICから約25分。大会指定駐車場を要確認\n- **丹沢エリア**: 東名高速秦野中井ICから約15分。県営駐車場あり（早朝は混雑）\n- **箱根エリア**: 箱根ランフェスは公共交通機関利用を推奨。駐車場チケットは別途販売\n\n---\n\n## yabai.travel で日帰りレースを探す\n\n[yabai.travel](https://yabai.travel) では、エリア・距離・時期で絞り込んでトレイルランニング大会を検索できる。「東京から日帰り可能」「初心者OK」といった条件でフィルタリングすれば、自分に合った大会がすぐに見つかる。\n\n各大会ページでは、コースの特徴やアクセス情報に加えて、周辺の温泉・グルメ情報も掲載している。レースのついでに観光も楽しみたいなら、ぜひ活用してほしい。\n\nまずは1本、短い距離から始めてみよう。山を走る爽快感は、ロードランニングとはまったく別の体験だ。\n\n---\n\n*この記事は2026年3月時点の情報に基づいています。大会の日程・内容は変更になる場合があります。最新情報は各大会の公式サイトでご確認ください。*\n';
+const __vite_glob_0_8 = '---\ntitle: "東京から日帰りできるトレイルランニング大会 2026【厳選10選】"\ndescription: "奥多摩・丹沢・箱根・秩父から電車で行ける日帰りトレラン大会を厳選。距離・アクセス・費用を比較して、あなたに合った1本を見つけよう。"\nslug: "trail-running-day-trip-tokyo-2026"\nlang: "ja"\ndate: "2026-03-10"\ncategory: "guide"\n---\n\n# 【2026年版】東京から日帰りで行けるトレイルランニング大会まとめ\n\n*東京近郊には、朝出て夜には帰れるトレイルランニング大会が驚くほどたくさんある。奥多摩、丹沢、箱根、秩父――電車で1〜2時間の山域に、初心者向けの10kmから上級者向けの100kmオーバーまで揃っている。この記事では2026年に開催される主要大会を網羅し、「どの大会に出ればいいか分からない」という人が一歩踏み出せるようにまとめた。*\n\n---\n\n## 東京からの日帰りトレランが最高な理由\n\nトレイルランニングの大会に出てみたい。でも「遠い山奥まで行くのが大変そう」「前泊が必要なのでは」と感じている人は多い。\n\n実は東京近郊は日帰りトレランの宝庫だ。JR中央線で青梅・奥多摩エリアまで約1時間半、小田急線で丹沢の入口まで約1時間半、西武線で飯能・秩父エリアまで約1時間。いずれも始発に乗れば朝のスタートに十分間に合い、レース後にそのまま電車で帰宅できる。\n\nさらに関東の山は標高500〜1,500m前後のコースが多く、技術的に極端な難所が少ない。初めてのトレランレースにちょうどいい環境が整っている。\n\n> **2026年の日帰りレースを探す**: [YabaiTravelのレース一覧](/ja/events)では東京起点のアクセス時間・費用でフィルタリングできます。\n\n---\n\n## エリア別ガイド：日帰り圏内の主要トレランエリア\n\n### 奥多摩・青梅エリア（東京都）\n\n東京都内でありながら本格的な山岳トレイルが広がるエリア。JR青梅線の各駅がそのままトレイルの入口になっているため、アクセスの良さは関東随一。標高400〜1,500m程度の里山から奥多摩の深い森まで、レベルに応じたコースが揃う。\n\n**アクセス**: JR新宿駅から青梅駅まで約70分（中央線〜青梅線直通）\n\n### 丹沢エリア（神奈川県）\n\n首都圏を代表する山岳エリア。塔ノ岳（1,491m）や丹沢山（1,567m）を中心に、急登と稜線走りが楽しめる。トレイルランナーにとっては「走力」と「登坂力」の両方が問われるタフなコースが多い。\n\n**アクセス**: 小田急線新宿駅から秦野駅まで約70分、本厚木駅まで約50分\n\n### 箱根エリア（神奈川県）\n\n観光地としての知名度に加え、芦ノ湖周辺や外輪山を使ったトレイルコースがある。レース後に温泉で疲れを癒せるのが箱根ならではの魅力。\n\n**アクセス**: 小田急ロマンスカーで新宿から箱根湯本まで約85分\n\n### 秩父・奥武蔵エリア（埼玉県）\n\n飯能から秩父にかけて広がる奥武蔵の里山エリア。累積標高が大きく走りごたえのあるコースが多い一方、エイドステーションが充実した大会が多く、初心者でも安心して参加できる環境が整っている。\n\n**アクセス**: 西武池袋線で池袋から飯能まで約50分\n\n### 高尾エリア（東京都）\n\n都心から最もアクセスが良いトレイルエリア。高尾山から陣馬山に至る縦走路はトレイルランナーの定番練習コースで、ここを舞台にした大会も開催されている。\n\n**アクセス**: 京王線新宿駅から高尾山口駅まで約50分\n\n---\n\n## 2026年 主要大会カレンダー\n\n以下は2026年に開催が確認されている関東近郊の主要トレイルランニング大会だ。日程は2026年3月時点の公式情報に基づく。\n\n### 3月\n\n**第18回 ハセツネ30K**\n- 日程: 2026年3月29日（日）\n- 会場: 東京都あきる野市 秋川渓谷リバーティオ\n- 距離: 約30km\n- 特徴: 秋のハセツネCUP（71.5km）の前哨戦として位置づけられる人気大会。奥多摩の山々を舞台に、本番さながらのコースを体験できる\n- 公式: https://www.hasetsune.jp/30K/about.html\n\n### 4月\n\n**THE FIRST TRAIL 2026**\n- 日程: 2026年4月4日（土）\n- 会場: 東京都青梅市 TCNスポーツパーク永山（JR青梅駅から徒歩7分）\n- 距離: 複数カテゴリあり（初心者向けの短距離あり）\n- 特徴: 「日本で1番やさしいトレラン大会」を掲げる、初心者に最適なイベント。走る距離・装備・雰囲気すべてが初参加者に配慮されている。TRAIL OPEN AIR DEMO（アウトドアギア展示会）と同時開催\n- 公式: https://thefirsttrail.jp/\n\n**第28回 青梅高水パラチノース国際トレイルラン**\n- 日程: 2026年4月5日（日）\n- 会場: 東京都青梅市 永山公園総合グランド（JR青梅駅から徒歩8分）\n- 距離: 30kmの部 / 15kmの部\n- 参加費: 30km 9,000円 / 15km 8,000円\n- 特徴: 1998年から続く歴史ある国際トレイルラン。15kmの部は中級者向け、30kmの部は上級者向け。TRAIL OPEN AIR DEMOと併設で、レース前後にギアの試着・購入も楽しめる\n- 公式: https://www.sportsentry.ne.jp/event/t/103358\n\n**箱根ランフェス2026**\n- 日程: 2026年4月18日（土）〜19日（日）\n- 会場: 神奈川県箱根町 芦ノ湖スカイエリア\n- 距離: 富士ビューランハーフ 22km / 三国峠ラン 約9km\n- 参加費: 22km 7,000円 / 9km 5,000円\n- 特徴: タイム計測なしのファンラン形式。制限時間5時間で途中折り返しも可能。富士山を望む最高標高1,028mのコースを自分のペースで楽しめる。レース後は箱根の温泉へ直行できる立地の良さも魅力\n- 公式: https://hakone-runfes.com/\n\n### 5月\n\n**第11回 トレニックワールド 100mile & 100km in 彩の国**\n- 日程: 2026年5月16日（土）〜17日（日）\n- 会場: 埼玉県入間郡越生町 ニューサンピア埼玉おごせ\n- 距離: 100マイル / 100km\n- 特徴: 越生の里山から奥武蔵の山々を舞台にした本格ウルトラトレイル。100kmと100マイルの2カテゴリで、上級者向け。エイドの充実度に定評がある\n- 公式: https://trainic-world.org/sainokuni/\n\n**第4回 奥武蔵ロングトレイル 105K / 35K / 20K**\n- 日程: 2026年5月30日（土）〜31日（日）\n- 会場: 埼玉県飯能市 飯能市中央公園（西武池袋線飯能駅から徒歩約20分）\n- 距離: 105km / 35km / 20km\n- 参加費: 105K 28,000円 / 35K 13,000円 / 20K 8,000円\n- 特徴: 20kmのチャレンジカテゴリは初めてのトレイルレースにも好適。35kmは累積標高2,000mでしっかり走りごたえあり。飯能駅から徒歩圏内というアクセスの良さも強み\n- 公式: https://okumusashi105k-race.com/\n\n### 10月（例年開催・2026年日程未発表）\n\n**ハセツネCUP（日本山岳耐久レース）**\n- 日程: 例年10月中旬（2026年日程は6月頃発表見込み）\n- 会場: 東京都あきる野市〜奥多摩\n- 距離: 71.5km / 累積標高差 4,582m\n- 特徴: 日本トレイルランニング界の最高峰レース。エイドなし・自己完結型という独自ルールで知られる。制限時間24時間。参加には相応の経験と準備が必要\n- 公式: https://www.hasetsune.jp/\n\n### 11月（例年開催・2026年日程未発表）\n\n**FunTrails Round 秩父&奥武蔵 100MILE / 100K / 50K**\n- 日程: 例年11月中旬（2025年は11月15〜16日開催）\n- 会場: 埼玉県秩父市周辺\n- 距離: 100マイル / 100km / 50km\n- 特徴: 秩父の寺社仏閣を巡りながら走る独特のコース設計。50kmカテゴリは中級者のステップアップに最適\n- 公式: https://fun-trails.com/race/100k/\n\n**第13回 トレニックワールド in 外秩父 50km & 45km**\n- 日程: 2026年11月29日（日）予定\n- 会場: 埼玉県寄居町〜越生町\n- 距離: 50km / 45km\n- 特徴: 外秩父の七峰を縦走するコース。45kmカテゴリは初めてのロングトレイルに挑戦する人に人気が高い\n- 公式: https://trainic-world.org/\n\n---\n\n## 大会選びのポイント\n\n### 距離と制限時間で選ぶ\n\n初めてのトレランレースなら、**10〜20km / 制限時間4時間以上**の大会を選ぼう。THE FIRST TRAILや奥武蔵ロングトレイル20Kがこのカテゴリに該当する。「完走できなかったらどうしよう」という不安は、余裕のある制限時間が解消してくれる。\n\n30km前後に挑戦するなら、ハセツネ30Kや青梅高水トレイルラン30kmの部が定番だ。15kmの部はその前のステップとしてもおすすめ。\n\n### 累積標高差をチェックする\n\n距離が同じでも、累積標高差によって体感の難易度は大きく変わる。目安として累積標高差1,000m以下なら初級、1,000〜2,000mなら中級、2,000m以上は上級と考えてよい。大会ページに必ず記載されているので確認しよう。\n\n### エイドステーションの充実度\n\nトレイルレースではエイド（給水・給食所）の数と内容が完走を左右する。初心者は**エイドが5km間隔以内**で設置されている大会が安心だ。逆にハセツネCUPのようにエイドなしの大会は、すべてを自分で背負う覚悟と経験が必要になる。\n\n### 参加者のレベル感\n\n大会によって参加者層は大きく異なる。THE FIRST TRAILや箱根ランフェスはファンラン寄りで初心者が多い。青梅高水やハセツネ30Kは中〜上級者が中心。大会の雰囲気が自分に合っているかも、選ぶときの大切な基準だ。\n\n---\n\n## 持ち物・装備チェックリスト\n\n大会ごとに必携装備（持っていないと出走できない装備）が指定されている。必ず大会要項を確認した上で、以下を参考にしてほしい。\n\n### 必携装備（多くの大会で共通）\n\n- [ ] トレイルランニングシューズ（ロードシューズは不可の大会が多い）\n- [ ] ザック / トレイルランニングベスト（5〜15L）\n- [ ] 携帯コップ（エイドで使用。紙コップ廃止の大会が増えている）\n- [ ] レインウェア上下（防水透湿素材）\n- [ ] ヘッドランプ（ナイトセクションがある大会は必須）\n- [ ] 携帯電話（緊急連絡用・フル充電で）\n- [ ] エマージェンシーシート（サバイバルブランケット）\n- [ ] 保険証のコピー\n\n### あると便利な装備\n\n- [ ] トレッキングポール（使用可の大会のみ。登りが楽になる）\n- [ ] 日焼け止め（稜線は紫外線が強い）\n- [ ] テーピングテープ（足首の捻挫予防）\n- [ ] 補給食（ジェル、羊羹、おにぎりなど。1時間あたり200〜300kcalが目安）\n- [ ] 塩分タブレット（夏場は必須）\n- [ ] モバイルバッテリー\n\n---\n\n## 当日の移動プラン\n\n### 電車で行く場合\n\n関東のトレイルラン大会は駅からのアクセスが良い大会が多いのが特徴だ。\n\n| 大会 | 最寄り駅 | 新宿からの所要時間 | 始発到着目安 |\n|------|---------|-------------------|------------|\n| 青梅高水トレイルラン | JR青梅駅 | 約70分 | 6:30頃着 |\n| THE FIRST TRAIL | JR青梅駅 | 約70分 | 6:30頃着 |\n| ハセツネ30K | JR武蔵五日市駅 | 約75分 | 6:40頃着 |\n| 箱根ランフェス | 箱根湯本駅+バス | 約120分 | 7:30頃着 |\n| 奥武蔵ロングトレイル | 西武線飯能駅 | 約50分 | 6:00頃着 |\n\nポイントは**始発電車の時刻を事前に調べておくこと**。受付締切はスタートの30分〜1時間前が一般的で、余裕を持って到着したい。ICカード（Suica / PASMO）は必ずチャージしておこう。\n\n### 車で行く場合\n\n大会によっては専用駐車場が用意されるが、台数に限りがあるケースがほとんどだ。事前申込制の大会も多いので、エントリー時に駐車場の有無を確認しよう。\n\n- **青梅エリア**: 圏央道青梅ICから約15分。青梅市営駐車場あり\n- **秩父・飯能エリア**: 圏央道狭山日高ICから約25分。大会指定駐車場を要確認\n- **丹沢エリア**: 東名高速秦野中井ICから約15分。県営駐車場あり（早朝は混雑）\n- **箱根エリア**: 箱根ランフェスは公共交通機関利用を推奨。駐車場チケットは別途販売\n\n---\n\n## 東京発の日帰りレース一覧を見る\n\n[YabaiTravelのレース一覧](/ja/events)では、エリア・距離・時期で絞り込んでトレイルランニング大会を検索できる。「東京から日帰り可能」「初心者OK」といった条件でフィルタリングすれば、自分に合った大会がすぐに見つかる。\n\n各大会ページでは、コースの特徴やアクセス情報に加えて、周辺の温泉・グルメ情報も掲載している。レースのついでに観光も楽しみたいなら、ぜひ活用してほしい。\n\nまずは1本、短い距離から始めてみよう。山を走る爽快感は、ロードランニングとはまったく別の体験だ。\n\n---\n\n## 関連ガイド\n\n- [トレイルランニングとは？初心者向けガイド](/ja/guide/trail-running)\n- [東京近郊のエンデュランスレース一覧](/ja/events)\n\n---\n\n*この記事は2026年3月時点の情報に基づいています。大会の日程・内容は変更になる場合があります。最新情報は各大会の公式サイトでご確認ください。*\n';
 const __vite_glob_0_9 = `---
 title: "Trail Running Near Tokyo: 10 Day-Trip Races You Can't Miss in 2026"
 description: "10 trail running races near Tokyo you can do as day trips in 2026. Practical tips for international runners on transportation, registration, and gear."
@@ -7124,7 +7237,7 @@ Japan's greatest post-race secret: onsen. Nearly every mountain area has natural
 
 Combining trail races with sightseeing is one of the best ways to experience Japan beyond the tourist highlights. Whether you are chasing a personal best on the ridges above Tokyo or simply want to jog through autumn forests, the races on this list deliver world-class trails with distinctly Japanese hospitality.
 
-[yabai.travel](https://yabai.travel) lists trail races across Japan with transport access from Tokyo and nearby accommodation options.
+[yabai.travel](https://yabai.travel?utm_source=devto&utm_medium=devto_article) lists trail races across Japan with transport access from Tokyo and nearby accommodation options.
 
 ---
 
@@ -7258,7 +7371,7 @@ function BlogList() {
             /* @__PURE__ */ jsxs("div", { className: "mb-2 flex items-center gap-2", children: [
               /* @__PURE__ */ jsx(Badge, { variant: "outline", className: "text-xs", children: article.category === "ops" ? isEn ? "AI Ops" : "AI運営" : isEn ? "Guide" : "ガイド" }),
               /* @__PURE__ */ jsxs("span", { className: "flex items-center gap-1 text-xs text-muted-foreground", children: [
-                /* @__PURE__ */ jsx(Calendar, { className: "h-3 w-3" }),
+                /* @__PURE__ */ jsx(Calendar$1, { className: "h-3 w-3" }),
                 article.date
               ] })
             ] }),
@@ -7318,7 +7431,7 @@ function BlogPost() {
         /* @__PURE__ */ jsxs("div", { className: "mb-3 flex items-center gap-2", children: [
           /* @__PURE__ */ jsx(Badge, { variant: "outline", className: "text-xs", children: article.category === "ops" ? isEn ? "AI Ops" : "AI運営" : isEn ? "Guide" : "ガイド" }),
           /* @__PURE__ */ jsxs("span", { className: "flex items-center gap-1 text-xs text-muted-foreground", children: [
-            /* @__PURE__ */ jsx(Calendar, { className: "h-3 w-3" }),
+            /* @__PURE__ */ jsx(Calendar$1, { className: "h-3 w-3" }),
             article.date
           ] })
         ] }),
@@ -7458,6 +7571,7 @@ function SideMenuContent({
 }) {
   const [guidesExpanded, setGuidesExpanded] = useState(false);
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
+  const { user } = useAuth();
   const isActive = (path) => location.pathname === path || location.pathname === `${path}/`;
   const isActiveIncludes = (segment) => location.pathname.includes(segment);
   return /* @__PURE__ */ jsxs("div", { className: "flex h-full flex-col px-3 py-4", children: [
@@ -7568,6 +7682,18 @@ function SideMenuContent({
     ) }),
     /* @__PURE__ */ jsx("div", { className: "border-t border-border my-4" }),
     /* @__PURE__ */ jsxs("div", { className: "space-y-1", children: [
+      user && /* @__PURE__ */ jsxs(
+        Link,
+        {
+          to: `${langPrefix}/my-calendar`,
+          className: `flex items-center gap-2 rounded-md px-3 py-1.5 text-sm no-underline transition-colors ${isActiveIncludes("/my-calendar") ? "bg-primary/10 text-primary" : "text-foreground/70 hover:text-foreground hover:bg-muted"}`,
+          onClick: onNavigate,
+          children: [
+            /* @__PURE__ */ jsx(CalendarDays, { className: "h-4 w-4" }),
+            isEn ? "My Calendar" : "マイカレンダー"
+          ]
+        }
+      ),
       /* @__PURE__ */ jsxs(
         Link,
         {
@@ -7733,7 +7859,7 @@ function EventMap({ events, langPrefix, raceTypeLabel, lang: langProp }) {
   if (mappable.length === 0) return null;
   const mapLanguage = isEn ? "en" : "ja";
   return /* @__PURE__ */ jsx(APIProvider, { apiKey: API_KEY, language: mapLanguage, children: /* @__PURE__ */ jsx("div", { style: { width: "100%", height: "400px", borderRadius: "0.75rem", border: "1px solid #e2e8f0", overflow: "hidden" }, children: /* @__PURE__ */ jsxs(
-    Map$2,
+    Map$1,
     {
       defaultCenter: { lat: 36, lng: 139.6 },
       defaultZoom: 3,
@@ -7778,7 +7904,7 @@ export {
 
 // --- End SSR bundle ---
 
-const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png\" />\n    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>yabai.travel</title>\n    <meta name=\"description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:title\" content=\"yabai.travel\" />\n    <meta property=\"og:description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Preconnect to critical origins -->\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link rel=\"dns-prefetch\" href=\"https://maps.googleapis.com\" />\n    <link rel=\"dns-prefetch\" href=\"https://supabase.co\" />\n    <!-- Font display swap for system font fallback during load -->\n    <style>\n      @font-face {\n        font-family: 'Inter';\n        font-display: swap;\n        src: local('Inter');\n      }\n    </style>\n    <!-- Google Search Console verification: add meta tag here after registration -->\n    <!-- Google tag (gtag.js) - deferred to reduce TBT -->\n    <script>\n      window.addEventListener('load', function() {\n        var s = document.createElement('script');\n        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';\n        s.async = true;\n        document.head.appendChild(s);\n        s.onload = function() {\n          window.dataLayer = window.dataLayer || [];\n          function gtag(){dataLayer.push(arguments);}\n          gtag('js', new Date());\n          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });\n        };\n      });\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-C3XtN-tO.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-react-CEChUk-l.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-i18n-5xXoTvtS.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-ui-phpf8bsv.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-bitv6cn-.css\">\n  </head>\n  <body>\n    <div id=\"root\"><!--ssr-outlet--></div>\n  </body>\n</html>\n"
+const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png\" />\n    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>yabai.travel</title>\n    <meta name=\"description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:title\" content=\"yabai.travel\" />\n    <meta property=\"og:description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Preconnect to critical origins -->\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link rel=\"dns-prefetch\" href=\"https://maps.googleapis.com\" />\n    <link rel=\"dns-prefetch\" href=\"https://supabase.co\" />\n    <!-- Font display swap for system font fallback during load -->\n    <style>\n      @font-face {\n        font-family: 'Inter';\n        font-display: swap;\n        src: local('Inter');\n      }\n    </style>\n    <!-- Google Search Console verification: add meta tag here after registration -->\n    <!-- Google tag (gtag.js) - deferred to reduce TBT -->\n    <script>\n      window.addEventListener('load', function() {\n        var s = document.createElement('script');\n        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';\n        s.async = true;\n        document.head.appendChild(s);\n        s.onload = function() {\n          window.dataLayer = window.dataLayer || [];\n          function gtag(){dataLayer.push(arguments);}\n          gtag('js', new Date());\n          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });\n        };\n      });\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-uY8QnGuW.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-react-CEChUk-l.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-i18n-5xXoTvtS.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-ui-yJeg2EDs.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-Dkx__kTt.css\">\n  </head>\n  <body>\n    <div id=\"root\"><!--ssr-outlet--></div>\n  </body>\n</html>\n"
 
 // Prefetch events from Supabase for top page SSR data injection
 // Uses AbortController timeout to avoid blocking SSR if Supabase is slow
@@ -7820,6 +7946,19 @@ export default async function handler(req, res) {
     const lang = url.startsWith("/en") ? "en" : "ja"
     let finalHtml = TEMPLATE
     finalHtml = finalHtml.replace(/lang="[^"]*"/, 'lang="' + lang + '"')
+
+    // Extract title and description from appHtml and inject into TEMPLATE
+    const titleMatch = appHtml.match(/<title>([^<]*)<\/title>/)
+    if (titleMatch) {
+      finalHtml = finalHtml.replace(/<title>[^<]*<\/title>/, "<title>" + titleMatch[1] + "<\/title>")
+      finalHtml = finalHtml.replace(/(<meta property="og:title" content=")[^"]*("/), '$1' + titleMatch[1] + '$2')
+    }
+    const descMatch = appHtml.match(/<meta name="description" content="([^"]*)"/)
+    if (descMatch) {
+      finalHtml = finalHtml.replace(/(<meta name="description" content=")[^"]*("/), '$1' + descMatch[1] + '$2')
+      finalHtml = finalHtml.replace(/(<meta property="og:description" content=")[^"]*("/), '$1' + descMatch[1] + '$2')
+    }
+
     finalHtml = finalHtml.replace("<!--ssr-outlet-->", appHtml)
 
     // Prefetch events for top page to eliminate client-side fetch latency
