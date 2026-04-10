@@ -1835,6 +1835,27 @@ function EventList() {
           ] })
         ] })
       ] }),
+      isEn && /* @__PURE__ */ jsxs("div", { className: "mb-8 rounded-xl border border-border bg-background px-6 py-6", children: [
+        /* @__PURE__ */ jsx("h2", { className: "text-lg font-semibold text-foreground mb-4", children: "New to Japanese Endurance Racing?" }),
+        /* @__PURE__ */ jsxs("div", { className: "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4", children: [
+          /* @__PURE__ */ jsxs("a", { href: "/en/blog/trail-running-near-tokyo-2026", className: "rounded-lg border border-border bg-muted/40 px-4 py-3 hover:bg-muted/70 transition-colors", children: [
+            /* @__PURE__ */ jsx("p", { className: "font-medium text-foreground text-sm", children: "Trail Running Near Tokyo" }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-muted-foreground mt-1", children: "10 day-trip races from the city" })
+          ] }),
+          /* @__PURE__ */ jsxs("a", { href: "/en/blog/hyrox-japan-guide-en-2026", className: "rounded-lg border border-border bg-muted/40 px-4 py-3 hover:bg-muted/70 transition-colors", children: [
+            /* @__PURE__ */ jsx("p", { className: "font-medium text-foreground text-sm", children: "HYROX Japan 2026" }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-muted-foreground mt-1", children: "Complete guide for international participants" })
+          ] }),
+          /* @__PURE__ */ jsxs("a", { href: "/en/blog/spartan-race-japan-guide-2026", className: "rounded-lg border border-border bg-muted/40 px-4 py-3 hover:bg-muted/70 transition-colors", children: [
+            /* @__PURE__ */ jsx("p", { className: "font-medium text-foreground text-sm", children: "Spartan Race Japan 2026" }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-muted-foreground mt-1", children: "Venues, distances & travel tips" })
+          ] }),
+          /* @__PURE__ */ jsxs("a", { href: "/en/blog/endurance-races-japan-2026", className: "rounded-lg border border-border bg-muted/40 px-4 py-3 hover:bg-muted/70 transition-colors", children: [
+            /* @__PURE__ */ jsx("p", { className: "font-medium text-foreground text-sm", children: "Endurance Races in Japan" }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-muted-foreground mt-1", children: "The complete 2026 guide" })
+          ] })
+        ] })
+      ] }),
       !isEn && /* @__PURE__ */ jsxs("div", { className: "mb-6 rounded-lg border border-primary/30 bg-primary/5 p-4 flex items-center justify-between", children: [
         /* @__PURE__ */ jsxs("div", { children: [
           /* @__PURE__ */ jsx("p", { className: "font-semibold text-foreground", children: "Crew ¥500/月" }),
@@ -7904,7 +7925,7 @@ export {
 
 // --- End SSR bundle ---
 
-const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png\" />\n    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>yabai.travel</title>\n    <meta name=\"description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:title\" content=\"yabai.travel\" />\n    <meta property=\"og:description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Preconnect to critical origins -->\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link rel=\"dns-prefetch\" href=\"https://maps.googleapis.com\" />\n    <link rel=\"dns-prefetch\" href=\"https://supabase.co\" />\n    <!-- Font display swap for system font fallback during load -->\n    <style>\n      @font-face {\n        font-family: 'Inter';\n        font-display: swap;\n        src: local('Inter');\n      }\n    </style>\n    <!-- Google Search Console verification: add meta tag here after registration -->\n    <!-- Google tag (gtag.js) - deferred to reduce TBT -->\n    <script>\n      window.addEventListener('load', function() {\n        var s = document.createElement('script');\n        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';\n        s.async = true;\n        document.head.appendChild(s);\n        s.onload = function() {\n          window.dataLayer = window.dataLayer || [];\n          function gtag(){dataLayer.push(arguments);}\n          gtag('js', new Date());\n          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });\n        };\n      });\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-uY8QnGuW.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-react-CEChUk-l.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-i18n-5xXoTvtS.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-ui-yJeg2EDs.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-Dkx__kTt.css\">\n  </head>\n  <body>\n    <div id=\"root\"><!--ssr-outlet--></div>\n  </body>\n</html>\n"
+const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png\" />\n    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>yabai.travel</title>\n    <meta name=\"description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:title\" content=\"yabai.travel\" />\n    <meta property=\"og:description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Preconnect to critical origins -->\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link rel=\"dns-prefetch\" href=\"https://maps.googleapis.com\" />\n    <link rel=\"dns-prefetch\" href=\"https://supabase.co\" />\n    <!-- Font display swap for system font fallback during load -->\n    <style>\n      @font-face {\n        font-family: 'Inter';\n        font-display: swap;\n        src: local('Inter');\n      }\n    </style>\n    <!-- Google Search Console verification: add meta tag here after registration -->\n    <!-- Google tag (gtag.js) - deferred to reduce TBT -->\n    <script>\n      window.addEventListener('load', function() {\n        var s = document.createElement('script');\n        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';\n        s.async = true;\n        document.head.appendChild(s);\n        s.onload = function() {\n          window.dataLayer = window.dataLayer || [];\n          function gtag(){dataLayer.push(arguments);}\n          gtag('js', new Date());\n          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });\n        };\n      });\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-QrGX2VvM.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-react-CEChUk-l.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-i18n-5xXoTvtS.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-ui-yJeg2EDs.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-xPOXoC3h.css\">\n  </head>\n  <body>\n    <div id=\"root\"><!--ssr-outlet--></div>\n  </body>\n</html>\n"
 
 // Prefetch events from Supabase for top page SSR data injection
 // Uses AbortController timeout to avoid blocking SSR if Supabase is slow
@@ -7951,12 +7972,12 @@ export default async function handler(req, res) {
     const titleMatch = appHtml.match(/<title>([^<]*)<\/title>/)
     if (titleMatch) {
       finalHtml = finalHtml.replace(/<title>[^<]*<\/title>/, "<title>" + titleMatch[1] + "<\/title>")
-      finalHtml = finalHtml.replace(/(<meta property="og:title" content=")[^"]*("/), '$1' + titleMatch[1] + '$2')
+      finalHtml = finalHtml.replace(/(<meta property="og:title" content=")[^"]*"/, '$1' + titleMatch[1] + '"')
     }
     const descMatch = appHtml.match(/<meta name="description" content="([^"]*)"/)
     if (descMatch) {
-      finalHtml = finalHtml.replace(/(<meta name="description" content=")[^"]*("/), '$1' + descMatch[1] + '$2')
-      finalHtml = finalHtml.replace(/(<meta property="og:description" content=")[^"]*("/), '$1' + descMatch[1] + '$2')
+      finalHtml = finalHtml.replace(/(<meta name="description" content=")[^"]*"/, '$1' + descMatch[1] + '"')
+      finalHtml = finalHtml.replace(/(<meta property="og:description" content=")[^"]*"/, '$1' + descMatch[1] + '"')
     }
 
     finalHtml = finalHtml.replace("<!--ssr-outlet-->", appHtml)
