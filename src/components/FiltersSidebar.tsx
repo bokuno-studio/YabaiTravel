@@ -8,8 +8,14 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { cn } from '@/lib/utils'
 import { CalendarIcon, SlidersHorizontal, X } from 'lucide-react'
 
+export interface CountryOption {
+  name: string
+  count: number
+  region?: string
+}
+
 export interface FiltersSidebarProps {
-  availableCountries: string[]
+  availableCountries: CountryOption[]
   countries: Set<string>
   onCountryToggle: (country: string) => void
   availableRaceTypes: string[]
@@ -103,8 +109,47 @@ export function getActiveFilterChips(
   return chips
 }
 
+const TOP_COUNTRY_COUNT = 10
+
+function CountryCheckbox({
+  country,
+  checked,
+  onToggle,
+}: {
+  country: CountryOption
+  checked: boolean
+  onToggle: (country: string) => void
+}) {
+  return (
+    <label
+      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-secondary/50"
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={() => onToggle(country.name)}
+        className="h-4 w-4 rounded border-input text-primary accent-primary"
+      />
+      <span className="flex min-w-0 flex-1 items-center justify-between gap-2 text-sm">
+        <span className="truncate">{country.name}</span>
+        <span className="shrink-0 text-xs text-muted-foreground">({country.count})</span>
+      </span>
+    </label>
+  )
+}
+
 function FiltersSheetBody(props: FiltersSidebarProps) {
   const isEn = props.lang === 'en'
+  const [countriesExpanded, setCountriesExpanded] = useState(false)
+  const topCountries = props.availableCountries.slice(0, TOP_COUNTRY_COUNT)
+  const restCountries = props.availableCountries.slice(TOP_COUNTRY_COUNT)
+  const otherRegionLabel = isEn ? 'Other' : 'その他'
+  const regionGroups = restCountries.reduce<Map<string, CountryOption[]>>((map, country) => {
+    const region = country.region ?? otherRegionLabel
+    if (!map.has(region)) map.set(region, [])
+    map.get(region)!.push(country)
+    return map
+  }, new Map())
 
   return (
     <div className="space-y-5 px-4 pb-6">
@@ -151,20 +196,50 @@ function FiltersSheetBody(props: FiltersSidebarProps) {
           {isEn ? 'Country' : '国'}
         </h3>
         <div className="space-y-1.5">
-          {props.availableCountries.map((country) => (
-            <label
-              key={country}
-              className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-secondary/50"
-            >
-              <input
-                type="checkbox"
-                checked={props.countries.has(country)}
-                onChange={() => props.onCountryToggle(country)}
-                className="h-4 w-4 rounded border-input text-primary accent-primary"
-              />
-              <span className="text-sm">{country}</span>
-            </label>
+          {topCountries.map((country) => (
+            <CountryCheckbox
+              key={country.name}
+              country={country}
+              checked={props.countries.has(country.name)}
+              onToggle={props.onCountryToggle}
+            />
           ))}
+
+          {restCountries.length > 0 && (
+            <>
+              <button
+                type="button"
+                onClick={() => setCountriesExpanded((prev) => !prev)}
+                className="px-2 py-1 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+              >
+                {countriesExpanded
+                  ? (isEn ? 'Collapse' : '折りたたむ')
+                  : (isEn ? `Show more (${restCountries.length})` : `もっと見る (${restCountries.length})`)}
+              </button>
+
+              {countriesExpanded && (
+                <div className="space-y-3 pt-1">
+                  {[...regionGroups.entries()].map(([region, countries]) => (
+                    <div key={region} className="space-y-1.5">
+                      <div className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {region}
+                      </div>
+                      <div className="space-y-1.5">
+                        {countries.map((country) => (
+                          <CountryCheckbox
+                            key={country.name}
+                            country={country}
+                            checked={props.countries.has(country.name)}
+                            onToggle={props.onCountryToggle}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 

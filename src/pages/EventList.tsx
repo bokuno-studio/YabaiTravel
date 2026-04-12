@@ -11,7 +11,7 @@ const EventMap = lazy(() => import('../components/EventMap'))
 import { EventCard } from '../components/EventCard'
 import { EventCardSkeleton } from '../components/EventCardSkeleton'
 import { FiltersSidebar } from '../components/FiltersSidebar'
-import type { FiltersSidebarProps } from '../components/FiltersSidebar'
+import type { CountryOption, FiltersSidebarProps } from '../components/FiltersSidebar'
 import { Button } from '@/components/ui/button'
 import { MapIcon, MapPinOff, RotateCcw } from 'lucide-react'
 import { useSidebarFilter } from '@/contexts/SidebarFilterContext'
@@ -51,6 +51,53 @@ function parseBooleanParam(searchParams: URLSearchParams, key: string, defaultVa
 
 function getEventCountryLabel(event: EventWithCategories, isEn: boolean): string | null {
   return isEn ? (event.country_en ?? event.country) : event.country
+}
+
+const REGION_MAP: Record<string, string> = {
+  '日本': 'アジア', '中国': 'アジア', '韓国': 'アジア', '台湾': 'アジア',
+  'タイ': 'アジア', 'フィリピン': 'アジア', 'マレーシア': 'アジア',
+  'インドネシア': 'アジア', 'ベトナム': 'アジア', 'シンガポール': 'アジア',
+  'インド': 'アジア', 'ネパール': 'アジア', '香港': 'アジア',
+  'フランス': 'ヨーロッパ', 'スペイン': 'ヨーロッパ', 'イタリア': 'ヨーロッパ',
+  'スイス': 'ヨーロッパ', 'イギリス': 'ヨーロッパ', 'ドイツ': 'ヨーロッパ',
+  'ギリシャ': 'ヨーロッパ', 'ポルトガル': 'ヨーロッパ', 'オーストリア': 'ヨーロッパ',
+  'スウェーデン': 'ヨーロッパ', 'ノルウェー': 'ヨーロッパ', 'チェコ': 'ヨーロッパ',
+  'クロアチア': 'ヨーロッパ', 'トルコ': 'ヨーロッパ', 'ポーランド': 'ヨーロッパ',
+  'ハンガリー': 'ヨーロッパ', 'ルーマニア': 'ヨーロッパ', 'ブルガリア': 'ヨーロッパ',
+  'オランダ': 'ヨーロッパ', 'ベルギー': 'ヨーロッパ', 'アイルランド': 'ヨーロッパ',
+  'フィンランド': 'ヨーロッパ', 'デンマーク': 'ヨーロッパ',
+  'アメリカ': 'アメリカ', 'カナダ': 'アメリカ', 'メキシコ': 'アメリカ',
+  'ブラジル': 'アメリカ', 'アルゼンチン': 'アメリカ', 'チリ': 'アメリカ',
+  'コロンビア': 'アメリカ', 'ペルー': 'アメリカ', 'コスタリカ': 'アメリカ',
+  'オーストラリア': 'オセアニア', 'ニュージーランド': 'オセアニア',
+  '南アフリカ': 'アフリカ', 'モロッコ': 'アフリカ', 'ケニア': 'アフリカ',
+  'エジプト': 'アフリカ', 'タンザニア': 'アフリカ',
+  'アラブ首長国連邦': '中東', 'イスラエル': '中東', 'ヨルダン': '中東',
+  'オマーン': '中東', 'サウジアラビア': '中東',
+  'Japan': 'Asia', 'China': 'Asia', 'South Korea': 'Asia', 'Taiwan': 'Asia',
+  'Thailand': 'Asia', 'Philippines': 'Asia', 'Malaysia': 'Asia',
+  'Indonesia': 'Asia', 'Vietnam': 'Asia', 'Singapore': 'Asia',
+  'India': 'Asia', 'Nepal': 'Asia', 'Hong Kong': 'Asia',
+  'France': 'Europe', 'Spain': 'Europe', 'Italy': 'Europe',
+  'Switzerland': 'Europe', 'United Kingdom': 'Europe', 'Germany': 'Europe',
+  'Greece': 'Europe', 'Portugal': 'Europe', 'Austria': 'Europe',
+  'Sweden': 'Europe', 'Norway': 'Europe', 'Czech Republic': 'Europe',
+  'Croatia': 'Europe', 'Turkey': 'Europe', 'Poland': 'Europe',
+  'Hungary': 'Europe', 'Romania': 'Europe', 'Bulgaria': 'Europe',
+  'Netherlands': 'Europe', 'Belgium': 'Europe', 'Ireland': 'Europe',
+  'Finland': 'Europe', 'Denmark': 'Europe',
+  'United States': 'Americas', 'Canada': 'Americas', 'Mexico': 'Americas',
+  'Brazil': 'Americas', 'Argentina': 'Americas', 'Chile': 'Americas',
+  'Colombia': 'Americas', 'Peru': 'Americas', 'Costa Rica': 'Americas',
+  'Australia': 'Oceania', 'New Zealand': 'Oceania',
+  'South Africa': 'Africa', 'Morocco': 'Africa', 'Kenya': 'Africa',
+  'Egypt': 'Africa', 'Tanzania': 'Africa',
+  'United Arab Emirates': 'Middle East', 'Israel': 'Middle East',
+  'Jordan': 'Middle East', 'Oman': 'Middle East', 'Saudi Arabia': 'Middle East',
+}
+
+function getRegion(countryName: string, isEn: boolean): string {
+  return REGION_MAP[countryName] ?? (isEn ? 'Other' : 'その他')
 }
 
 /** Use SSR-prefetched events if available, clear after use */
@@ -248,13 +295,23 @@ function EventList() {
     return RACE_TYPE_ORDER.filter((t) => types.has(t))
   }, [events])
 
-  const availableCountries = useMemo(() => {
-    const values = new Set<string>()
+  const availableCountries = useMemo<CountryOption[]>(() => {
+    const countMap = new Map<string, number>()
     events.forEach((event) => {
       const country = getEventCountryLabel(event, isEn)
-      if (country) values.add(country)
+      if (!country) return
+      countMap.set(country, (countMap.get(country) ?? 0) + 1)
     })
-    return [...values].sort((a, b) => a.localeCompare(b, isEn ? 'en' : 'ja'))
+    return [...countMap.entries()]
+      .map(([name, count]) => ({
+        name,
+        count,
+        region: getRegion(name, isEn),
+      }))
+      .sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count
+        return a.name.localeCompare(b.name, isEn ? 'en' : 'ja')
+      })
   }, [events, isEn])
 
 
