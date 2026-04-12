@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react
 import { useParams, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabaseClient'
-import type { EventWithCategories, Category } from '../types/event'
+import type { EventWithCategories } from '../types/event'
 import LazyLoadWrapper from '../components/LazyLoadWrapper'
 import { useAuth } from '@/lib/auth'
 import { isAuthError, handleAuthError } from '@/lib/authErrorHandler'
@@ -10,48 +10,22 @@ import { isAuthError, handleAuthError } from '@/lib/authErrorHandler'
 const EventMap = lazy(() => import('../components/EventMap'))
 import { EventCard } from '../components/EventCard'
 import { EventCardSkeleton } from '../components/EventCardSkeleton'
-import { getActiveFilterChips } from '../components/FiltersSidebar'
+import { FiltersSidebar } from '../components/FiltersSidebar'
 import type { FiltersSidebarProps } from '../components/FiltersSidebar'
-import SidebarFilters from '../components/SidebarFilters'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { MapIcon, MapPinOff, SlidersHorizontal, X, RotateCcw } from 'lucide-react'
+import { MapIcon, MapPinOff, RotateCcw } from 'lucide-react'
 import { useSidebarFilter } from '@/contexts/SidebarFilterContext'
 import { useSidebarStats } from '@/contexts/SidebarStatsContext'
 import { getFilterState, saveFilterState, resetFilterState } from '@/lib/filterStore'
 import { useScrollDepth } from '@/hooks/useScrollDepth'
-
-/** interval 文字列から時間数を取得（フィルタ用） */
-function parseIntervalHours(v: string | null): number | null {
-  if (!v) return null
-  const hms = v.match(/^(\d+):(\d+):(\d+)/)
-  if (hms) {
-    const h = parseInt(hms[1], 10)
-    const min = parseInt(hms[2], 10)
-    const sec = parseInt(hms[3], 10)
-    return h + min / 60 + sec / 3600
-  }
-  const hourMatch = v.match(/(\d+)\s*hour/)
-  const dayMatch = v.match(/(\d+)\s*day/)
-  const minMatch = v.match(/(\d+)\s*minute/)
-  let hours = 0
-  if (hourMatch) hours += parseInt(hourMatch[1], 10)
-  if (dayMatch) hours += parseInt(dayMatch[1], 10) * 24
-  if (minMatch) hours += parseInt(minMatch[1], 10) / 60
-  return hours > 0 ? hours : null
-}
 
 /** 距離レンジの定義（言語に応じてラベルを切り替え） */
 function getDistanceRanges(isEn: boolean) {
   const sep = isEn ? '-' : '\u301C'
   return [
     { label: `${sep}10km`, min: 0, max: 10 },
-    { label: `10${sep}20km`, min: 10, max: 20 },
-    { label: `20${sep}30km`, min: 20, max: 30 },
-    { label: `30${sep}50km`, min: 30, max: 50 },
-    { label: `50${sep}100km`, min: 50, max: 100 },
-    { label: `100km${sep}`, min: 100, max: Infinity },
+    { label: `10${sep}30km`, min: 10, max: 30 },
+    { label: `30km${sep}`, min: 30, max: Infinity },
   ] as const
 }
 
@@ -67,6 +41,16 @@ function parseNumSetParam(searchParams: URLSearchParams, key: string): Set<numbe
   const val = searchParams.get(key)
   if (!val) return new Set()
   return new Set(val.split(',').filter(Boolean).map(Number))
+}
+
+function parseBooleanParam(searchParams: URLSearchParams, key: string, defaultValue: boolean): boolean {
+  const value = searchParams.get(key)
+  if (value == null) return defaultValue
+  return value !== '0' && value !== 'false'
+}
+
+function getEventCountryLabel(event: EventWithCategories, isEn: boolean): string | null {
+  return isEn ? (event.country_en ?? event.country) : event.country
 }
 
 /** Use SSR-prefetched events if available, clear after use */
@@ -112,6 +96,10 @@ function EventList() {
     if (initialType) return new Set([initialType])
     return new Set(saved.raceTypes)
   })
+  const [countries, setCountries] = useState<Set<string>>(() => {
+    const fromParams = parseSetParam(searchParams, 'countries')
+    return fromParams.size > 0 ? fromParams : new Set(saved.countries)
+  })
   const [dateRangeStart, setDateRangeStart] = useState<string | null>(() => {
     const fromParams = searchParams.get('date_from')
     return fromParams ?? (saved.dateRangeStart ?? null)
@@ -125,18 +113,9 @@ function EventList() {
     const fromParams = parseNumSetParam(searchParams, 'distances')
     return fromParams.size > 0 ? fromParams : new Set(saved.distanceRanges)
   })
-  const [timeLimitMin, setTimeLimitMin] = useState<string>(() => searchParams.get('timeLimitMin') ?? saved.timeLimitMin)
-  const [costMin, setCostMin] = useState<number>(() => {
-    const v = searchParams.get('costMin')
-    return v ? Number(v) : saved.costMin
-  })
-  const [costMax, setCostMax] = useState<number>(() => {
-    const v = searchParams.get('costMax')
-    return v ? Number(v) : saved.costMax
-  })
-  const [poleFilter, setPoleFilter] = useState<string>(() => searchParams.get('poleFilter') ?? saved.poleFilter)
-  const [entryStatus, setEntryStatus] = useState<string>(() => searchParams.get('entryStatus') ?? saved.entryStatus)
-  const [showPastEvents, setShowPastEvents] = useState(() => searchParams.get('showPast') === '1' || saved.showPastEvents)
+  const [entryOpenOnly, setEntryOpenOnly] = useState<boolean>(() =>
+    parseBooleanParam(searchParams, 'entryOpenOnly', saved.entryOpenOnly)
+  )
   // Default map hidden on mobile to avoid loading Google Maps API
   const [showMap, setShowMap] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth >= 960 : false
@@ -149,30 +128,21 @@ function EventList() {
   useEffect(() => {
     saveFilterState({
       raceTypes: [...raceTypes],
+      countries: [...countries],
       dateRangeStart,
       dateRangeEnd,
       distanceRanges: [...distanceRanges],
-      timeLimitMin,
-      costMin,
-      costMax,
-      poleFilter,
-      entryStatus,
-      showPastEvents,
+      entryOpenOnly,
     })
     const params = new URLSearchParams()
     if (raceTypes.size > 0) params.set('raceTypes', [...raceTypes].join(','))
+    if (countries.size > 0) params.set('countries', [...countries].join(','))
     if (dateRangeStart) params.set('date_from', dateRangeStart)
     if (dateRangeEnd) params.set('date_to', dateRangeEnd)
-    // Old: if (selectedMonths.size > 0) params.set('months', [dateRangeStart, dateRangeEnd]].join(','))
     if (distanceRanges.size > 0) params.set('distances', [...distanceRanges].join(','))
-    if (timeLimitMin) params.set('timeLimitMin', timeLimitMin)
-    if (costMin > 0) params.set('costMin', String(costMin))
-    if (costMax < Infinity) params.set('costMax', String(costMax))
-    if (poleFilter) params.set('poleFilter', poleFilter)
-    if (entryStatus !== 'active') params.set('entryStatus', entryStatus)
-    if (showPastEvents) params.set('showPast', '1')
+    if (!entryOpenOnly) params.set('entryOpenOnly', '0')
     setSearchParams(params, { replace: true })
-  }, [raceTypes, dateRangeStart, dateRangeEnd, distanceRanges, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents, setSearchParams])
+  }, [raceTypes, countries, dateRangeStart, dateRangeEnd, distanceRanges, entryOpenOnly, setSearchParams])
 
   useEffect(() => {
     async function fetchEvents() {
@@ -260,22 +230,6 @@ function EventList() {
     fetchStats()
   }, [setSidebarLastUpdated, setSidebarWeeklyNewCount, ssrEvents])
 
-  /** コスト分布データ（95パーセンタイル超の外れ値を除外してヒストグラムに渡す） */
-  const costPrices = useMemo(() => {
-    const all = events
-      .map((e) => e.total_cost_estimate ? parseInt(e.total_cost_estimate, 10) : NaN)
-      .filter((v) => !isNaN(v) && v > 0)
-    if (all.length === 0) return all
-    const sorted = [...all].sort((a, b) => a - b)
-    const p95 = sorted[Math.min(Math.floor(sorted.length * 0.95), sorted.length - 1)]
-    return all.filter((v) => v <= p95)
-  }, [events])
-
-  const costGlobalMax = useMemo(() => {
-    if (costPrices.length === 0) return 100000
-    return Math.ceil(Math.max(...costPrices) / 10000) * 10000
-  }, [costPrices])
-
   /** DB に存在するレース種別を定義順で取得（#154） */
   const RACE_TYPE_ORDER = [
     'marathon', 'trail',
@@ -294,6 +248,15 @@ function EventList() {
     return RACE_TYPE_ORDER.filter((t) => types.has(t))
   }, [events])
 
+  const availableCountries = useMemo(() => {
+    const values = new Set<string>()
+    events.forEach((event) => {
+      const country = getEventCountryLabel(event, isEn)
+      if (country) values.add(country)
+    })
+    return [...values].sort((a, b) => a.localeCompare(b, isEn ? 'en' : 'ja'))
+  }, [events, isEn])
+
 
   const toggleRaceType = (t: string) => {
     setRaceTypes((prev) => {
@@ -304,19 +267,14 @@ function EventList() {
     })
   }
 
-  /** イベント日付から利用可能な月一覧を生成 */
-  const availableMonths = useMemo(() => {
-    const months = new Set<string>()
-    const today = new Date().toISOString().slice(0, 7)
-    events.forEach((e) => {
-      if (e.event_date) {
-        const ym = e.event_date.slice(0, 7)
-        if (!showPastEvents && ym < today) return
-        months.add(ym)
-      }
+  const toggleCountry = (country: string) => {
+    setCountries((prev) => {
+      const next = new Set(prev)
+      if (next.has(country)) next.delete(country)
+      else next.add(country)
+      return next
     })
-    return [...months].sort()
-  }, [events, showPastEvents])
+  }
 
   const toggleDistanceRange = (idx: number) => {
     setDistanceRanges((prev) => {
@@ -327,86 +285,51 @@ function EventList() {
     })
   }
 
-  const categoryMatchesFilter = (cat: Category): boolean => {
-    const timeMin = timeLimitMin ? parseFloat(timeLimitMin) : null
+  const eventMatchesDistanceFilter = (event: EventWithCategories): boolean => {
+    if (distanceRanges.size === 0) return true
 
-    if (distanceRanges.size > 0) {
-      if (cat.distance_km == null) return false
-      const matchesAny = [...distanceRanges].some((idx) => {
+    return (event.categories ?? []).some((category) => {
+      if (category.distance_km == null) return false
+      return [...distanceRanges].some((idx) => {
         const range = DISTANCE_RANGES[idx]
-        return cat.distance_km! >= range.min && (range.max === Infinity || cat.distance_km! <= range.max)
+        return category.distance_km >= range.min && (range.max === Infinity || category.distance_km <= range.max)
       })
-      if (!matchesAny) return false
-    }
-    if (timeMin != null) {
-      const catHours = parseIntervalHours(cat.time_limit)
-      if (catHours == null || catHours < timeMin) return false
-    }
-    return true
-  }
-
-  /** フィルタ条件に合致するカテゴリを返す (#33) */
-  const getMatchingCategories = (event: EventWithCategories): Category[] => {
-    const cats = event.categories ?? []
-    return cats.filter((cat) => {
-      return categoryMatchesFilter(cat)
     })
   }
 
-  const hasAnyFilter = raceTypes.size > 0 || distanceRanges.size > 0 || !!timeLimitMin || costMin > 0 || costMax < Infinity || !!poleFilter || entryStatus !== 'active' || showPastEvents
+  const hasAnyFilter = raceTypes.size > 0
+    || countries.size > 0
+    || Boolean(dateRangeStart)
+    || Boolean(dateRangeEnd)
+    || distanceRanges.size > 0
+    || !entryOpenOnly
 
   // #2: Reset all filters
   const resetAllFilters = useCallback(() => {
     setRaceTypes(new Set())
+    setCountries(new Set())
+    setDateRangeStart(null)
+    setDateRangeEnd(null)
     setDistanceRanges(new Set())
-    setTimeLimitMin('')
-    setCostMin(0)
-    setCostMax(Infinity)
-    setPoleFilter('')
-    setEntryStatus('active')
-    setShowPastEvents(false)
+    setEntryOpenOnly(true)
     resetFilterState()
   }, [])
 
   const filtered = events.filter((event) => {
     const today = new Date().toISOString().slice(0, 10)
-    // デフォルト: 当日以降のイベントのみ表示（#135）
-    if (!showPastEvents && event.event_date && event.event_date < today) return false
     if (raceTypes.size > 0 && (event.race_type == null || !raceTypes.has(event.race_type))) return false
+    if (countries.size > 0) {
+      const country = getEventCountryLabel(event, isEn)
+      if (!country || !countries.has(country)) return false
+    }
     if ((dateRangeStart || dateRangeEnd) && event.event_date) {
       if (dateRangeStart && event.event_date < dateRangeStart) return false
       if (dateRangeEnd && event.event_date > dateRangeEnd) return false
     }
-    if (entryStatus) {
-      if (entryStatus === 'active') {
-        // 受付中 or 受付前（受付終了を除外）（#135）
-        if (event.entry_end && event.entry_end < today) return false
-      } else if (entryStatus === 'open') {
-        if (!event.entry_start || !event.entry_end) return false
-        if (event.entry_start > today || event.entry_end < today) return false
-      } else if (entryStatus === 'upcoming') {
-        if (!event.entry_start || event.entry_start <= today) return false
-      } else if (entryStatus === 'closed') {
-        if (!event.entry_end || event.entry_end >= today) return false
-      }
+    if (entryOpenOnly && (!event.entry_start || !event.entry_end || event.entry_start > today || event.entry_end < today)) {
+      return false
     }
-    if (costMin > 0 || costMax < Infinity) {
-      // 集計未完了（null）はコストフィルターの対象外
-      if (!event.total_cost_estimate) return false
-      const cost = parseInt(event.total_cost_estimate, 10)
-      if (isNaN(cost) || cost < costMin || cost > costMax) return false
-    }
-    const categories = event.categories ?? []
-    if (poleFilter) {
-      if (categories.length === 0) return false
-      if (poleFilter === 'allowed' && !categories.some(c => c.poles_allowed === true)) return false
-      if (poleFilter === 'prohibited' && !categories.some(c => c.poles_allowed === false)) return false
-    }
-    const hasCategoryFilter = distanceRanges.size > 0 || timeLimitMin
-    if (hasCategoryFilter && categories.length > 0) {
-      const hasMatch = categories.some(categoryMatchesFilter)
-      if (!hasMatch) return false
-    }
+    if (!eventMatchesDistanceFilter(event)) return false
     return true
   })
 
@@ -415,41 +338,27 @@ function EventList() {
     return t(`raceType.${type}`, type)
   }
 
-  const handleCostRangeChange = (newMin: number, newMax: number) => {
-    setCostMin(newMin)
-    setCostMax(newMax)
-  }
-
   const onDateRangeChange = (start: string | null, end: string | null) => {
     setDateRangeStart(start)
     setDateRangeEnd(end)
   }
 
   const filterProps: FiltersSidebarProps = {
+    availableCountries,
+    countries,
+    onCountryToggle: toggleCountry,
     availableRaceTypes,
     raceTypes,
     onRaceTypeToggle: toggleRaceType,
     raceTypeLabel,
-    availableMonths,
     dateRangeStart,
     dateRangeEnd,
     onDateRangeChange,
     distanceRanges,
     onDistanceRangeToggle: toggleDistanceRange,
     distanceRangeOptions: DISTANCE_RANGES,
-    timeLimitMin,
-    onTimeLimitChange: setTimeLimitMin,
-    costPrices,
-    costMin,
-    costMax,
-    costGlobalMax,
-    onCostRangeChange: handleCostRangeChange,
-    poleFilter,
-    onPoleFilterChange: setPoleFilter,
-    entryStatus,
-    onEntryStatusChange: setEntryStatus,
-    showPastEvents,
-    onShowPastEventsChange: setShowPastEvents,
+    entryOpenOnly,
+    onEntryOpenOnlyChange: setEntryOpenOnly,
     t,
     lang,
   }
@@ -457,18 +366,14 @@ function EventList() {
   // Inject filters into sidebar via context (dependency on filter state to avoid infinite loop)
   const { setFilterNode } = useSidebarFilter()
   const filterDepsKey = JSON.stringify([
-    [...raceTypes], dateRangeStart, dateRangeEnd,
-    [...distanceRanges], timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents,
-    raceTypes.size, loading,
+    [...raceTypes], [...countries], dateRangeStart, dateRangeEnd,
+    [...distanceRanges], entryOpenOnly, raceTypes.size, countries.size, loading,
   ])
   useEffect(() => {
-    setFilterNode(<SidebarFilters {...filterProps} />)
+    setFilterNode(<FiltersSidebar {...filterProps} />)
     return () => setFilterNode(null)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterDepsKey])
-
-  const activeChips = getActiveFilterChips(filterProps)
-  const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
 
   // Progressive rendering: show limited cards initially to reduce TBT
   const INITIAL_RENDER_COUNT = 20
@@ -478,7 +383,7 @@ function EventList() {
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(INITIAL_RENDER_COUNT)
-  }, [raceTypes.size, dateRangeStart, dateRangeEnd, distanceRanges.size, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents])
+  }, [raceTypes.size, countries.size, dateRangeStart, dateRangeEnd, distanceRanges.size, entryOpenOnly])
 
   if (error) {
     return (
@@ -588,56 +493,7 @@ function EventList() {
 
         {/* Active filter chips + toolbar */}
         <div id="race-list" className="mb-4 space-y-2">
-          {/* Active filter chips row */}
-          <div className="flex items-center gap-2">
-            {/* Mobile-only filter button */}
-            <Sheet open={mobileFilterOpen} onOpenChange={setMobileFilterOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="shrink-0 min-[960px]:hidden">
-                  <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" />
-                  {lang === 'en' ? 'Filters' : '絞り込み'}
-                  {activeChips.length > 0 && (
-                    <span className="ml-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                      {activeChips.length}
-                    </span>
-                  )}
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-72 overflow-y-auto p-0">
-                <SheetHeader className="px-4 pt-4">
-                  <SheetTitle>{lang === 'en' ? 'Filters' : '絞り込み'}</SheetTitle>
-                </SheetHeader>
-                <div className="mt-2">
-                  <SidebarFilters {...filterProps} />
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-              {activeChips.length === 0 && (
-                <span className="text-sm text-muted-foreground hidden min-[960px]:inline">
-                  {lang === 'en' ? 'No filters applied' : 'フィルターなし'}
-                </span>
-              )}
-              {activeChips.map((chip) => (
-                <Badge
-                  key={chip.key}
-                  variant="secondary"
-                  className="flex items-center gap-1 pl-2 pr-1 py-0.5 text-xs"
-                >
-                  <span>{chip.label}</span>
-                  <button
-                    type="button"
-                    onClick={chip.onRemove}
-                    className="ml-0.5 rounded-full p-0.5 hover:bg-destructive/20 transition-colors"
-                    aria-label={`Remove ${chip.label}`}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          </div>
+          <FiltersSidebar {...filterProps} />
 
           {/* Result count + reset button + map toggle */}
           <div className="flex items-center justify-between">
@@ -741,35 +597,15 @@ function EventList() {
         ) : (
           <>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filtered.slice(0, visibleCount).map((event) => {
-                const matchingCats = getMatchingCategories(event)
-                // フィルタで1件に絞られた場合は直接カテゴリへ、それ以外はイベント詳細へ (#33)
-                const cardLink = hasAnyFilter && matchingCats.length === 1
-                  ? `${langPrefix}/events/${event.id}/categories/${matchingCats[0].id}`
-                  : `${langPrefix}/events/${event.id}`
-                // フィルタ適用中は合致するカテゴリチップのみ表示 (#33)
-                const chipsToShow = hasAnyFilter && matchingCats.length > 0
-                  ? matchingCats
-                  : (event.categories ?? [])
-                // enrich完了判定: location + カテゴリ充足度 (#63, #71)
-                const cats = event.categories ?? []
-                const isEnriched = event.location != null && (
-                  cats.length === 0 || cats.some(c => c.distance_km != null || c.elevation_gain != null)
-                )
-                return (
-                  <EventCard
-                    key={event.id}
-                    event={event}
-                    langPrefix={langPrefix}
-                    raceTypeLabel={raceTypeLabel}
-                    cardLink={cardLink}
-                    chipsToShow={chipsToShow}
-                    isEnriched={isEnriched}
-                    t={t}
-                    lang={lang}
-                  />
-                )
-              })}
+              {filtered.slice(0, visibleCount).map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  raceTypeLabel={raceTypeLabel}
+                  t={t}
+                  lang={lang}
+                />
+              ))}
             </div>
             {filtered.length > visibleCount && (
               <div className="mt-6 flex justify-center">

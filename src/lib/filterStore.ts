@@ -7,28 +7,20 @@ const STORAGE_KEY = 'yabai_filters'
 
 interface FilterState {
   raceTypes: string[]
+  countries: string[]
   dateRangeStart: string | null
   dateRangeEnd: string | null
   distanceRanges: number[]
-  timeLimitMin: string
-  costMin: number
-  costMax: number
-  poleFilter: string
-  entryStatus: string
-  showPastEvents: boolean
+  entryOpenOnly: boolean
 }
 
 const DEFAULT: FilterState = {
   raceTypes: [],
+  countries: [],
   dateRangeStart: null,
   dateRangeEnd: null,
   distanceRanges: [],
-  timeLimitMin: '',
-  costMin: 0,
-  costMax: Infinity,
-  poleFilter: '',
-  entryStatus: 'active',
-  showPastEvents: false,
+  entryOpenOnly: true,
 }
 
 // In-memory store (survives component unmount)
@@ -42,15 +34,11 @@ function loadFromSession(): FilterState {
     const parsed = JSON.parse(raw)
     return {
       raceTypes: parsed.raceTypes ?? [],
+      countries: parsed.countries ?? [],
       dateRangeStart: parsed.dateRangeStart ?? null,
       dateRangeEnd: parsed.dateRangeEnd ?? null,
       distanceRanges: parsed.distanceRanges ?? [],
-      timeLimitMin: parsed.timeLimitMin ?? '',
-      costMin: parsed.costMin ?? 0,
-      costMax: parsed.costMax ?? Infinity,
-      poleFilter: parsed.poleFilter ?? '',
-      entryStatus: parsed.entryStatus ?? 'active',
-      showPastEvents: parsed.showPastEvents ?? false,
+      entryOpenOnly: parsed.entryOpenOnly ?? true,
     }
   } catch {
     return { ...DEFAULT }
