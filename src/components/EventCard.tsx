@@ -1,23 +1,22 @@
-import { Link } from 'react-router-dom'
-import { Card, CardContent } from '@/components/ui/card'
+import { useMemo, useState } from 'react'
+import { Calendar, ChevronDown, ChevronUp, ExternalLink, Map as MapIcon, MapPin, Ruler } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Calendar, MapPin, Banknote } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import { FX_TO_JPY, FX_TO_USD, convertJpyToUsd } from '@/lib/currency'
-import type { EventWithCategories, Category } from '@/types/event'
+import type { EventWithCategories } from '@/types/event'
 
 interface EventCardProps {
   event: EventWithCategories
-  langPrefix: string
   raceTypeLabel: (type: string | null) => string
-  cardLink: string
-  chipsToShow: Category[]
-  isEnriched: boolean
   t: (key: string) => string
   lang: string | undefined
+  langPrefix?: string
+  cardLink?: string
+  chipsToShow?: unknown[]
+  isEnriched?: boolean
 }
 
-/** Top border color per race type */
 const raceTypeBorders: Record<string, string> = {
   spartan: 'border-t-red-500',
   marathon: 'border-t-blue-500',
@@ -27,6 +26,7 @@ const raceTypeBorders: Record<string, string> = {
   obstacle: 'border-t-rose-500',
   tough_mudder: 'border-t-rose-500',
   bike: 'border-t-teal-500',
+  cycling: 'border-t-teal-500',
   duathlon: 'border-t-purple-500',
   rogaining: 'border-t-lime-500',
   adventure: 'border-t-orange-500',
@@ -37,7 +37,6 @@ const raceTypeBorders: Record<string, string> = {
   other: 'border-t-gray-400',
 }
 
-/** Badge background color per race type */
 const raceTypeBadgeBg: Record<string, string> = {
   spartan: 'bg-red-500 text-white border-red-500',
   marathon: 'bg-blue-500 text-white border-blue-500',
@@ -47,6 +46,7 @@ const raceTypeBadgeBg: Record<string, string> = {
   obstacle: 'bg-rose-500 text-white border-rose-500',
   tough_mudder: 'bg-rose-500 text-white border-rose-500',
   bike: 'bg-teal-500 text-white border-teal-500',
+  cycling: 'bg-teal-500 text-white border-teal-500',
   duathlon: 'bg-purple-500 text-white border-purple-500',
   rogaining: 'bg-lime-500 text-white border-lime-500',
   adventure: 'bg-orange-500 text-white border-orange-500',
@@ -57,194 +57,208 @@ const raceTypeBadgeBg: Record<string, string> = {
   other: 'bg-gray-400 text-white border-gray-400',
 }
 
-/** Format date with day of week */
 function formatDateWithDay(dateStr: string, isEn: boolean): string {
+  const date = new Date(`${dateStr}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return dateStr
+
   if (isEn) {
-    const daysEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-    const d = new Date(dateStr + 'T00:00:00')
-    if (isNaN(d.getTime())) return dateStr
-    return `${dateStr} (${daysEn[d.getDay()]})`
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      weekday: 'short',
+    }).format(date)
   }
-  const days = ['日', '月', '火', '水', '木', '金', '土']
-  const d = new Date(dateStr + 'T00:00:00')
-  if (isNaN(d.getTime())) return dateStr
-  return `${dateStr}（${days[d.getDay()]}）`
+
+  const weekdays = ['日', '月', '火', '水', '木', '金', '土']
+  return `${dateStr}（${weekdays[date.getDay()]}）`
+}
+
+function formatDateRange(start: string | null, end: string | null, isEn: boolean): string {
+  if (!start) return '---'
+  if (!end || end === start) return formatDateWithDay(start, isEn)
+  return `${formatDateWithDay(start, isEn)} ${isEn ? '-' : '〜'} ${formatDateWithDay(end, isEn)}`
+}
+
+type EntryStatus = 'open' | 'not_yet' | 'closed'
+
+function getTodayString(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function getEntryStatus(event: EventWithCategories): EntryStatus {
+  const today = getTodayString()
+
+  if (!event.entry_start || !event.entry_end) return 'closed'
+  if (today < event.entry_start) return 'not_yet'
+  if (today > event.entry_end) return 'closed'
+  return 'open'
 }
 
 export function EventCard({
   event,
-  langPrefix,
   raceTypeLabel,
-  cardLink,
-  chipsToShow,
-  isEnriched,
-  t,
   lang,
 }: EventCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
   const isEn = lang === 'en'
 
-  // #8: Prefer _en fields for English pages, fallback to Japanese
   const displayName = isEn ? (event.name_en ?? event.name) : event.name
   const displayCountry = isEn ? (event.country_en ?? event.country) : event.country
   const displayLocation = isEn ? (event.location_en ?? event.location) : event.location
+  const description = (isEn ? (event.description_en ?? event.description) : event.description)?.trim() ?? ''
+  const entryStatus = getEntryStatus(event)
 
-  const sep = isEn ? ' - ' : '〜'
-  const dateText = event.event_date_end && event.event_date && event.event_date_end !== event.event_date
-    ? `${formatDateWithDay(event.event_date, isEn)}${sep}${formatDateWithDay(event.event_date_end, isEn)}`
-    : event.event_date ? formatDateWithDay(event.event_date, isEn) : null
+  const entryStatusConfig = {
+    open: {
+      badge: isEn ? 'Open' : '受付中',
+      button: isEn ? 'Go to entry page' : '申込ページへ',
+      badgeClass: 'bg-green-500 text-white border-green-500',
+      buttonEnabled: Boolean(event.entry_url),
+    },
+    not_yet: {
+      badge: isEn ? 'Not yet open' : '受付前',
+      button: isEn ? 'Entry not open yet' : '申込開始前',
+      badgeClass: 'bg-amber-500 text-white border-amber-500',
+      buttonEnabled: false,
+    },
+    closed: {
+      badge: isEn ? 'Closed' : '受付終了',
+      button: isEn ? 'Entry closed' : '申込終了',
+      badgeClass: 'bg-red-500 text-white border-red-500',
+      buttonEnabled: false,
+    },
+  } as const
 
-  const entryPeriod = (() => {
-    if (event.entry_start && event.entry_end) return `${event.entry_start}${sep}${event.entry_end}`
-    if (event.entry_start_typical && event.entry_end_typical) return `${event.entry_start_typical}${sep}${event.entry_end_typical}`
-    return null
-  })()
+  const distances = useMemo(() => {
+    const values = (event.categories ?? [])
+      .map((category) => category.distance_km)
+      .filter((distance): distance is number => distance != null)
+      .sort((a, b) => a - b)
 
-  const totalCost = event.total_cost_estimate
-    ? parseInt(event.total_cost_estimate, 10)
+    if (values.length === 0) return '---'
+    return [...new Set(values)].map((distance) => `${distance}km`).join(', ')
+  }, [event.categories])
+
+  const descriptionPreview = description
+    ? description.length > 100
+      ? `${description.slice(0, 100)}...`
+      : description
+    : (isEn ? 'No description available.' : '紹介文はありません。')
+  const hasExpandableDescription = description.length > 100
+  const mapsHref = event.latitude != null && event.longitude != null
+    ? `https://www.google.com/maps?q=${event.latitude},${event.longitude}`
     : null
-  const costEstimate = totalCost
-    ? isEn
-      ? `$${convertJpyToUsd(totalCost).toLocaleString()}`
-      : `¥${totalCost.toLocaleString()}`
-    : null
-
-  // Convert entry fee to display currency (JPY for ja, USD for en)
-  const minEntryFeeJpy = event.categories
-    ?.filter((c) => c.entry_fee != null && c.entry_fee > 0)
-    .map((c) => Math.round(c.entry_fee! * (FX_TO_JPY[c.entry_fee_currency || 'JPY'] || 1)))
-    .reduce<number | null>((min, v) => (min === null || v < min ? v : min), null)
-    ?? null
-  const minEntryFeeUsd = event.categories
-    ?.filter((c) => c.entry_fee != null && c.entry_fee > 0)
-    .map((c) => Math.round(c.entry_fee! * (FX_TO_USD[c.entry_fee_currency || 'JPY'] || 1)))
-    .reduce<number | null>((min, v) => (min === null || v < min ? v : min), null)
-    ?? null
-  const minEntryFeeDisplay = isEn ? minEntryFeeUsd : minEntryFeeJpy
-  const entryCurrSymbol = isEn ? '$' : '¥'
-  const restCost = totalCost && minEntryFeeJpy ? totalCost - minEntryFeeJpy : 0
 
   const borderColor = raceTypeBorders[event.race_type ?? 'other'] ?? raceTypeBorders.other
   const badgeBg = raceTypeBadgeBg[event.race_type ?? 'other'] ?? raceTypeBadgeBg.other
-
-  if (!isEnriched) {
-    return (
-      <Card className={cn(
-        'overflow-hidden border-t-4 bg-white shadow-sm opacity-60 py-0',
-        borderColor,
-      )}>
-        <CardContent className="p-4">
-          <h3 className="truncate text-sm font-semibold text-foreground">
-            {displayName}
-          </h3>
-          <div className="mt-1 flex items-center gap-4 text-xs text-muted-foreground">
-            {dateText && (
-              <span className="flex items-center gap-1">
-                <Calendar className="h-3 w-3 shrink-0" />
-                {dateText}
-              </span>
-            )}
-            {displayCountry && <span>{displayCountry}</span>}
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
+  const status = entryStatusConfig[entryStatus]
 
   return (
-    <Card className={cn(
-      'group overflow-hidden border-t-4 bg-white shadow-sm py-0 flex flex-col min-h-[220px]',
-      borderColor,
-      'transition-all duration-200 hover:shadow-md',
-    )}>
-      <CardContent className="flex flex-1 flex-col p-0">
-        <Link to={cardLink} className="block flex-1 no-underline">
-          <div className="flex h-full flex-col p-4">
-            {/* 1. Race type badge (top-left, small) */}
-            <div className="mb-2">
-              <Badge
-                className={cn('shrink-0 text-[10px] px-1.5 py-0.5', badgeBg)}
-              >
-                {raceTypeLabel(event.race_type)}
-              </Badge>
-            </div>
+    <Card
+      className={cn(
+        'flex h-full flex-col overflow-hidden border-t-4 bg-white py-0 shadow-sm transition-all duration-200 hover:shadow-lg',
+        borderColor,
+      )}
+    >
+      <CardContent className="flex flex-1 flex-col gap-4 p-5">
+        <div className="space-y-2">
+          <p className="line-clamp-2 text-lg font-bold leading-tight text-foreground">
+            {displayName}
+          </p>
+          <Badge className={cn('w-fit text-[10px] uppercase', badgeBg)}>
+            {raceTypeLabel(event.race_type)}
+          </Badge>
+          <Badge className={cn('w-fit text-[10px]', status.badgeClass)}>
+            {status.badge}
+          </Badge>
+        </div>
 
-            {/* 2. Event name (bold, 2 lines max) */}
-            <h3 className="text-sm font-semibold text-foreground line-clamp-2 leading-snug mb-2">
-              {displayName}
-            </h3>
-
-            {/* 3-4. Date and Location */}
-            <div className="space-y-1 mb-auto">
-              {/* 3. Date with day of week */}
-              {dateText && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Calendar className="h-3 w-3 shrink-0 text-primary/70" />
-                  <span>{dateText}</span>
-                </div>
-              )}
-              {/* 4. Location (country / city) */}
-              {(displayCountry || displayLocation) && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <MapPin className="h-3 w-3 shrink-0 text-primary/70" />
-                  <span className="truncate">
-                    {displayCountry && displayLocation
-                      ? `${displayCountry} / ${displayLocation}`
-                      : displayCountry || displayLocation}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* 5-6. Entry period + Cost estimate - stacked vertically */}
-            <div className="mt-2 space-y-1">
-              {entryPeriod && (
-                <p className="text-[11px] text-muted-foreground leading-tight">
-                  {t('event.entry')}: {entryPeriod}
-                </p>
-              )}
-              {costEstimate && (
-                <div>
-                  <div className="flex items-center gap-1 text-xs font-semibold text-primary">
-                    <Banknote className="h-3 w-3" />
-                    <span>{isEn ? 'Est.' : '目安'} {costEstimate}</span>
-                  </div>
-                  {(minEntryFeeDisplay || restCost > 0) && (
-                    <div className="mt-0.5 text-[10px] text-muted-foreground leading-tight">
-                      {minEntryFeeDisplay && <span>{isEn ? 'Entry' : '参加'} {entryCurrSymbol}{minEntryFeeDisplay.toLocaleString()}</span>}
-                      {minEntryFeeDisplay && restCost > 0 && <span> / </span>}
-                      {restCost > 0 && <span>{isEn ? 'Travel+Stay' : '交通+宿泊'} {isEn ? `$${convertJpyToUsd(restCost).toLocaleString()}` : `¥${restCost.toLocaleString()}`}</span>}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+        <div className="space-y-2 text-sm">
+          <div className="flex items-start gap-2 text-muted-foreground">
+            <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <span>{formatDateRange(event.event_date, event.event_date_end ?? null, isEn)}</span>
           </div>
-        </Link>
 
-        {/* 7. Category chips (bottom, separate border-t section) */}
-        {chipsToShow.length > 0 && (
-          <div className="flex flex-wrap gap-1 border-t border-border/40 px-3 py-2">
-            {chipsToShow.map((cat) => (
-              <Link
-                key={cat.id}
-                to={`${langPrefix}/events/${event.id}/categories/${cat.id}`}
-                className={cn(
-                  'inline-flex items-center rounded-md border border-border/60 bg-secondary/50 px-2 py-0.5',
-                  'text-[11px] text-secondary-foreground no-underline transition-colors',
-                  'hover:border-primary/30 hover:bg-primary/5 hover:text-primary',
-                )}
-                title={
-                  cat.distance_km != null || cat.elevation_gain != null
-                    ? `${cat.distance_km != null ? `${cat.distance_km}km` : ''} ${cat.elevation_gain != null ? `D+${cat.elevation_gain}m` : ''}`.trim()
-                    : undefined
-                }
-              >
-                {isEn ? (cat.name_en ?? cat.name) : cat.name}
-              </Link>
-            ))}
+          <div className="flex items-start gap-2 text-muted-foreground">
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <span>{[displayCountry, displayLocation].filter(Boolean).join(' / ') || '---'}</span>
           </div>
-        )}
+
+          <div className="flex items-start gap-2 text-muted-foreground">
+            <Ruler className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <span className="text-foreground">{distances}</span>
+          </div>
+        </div>
+
+        <div className="border-t border-border/50 pt-4">
+          <p className="text-sm leading-relaxed text-foreground/85">
+            {isExpanded ? description || descriptionPreview : descriptionPreview}
+          </p>
+          {hasExpandableDescription && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded((prev) => !prev)}
+              className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
+              aria-expanded={isExpanded}
+            >
+              {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              {isExpanded
+                ? (isEn ? 'Show less' : '折りたたむ')
+                : (isEn ? 'Show more' : '続きを読む')}
+            </button>
+          )}
+        </div>
       </CardContent>
+
+      <CardFooter className="flex flex-col items-stretch gap-3 border-t border-border/40 p-5">
+        <Button
+          type="button"
+          disabled={!status.buttonEnabled}
+          onClick={() => {
+            if (event.entry_url) window.open(event.entry_url, '_blank', 'noopener,noreferrer')
+          }}
+          className="w-full font-semibold"
+        >
+          {status.button}
+        </Button>
+
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+          {event.official_url ? (
+            <a
+              href={event.official_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
+            >
+              <ExternalLink className="h-4 w-4" />
+              {isEn ? 'Official site' : '公式サイト'}
+            </a>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-muted-foreground">
+              <ExternalLink className="h-4 w-4" />
+              {isEn ? 'Official site unavailable' : '公式サイトなし'}
+            </span>
+          )}
+
+          {mapsHref ? (
+            <a
+              href={mapsHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
+            >
+              <MapIcon className="h-4 w-4" />
+              Google Maps
+            </a>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-muted-foreground">
+              <MapIcon className="h-4 w-4" />
+              {isEn ? 'Map unavailable' : '地図なし'}
+            </span>
+          )}
+        </div>
+      </CardFooter>
     </Card>
   )
 }
