@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Calendar, ChevronDown, ChevronUp, ExternalLink, Map as MapIcon, MapPin, Ruler } from 'lucide-react'
+import { Calendar, ChevronDown, ChevronUp, ExternalLink, MapPin, Ruler } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
@@ -182,7 +182,18 @@ export function EventCard({
 
           <div className="flex items-start gap-2 text-muted-foreground">
             <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <span>{[displayCountry, displayLocation].filter(Boolean).join(' / ') || '---'}</span>
+            {mapsHref ? (
+              <a
+                href={mapsHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline-offset-4 hover:underline"
+              >
+                {[displayCountry, displayLocation].filter(Boolean).join(' / ') || '---'}
+              </a>
+            ) : (
+              <span>{[displayCountry, displayLocation].filter(Boolean).join(' / ') || '---'}</span>
+            )}
           </div>
 
           <div className="flex items-start gap-2 text-muted-foreground">
@@ -241,15 +252,15 @@ export function EventCard({
             </span>
           )}
 
-          {mapsHref && (
+          {event.entry_url && (
             <a
-              href={mapsHref}
+              href={event.entry_url}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
             >
-              <MapIcon className="h-4 w-4" />
-              Google Maps
+              <ExternalLink className="h-4 w-4" />
+              {isEn ? 'Entry page' : '申込ページ'}
             </a>
           )}
         </div>
