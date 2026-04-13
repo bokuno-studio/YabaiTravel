@@ -346,10 +346,11 @@ function EventList() {
     if (distanceRanges.size === 0) return true
 
     return (event.categories ?? []).some((category) => {
-      if (category.distance_km == null) return false
+      const km = category.distance_km
+      if (km == null) return false
       return [...distanceRanges].some((idx) => {
         const range = DISTANCE_RANGES[idx]
-        return category.distance_km >= range.min && (range.max === Infinity || category.distance_km <= range.max)
+        return km >= range.min && (range.max === Infinity || km <= range.max)
       })
     })
   }
