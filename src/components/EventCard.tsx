@@ -223,16 +223,17 @@ export function EventCard({
       </CardContent>
 
       <CardFooter className="flex flex-col items-stretch gap-3 border-t border-border/40 p-5">
-        <Button
-          type="button"
-          disabled={!status.buttonEnabled}
-          onClick={() => {
-            if (event.entry_url) window.open(event.entry_url, '_blank', 'noopener,noreferrer')
-          }}
-          className="w-full font-semibold"
-        >
-          {status.button}
-        </Button>
+        {status.buttonEnabled && (
+          <Button
+            type="button"
+            onClick={() => {
+              if (event.entry_url) window.open(event.entry_url, '_blank', 'noopener,noreferrer')
+            }}
+            className="w-full font-semibold"
+          >
+            {status.button}
+          </Button>
+        )}
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
           {event.official_url ? (
