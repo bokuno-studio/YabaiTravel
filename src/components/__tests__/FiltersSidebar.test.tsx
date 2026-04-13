@@ -21,8 +21,8 @@ function makeDefaultProps(overrides: Partial<FiltersSidebarProps> = {}): Filters
       { label: '~10km', min: 0, max: 10 },
       { label: '10~20km', min: 10, max: 20 },
     ],
-    entryOpenOnly: true,
-    onEntryOpenOnlyChange: vi.fn(),
+    futureOnly: true,
+    onFutureOnlyChange: vi.fn(),
     t: (key: string) => key,
     lang: 'ja',
     ...overrides,
@@ -56,8 +56,8 @@ describe('FilterBar', () => {
   })
 
   it('shows active count badge when filters are applied', () => {
-    render(<FilterBar {...makeDefaultProps({ raceTypes: new Set(['trail']), entryOpenOnly: false })} />)
-    // Two active filters: raceType + entryOpenOnly off
+    render(<FilterBar {...makeDefaultProps({ raceTypes: new Set(['trail']), futureOnly: false })} />)
+    // Two active filters: raceType + futureOnly off
     expect(screen.getByText('2')).toBeInTheDocument()
   })
 
@@ -74,8 +74,8 @@ describe('FilterBar', () => {
     expect(screen.getByText('Japan')).toBeInTheDocument()
   })
 
-  it('renders entry open only chip when disabled', () => {
-    render(<FilterBar {...makeDefaultProps({ entryOpenOnly: false })} />)
-    expect(screen.getByText('すべての受付状況')).toBeInTheDocument()
+  it('renders future only chip when disabled', () => {
+    render(<FilterBar {...makeDefaultProps({ futureOnly: false })} />)
+    expect(screen.getByText('過去も含む')).toBeInTheDocument()
   })
 })

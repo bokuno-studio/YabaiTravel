@@ -28,8 +28,8 @@ export interface FiltersSidebarProps {
   distanceRanges: Set<number>
   onDistanceRangeToggle: (idx: number) => void
   distanceRangeOptions: readonly { label: string; min: number; max: number }[]
-  entryOpenOnly: boolean
-  onEntryOpenOnlyChange: (value: boolean) => void
+  futureOnly: boolean
+  onFutureOnlyChange: (value: boolean) => void
   t: (key: string, options?: Record<string, unknown>) => string
   lang: string | undefined
 }
@@ -53,7 +53,7 @@ function countActiveFilters(props: FiltersSidebarProps): number {
   if (props.countries.size > 0) count++
   if (props.raceTypes.size > 0) count++
   if (props.distanceRanges.size > 0) count++
-  if (!props.entryOpenOnly) count++
+  if (!props.futureOnly) count++
   return count
 }
 
@@ -98,11 +98,11 @@ export function getActiveFilterChips(
     })
   }
 
-  if (!props.entryOpenOnly) {
+  if (!props.futureOnly) {
     chips.push({
-      key: 'entry-open-only',
-      label: props.lang === 'en' ? 'All entry statuses' : 'すべての受付状況',
-      onRemove: () => props.onEntryOpenOnlyChange(true),
+      key: 'future-only',
+      label: props.lang === 'en' ? 'Including past' : '過去も含む',
+      onRemove: () => props.onFutureOnlyChange(true),
     })
   }
 
@@ -290,29 +290,29 @@ function FiltersSheetBody(props: FiltersSidebarProps) {
 
       <div className="space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {isEn ? 'Entry open only' : '受付中のみ'}
+          {isEn ? 'Future only' : '未来のみ'}
         </h3>
         <button
           type="button"
           role="switch"
-          aria-checked={props.entryOpenOnly}
-          onClick={() => props.onEntryOpenOnlyChange(!props.entryOpenOnly)}
+          aria-checked={props.futureOnly}
+          onClick={() => props.onFutureOnlyChange(!props.futureOnly)}
           className={cn(
             'flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors',
-            props.entryOpenOnly ? 'border-primary bg-primary/5' : 'border-border bg-background',
+            props.futureOnly ? 'border-primary bg-primary/5' : 'border-border bg-background',
           )}
         >
-          <span>{isEn ? 'Show only open entries' : '受付中の大会だけ表示'}</span>
+          <span>{isEn ? 'Show upcoming events only' : '開催予定の大会だけ表示'}</span>
           <span
             className={cn(
               'inline-flex h-6 w-11 items-center rounded-full p-1 transition-colors',
-              props.entryOpenOnly ? 'bg-primary' : 'bg-muted',
+              props.futureOnly ? 'bg-primary' : 'bg-muted',
             )}
           >
             <span
               className={cn(
                 'h-4 w-4 rounded-full bg-white transition-transform',
-                props.entryOpenOnly ? 'translate-x-5' : 'translate-x-0',
+                props.futureOnly ? 'translate-x-5' : 'translate-x-0',
               )}
             />
           </span>

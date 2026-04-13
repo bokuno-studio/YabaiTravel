@@ -11,7 +11,7 @@ interface FilterState {
   dateRangeStart: string | null
   dateRangeEnd: string | null
   distanceRanges: number[]
-  entryOpenOnly: boolean
+  futureOnly: boolean
 }
 
 const DEFAULT: FilterState = {
@@ -20,7 +20,7 @@ const DEFAULT: FilterState = {
   dateRangeStart: null,
   dateRangeEnd: null,
   distanceRanges: [],
-  entryOpenOnly: true,
+  futureOnly: true,
 }
 
 // In-memory store (survives component unmount)
@@ -38,7 +38,7 @@ function loadFromSession(): FilterState {
       dateRangeStart: parsed.dateRangeStart ?? null,
       dateRangeEnd: parsed.dateRangeEnd ?? null,
       distanceRanges: parsed.distanceRanges ?? [],
-      entryOpenOnly: parsed.entryOpenOnly ?? true,
+      futureOnly: parsed.futureOnly ?? true,
     }
   } catch {
     return { ...DEFAULT }
