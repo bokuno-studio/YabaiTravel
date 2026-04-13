@@ -1,6 +1,6 @@
 /**
- * ②-A イベント情報・コース特定スクリプト
- * イベント基本情報 + ユニークコース一覧を抽出（詳細は enrich-category-detail.js で収集）
+ * ②-A イベント情報・カテゴリ抽出スクリプト
+ * イベント基本情報 + カテゴリ一覧を Batch API で抽出
  *
  * 使い方:
  *   node scripts/crawl/enrich-event.js                        # 全未処理件
@@ -97,7 +97,7 @@ async function getPlaceNameInLanguage(placeId, language, apiKey) {
 // --- LLM プロンプト（バイリンガル統合） ---
 
 const EVENT_SYSTEM_PROMPT = `You are an expert at extracting race event information.
-Extract the basic event information and unique course list from the given page content in JSON format.
+Extract the basic event information and race categories from the given page content in JSON format.
 IMPORTANT: For all text fields, provide BOTH Japanese and English values. Use the "_en" suffix fields for English.
 If the source is in Japanese, translate to English for _en fields. If the source is in English, translate to Japanese for the base fields.
 
@@ -116,25 +116,20 @@ If the source is in Japanese, translate to English for _en fields. If the source
     "entry_url": "Registration URL",
     "entry_start": "YYYY-MM-DD",
     "entry_end": "YYYY-MM-DD",
-    "reception_place": "受付場所（日本語）",
-    "reception_place_en": "Check-in / registration location in English",
-    "start_place": "スタート場所（日本語）",
-    "start_place_en": "Start location in English",
-    "weather_forecast": "開催時期の気候（日本語。気温・天候のみ。装備の推奨は含めない）",
-    "weather_forecast_en": "Expected weather during event period in English (temperature and conditions only. Do NOT include gear/equipment recommendations)",
-    "visa_info": "海外レースのビザ情報（日本語）。日本国内はnull",
-    "visa_info_en": "Visa information in English. null for domestic Japan races",
-    "recovery_facilities": "会場周辺のリカバリー施設（日本語）",
-    "recovery_facilities_en": "Recovery facilities near the venue in English",
-    "photo_spots": "周辺のフォトスポット・観光名所（日本語）",
-    "photo_spots_en": "Photo spots and tourist attractions nearby in English",
-    "description": "大会の紹介文（日本語、140文字以内。特徴・魅力・コースの概要を簡潔に）",
-    "description_en": "Event description in English (140 chars max. Briefly cover key features, appeal, and course overview)",
+    "entry_start_typical": "YYYY-MM-DD",
+    "entry_end_typical": "YYYY-MM-DD",
+    "description": "大会の紹介文（日本語400〜600文字）。必ず次を含める: 1. なぜこのレースが特別・ユニークなのか（開催地・コース・背景） 2. 参加することでどんな体験ができるか（景色・難易度・雰囲気） 3. どんな人に向いているか 4. 他のレースと差別化できる具体的な特徴（1〜2点）。禁止: 日程・距離・申込情報の記載",
+    "description_en": "Event description in English (250-400 words) with the same structure and the same prohibitions. Do not mention schedule, distance, or registration details.",
     "latitude": "Venue latitude (decimal, e.g., 35.6762)",
     "longitude": "Venue longitude (decimal, e.g., 139.6503)"
   },
-  "courses": [
-    { "name": "Course name", "distance_km": number }
+  "categories": [
+    {
+      "name": "カテゴリ名（日本語）",
+      "name_en": "Category name in English",
+      "distance_km": 50.0,
+      "elevation_gain": 2000
+    }
   ]
 }
 
@@ -145,8 +140,8 @@ race_type classification rules:
 - Look for keywords like: 試走会、練習会、走力養成、実践講座、クリニック、セミナー、講習会、ワークショップ (Japanese) or "practice run", "trial", "clinic", "workshop", "seminar" (English)
 - If you cannot determine the race_type from the event name and description, use "other"
 
-Course extraction rules:
-- Output only unique courses (different distances/routes)
+Category extraction rules:
+- Output all race categories / courses as an array
 - The following are NOT course differences — merge them into one:
   - Entry categories (general / R.LEAGUE / early bird / late entry)
   - Gender categories (men / women)
@@ -158,12 +153,14 @@ Course extraction rules:
 - Example: "10km Men", "10km Women", "R.LEAGUE 10km" → { "name": "10km", "distance_km": 10 } as one entry
 - Keep course names simple (e.g., "Full Marathon", "Half Marathon", "10km", "Short", "Long")
 - Do NOT include participation requirements/age limits in course names
-- Exclude these from courses:
+- Exclude these from categories:
   - Spectators / Supporters
   - Volunteers
   - Pacers
   - Staff / Crew
   - Kids fun run / non-competitive experience events
+- distance_km must be numeric in km, or null if unknown
+- elevation_gain must be numeric in meters, or null if unknown
 
 Other:
 - Use null for items not found on the page
@@ -202,6 +199,13 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
       await client.connect()
     }
     const { id: eventId, name, official_url: officialUrl } = event
+    if (!_batchResult) {
+      await client.query(
+        `UPDATE ${SCHEMA}.events SET last_attempted_at = NOW(), attempt_count = attempt_count + 1, last_error_type = 'temporary', last_error_message = 'Batch API is required for enrich-event' WHERE id = $1`,
+        [eventId]
+      )
+      return { success: false, eventId, error: 'Batch API is required for enrich-event' }
+    }
 
     // --- ステップ1: ページ取得 ---
     const needsTavilyLookup = !officialUrl || isPortalUrl(officialUrl)
@@ -403,7 +407,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
     }
 
     // --- ステップ2: 関連ページ探索（パス2） ---
-    if (!fetchFailed && html && fetchedUrl) {
+    if (!_batchResult && !fetchFailed && html && fetchedUrl) {
       const relatedLinks = _relatedLinks || extractRelevantLinks(html, fetchedUrl)
       const externalLinks = _externalLinks || extractExternalOfficialLinks(html, fetchedUrl)
       const allLinks = [...relatedLinks, ...externalLinks].slice(0, 2)
@@ -437,7 +441,7 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
       console.log(`  [reclassify] ${name?.slice(0, 40)} | obstacle → ocr`)
     }
 
-    if (!finalRaceType || finalRaceType === 'other') {
+    if (!_batchResult && (!finalRaceType || finalRaceType === 'other')) {
       const reclassified = await reclassifyRaceType(anthropic, name)
       if (reclassified) {
         finalRaceType = reclassified
@@ -446,8 +450,9 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
     }
 
     if (dryRun) {
-      console.log(`  DRY enrichEvent: ${name?.slice(0, 40)} | courses:${extracted.courses?.length ?? 0} | tokens:${totalTokens}`)
-      return { success: true, eventId, location: extracted.event?.location || null, categoriesCount: extracted.courses?.length ?? 0 }
+      const categories = extracted.categories || extracted.courses || []
+      console.log(`  DRY enrichEvent: ${name?.slice(0, 40)} | categories:${categories.length} | tokens:${totalTokens}`)
+      return { success: true, eventId, location: extracted.event?.location || null, categoriesCount: categories.length }
     }
 
     // --- エントリー期間バリデーション (#309) ---
@@ -473,15 +478,13 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
     }
 
     // --- ステップ4: DB 書き込み（バイリンガル統合: ja + en を同時に書き込み） ---
-    // #371: 座標・会場変更検知のため、更新前の値をスナップショット
+    // 座標変更検知のため、更新前の値をスナップショット
     const { rows: [oldRow] } = await client.query(
-      `SELECT latitude, longitude, reception_place, start_place FROM ${SCHEMA}.events WHERE id = $1`,
+      `SELECT latitude, longitude FROM ${SCHEMA}.events WHERE id = $1`,
       [eventId]
     )
     const oldLat = oldRow?.latitude != null ? parseFloat(oldRow.latitude) : null
     const oldLng = oldRow?.longitude != null ? parseFloat(oldRow.longitude) : null
-    const oldReception = oldRow?.reception_place || null
-    const oldStart = oldRow?.start_place || null
 
     const e = ev
     const newOfficialUrl = e.official_url && !isPortalUrl(e.official_url) ? e.official_url : null
@@ -500,24 +503,12 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
         entry_url       = COALESCE(entry_url, $9),
         entry_start     = COALESCE(entry_start, $10),
         entry_end       = COALESCE(entry_end, $11),
-        reception_place    = COALESCE(reception_place, $12),
-        reception_place_en = COALESCE(reception_place_en, $13),
-        start_place        = COALESCE(start_place, $14),
-        start_place_en     = COALESCE(start_place_en, $15),
-        weather_forecast    = COALESCE(weather_forecast, $16),
-        weather_forecast_en = COALESCE(weather_forecast_en, $17),
-        visa_info            = COALESCE(visa_info, $18),
-        visa_info_en         = COALESCE(visa_info_en, $19),
-        recovery_facilities    = COALESCE(recovery_facilities, $20),
-        recovery_facilities_en = COALESCE(recovery_facilities_en, $21),
-        photo_spots    = COALESCE(photo_spots, $22),
-        photo_spots_en = COALESCE(photo_spots_en, $23),
-        official_url    = ${isPortalReplace ? 'COALESCE($24, official_url)' : 'COALESCE(official_url, $24)'},
-        description      = COALESCE(description, $26),
-        description_en   = COALESCE(description_en, $27),
-        latitude             = COALESCE(latitude, $28),
-        longitude            = COALESCE(longitude, $29)
-       WHERE id = $25`,
+        official_url    = ${isPortalReplace ? 'COALESCE($12, official_url)' : 'COALESCE(official_url, $12)'},
+        description      = COALESCE(description, $14),
+        description_en   = COALESCE(description_en, $15),
+        latitude             = COALESCE(latitude, $16),
+        longitude            = COALESCE(longitude, $17)
+       WHERE id = $13`,
       [
         e.name || null, e.name_en || null,
         e.event_date || null,
@@ -525,12 +516,6 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
         e.country || null, e.country_en || null,
         finalRaceType || null,
         e.entry_url || null, e.entry_start || null, e.entry_end || null,
-        e.reception_place || null, e.reception_place_en || null,
-        e.start_place || null, e.start_place_en || null,
-        e.weather_forecast || null, e.weather_forecast_en || null,
-        e.visa_info || null, e.visa_info_en || null,
-        e.recovery_facilities || null, e.recovery_facilities_en || null,
-        e.photo_spots || null, e.photo_spots_en || null,
         newOfficialUrl, eventId,
         e.description || null, e.description_en || null,
         e.latitude != null ? parseFloat(e.latitude) : null,
@@ -571,115 +556,29 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
       }
     }
 
-    // --- #371: 座標・会場変更検知 → logi再実行トリガー ---
-    {
-      const { rows: [newRow] } = await client.query(
-        `SELECT latitude, longitude, reception_place, start_place FROM ${SCHEMA}.events WHERE id = $1`,
-        [eventId]
-      )
-      const newLat = newRow?.latitude != null ? parseFloat(newRow.latitude) : null
-      const newLng = newRow?.longitude != null ? parseFloat(newRow.longitude) : null
-      const newReception = newRow?.reception_place || null
-      const newStart = newRow?.start_place || null
-
-      const coordChanged = oldLat != null && newLat != null && oldLng != null && newLng != null &&
-        (Math.abs(newLat - oldLat) > 0.01 || Math.abs(newLng - oldLng) > 0.01)
-      const venueChanged = (oldReception !== newReception && newReception != null) ||
-        (oldStart !== newStart && newStart != null)
-
-      if (coordChanged || venueChanged) {
-        const reason = coordChanged ? 'coordinates changed' : 'venue changed'
-        const { rowCount: arDel } = await client.query(
-          `DELETE FROM ${SCHEMA}.access_routes WHERE event_id = $1`, [eventId]
-        )
-        const { rowCount: acDel } = await client.query(
-          `DELETE FROM ${SCHEMA}.accommodations WHERE event_id = $1`, [eventId]
-        )
-        console.log(`  [logi-trigger] ${name?.slice(0, 40)} | ${reason} → access_routes:${arDel} accommodations:${acDel} deleted`)
-      }
-    }
-
-    // --- Google Places API: 会場周辺の宿泊施設を取得 ---
-    if (googleApiKey && venueLat != null && venueLng != null) {
-      try {
-        const lodgings = await searchNearbyLodging(venueLat, venueLng, googleApiKey)
-        if (lodgings.length > 0) {
-          // 既存の accommodations を確認
-          const { rows: existingAccoms } = await client.query(
-            `SELECT id FROM ${SCHEMA}.accommodations WHERE event_id = $1`,
-            [eventId]
-          )
-          // 既存レコードがなければ Google Places の結果を挿入
-          if (existingAccoms.length === 0) {
-            for (const lodge of lodgings) {
-              // 日本語名と英語名を取得
-              let nameJa = lodge.name
-              let nameEn = lodge.name
-              try {
-                const ja = await getPlaceNameInLanguage(lodge.place_id, 'ja', googleApiKey)
-                if (ja) nameJa = ja
-                const en = await getPlaceNameInLanguage(lodge.place_id, 'en', googleApiKey)
-                if (en) nameEn = en
-              } catch { /* Place Details 失敗は無視 */ }
-
-              const avgCost = lodge.price_level != null ? (PRICE_LEVEL_TO_JPY[lodge.price_level] || null) : null
-
-              await client.query(
-                `INSERT INTO ${SCHEMA}.accommodations (event_id, recommended_area, recommended_area_en, avg_cost_3star, latitude, longitude)
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
-                [eventId, nameJa, nameEn, avgCost, lodge.lat, lodge.lng]
-              )
-            }
-            console.log(`  [places] ${name?.slice(0, 40)} | ${lodgings.length} lodgings inserted`)
-          }
-        }
-      } catch (placesErr) {
-        console.log(`  [places] WARN ${name?.slice(0, 40)} | ${placesErr.message?.slice(0, 60)}`)
-      }
-    }
-
-    // コースを categories に INSERT（name + distance_km のみ）
-    for (const course of extracted.courses || []) {
-      if (!course.name) continue
+    // categories を Step2 で保存
+    const categories = extracted.categories || extracted.courses || []
+    for (const category of categories) {
+      if (!category.name) continue
       const exists = await client.query(
         `SELECT id FROM ${SCHEMA}.categories WHERE event_id = $1 AND name = $2`,
-        [eventId, course.name]
+        [eventId, category.name]
       )
       if (exists.rows.length === 0) {
         await client.query(
-          `INSERT INTO ${SCHEMA}.categories (event_id, name, distance_km, collected_at) VALUES ($1, $2, $3, NULL)`,
-          [eventId, course.name, course.distance_km ?? null]
+          `INSERT INTO ${SCHEMA}.categories (event_id, name, name_en, distance_km, elevation_gain, collected_at)
+           VALUES ($1, $2, $3, $4, $5, NULL)`,
+          [eventId, category.name, category.name_en ?? null, category.distance_km ?? null, category.elevation_gain ?? null]
         )
       } else {
-        // distance_km が null なら更新
         await client.query(
-          `UPDATE ${SCHEMA}.categories SET distance_km = COALESCE(distance_km, $2) WHERE id = $1`,
-          [exists.rows[0].id, course.distance_km ?? null]
+          `UPDATE ${SCHEMA}.categories
+           SET name_en = COALESCE(name_en, $2),
+               distance_km = COALESCE(distance_km, $3),
+               elevation_gain = COALESCE(elevation_gain, $4)
+           WHERE id = $1`,
+          [exists.rows[0].id, category.name_en ?? null, category.distance_km ?? null, category.elevation_gain ?? null]
         )
-      }
-    }
-
-    // カテゴリ重複削除: 同一 event_id × distance_km → 最短名を残す
-    await client.query(
-      `DELETE FROM ${SCHEMA}.categories WHERE id IN (
-        SELECT id FROM (
-          SELECT id, ROW_NUMBER() OVER (
-            PARTITION BY event_id, distance_km
-            ORDER BY LENGTH(name) ASC, collected_at ASC NULLS LAST
-          ) as rn
-          FROM ${SCHEMA}.categories
-          WHERE event_id = $1 AND distance_km IS NOT NULL
-        ) sub WHERE rn > 1
-      )`,
-      [eventId]
-    )
-
-    // コースマップ抽出
-    if (!fetchFailed && html && fetchedUrl) {
-      try {
-        await extractAndSaveCourseMap(html, fetchedUrl, eventId, client, SCHEMA)
-      } catch (err) {
-        console.log(`  [course-map] ERR ${name?.slice(0, 40)} | ${err.message?.slice(0, 50)}`)
       }
     }
 
@@ -769,9 +668,9 @@ async function fetchEventTargets(args) {
   } else {
     const res = await client.query(
       `SELECT id, name, official_url, location, country FROM ${SCHEMA}.events
-       WHERE location IS NOT NULL
-       AND NOT EXISTS (SELECT 1 FROM ${SCHEMA}.categories WHERE event_id = events.id)
-       AND (enrich_quality IS NULL OR enrich_quality != 'low')
+       WHERE collected_at IS NULL
+       AND deleted_at IS NULL
+       AND attempt_count < 3
        ORDER BY updated_at ASC LIMIT $1`,
       [LIMIT === Infinity ? 1000 : LIMIT]
     )
@@ -782,26 +681,19 @@ async function fetchEventTargets(args) {
 }
 
 async function runCli() {
-  const args = process.argv.slice(2)
-  const DRY_RUN = args.includes('--dry-run')
-  const rows = await fetchEventTargets(args)
+  throw new Error('enrich-event.js now requires --batch. Synchronous mode is disabled.')
+}
 
-  console.log(`対象: ${rows.length} 件 (DRY_RUN: ${DRY_RUN})\n`)
-
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
-
-  try {
-    let ok = 0, err = 0
-    for (const event of rows) {
-      const result = await enrichEvent(event, { dryRun: DRY_RUN, anthropic, pool })
-      if (result.success) { ok++; console.log(`  OK  ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
-      else { err++; console.log(`  ERR ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
-    }
-    console.log(`\n完了: OK ${ok} / ERR ${err}`)
-  } finally {
-    await pool.end()
-  }
+async function markEventBatchFailure(db, eventId, message) {
+  await db.query(
+    `UPDATE ${SCHEMA}.events
+     SET last_attempted_at = NOW(),
+         attempt_count = attempt_count + 1,
+         last_error_type = 'temporary',
+         last_error_message = $2
+     WHERE id = $1`,
+    [eventId, message.slice(0, 200)]
+  )
 }
 
 /**
@@ -832,26 +724,26 @@ async function runBatchCli() {
   try {
     // --- パス1: イベント候補を分類（HTML 取得は遅延） ---
     const CHUNK_SIZE = 10
-    const batchableEvents = []  // バッチ処理対象（URL有且つポータル非）
-    const syncFallbackEvents = []  // 同期フォールバック対象
+    const batchableEvents = []
+
+    let ok = 0, err = 0
 
     for (const event of rows) {
       const { id: eventId, name, official_url: officialUrl } = event
       const needsTavilyLookup = !officialUrl || isPortalUrl(officialUrl)
 
       if (needsTavilyLookup) {
-        syncFallbackEvents.push(event)
-        console.log(`  [batch] ${name?.slice(0, 40)} → 同期フォールバック（ポータルURL / URL なし）`)
-      } else {
-        batchableEvents.push(event)
+        if (!DRY_RUN) await markEventBatchFailure(pool, eventId, 'Batch requires a fetchable official_url')
+        err++
+        console.log(`  ERR (batch-skip) ${name?.slice(0, 50)} | official_url missing or portal`)
+        continue
       }
+      batchableEvents.push(event)
     }
 
-    console.log(`\n[batch] ${batchableEvents.length} 件をバッチ処理（10件チャンク），${syncFallbackEvents.length} 件は同期フォールバック\n`)
+    console.log(`\n[batch] ${batchableEvents.length} 件をバッチ処理\n`)
 
     // --- パス2+3: チャンク単位でHTML取得→バッチ送信→結果処理 ---
-    let ok = 0, err = 0
-
     for (let chunkIdx = 0; chunkIdx < batchableEvents.length; chunkIdx += CHUNK_SIZE) {
       const chunkEvents = batchableEvents.slice(chunkIdx, chunkIdx + CHUNK_SIZE)
       const chunkNumber = Math.floor(chunkIdx / CHUNK_SIZE) + 1
@@ -868,14 +760,16 @@ async function runBatchCli() {
           html = await fetchHtml(officialUrl)
         } catch (e) {
           console.log(`  [batch] ${name?.slice(0, 40)} → fetch失敗: ${e.message?.slice(0, 30)}`)
-          syncFallbackEvents.push(event)
+          if (!DRY_RUN) await markEventBatchFailure(pool, eventId, `fetch failed: ${e.message}`)
+          err++
           continue
         }
 
         const content = extractRelevantContent(html) || ''
         if (content.length < 50) {
           console.log(`  [batch] ${name?.slice(0, 40)} → コンテンツ短い`)
-          syncFallbackEvents.push(event)
+          if (!DRY_RUN) await markEventBatchFailure(pool, eventId, 'page content too short for batch extraction')
+          err++
           html = null
           continue
         }
@@ -931,14 +825,13 @@ async function runBatchCli() {
             anthropic,
             pool
           })
-          if (result.success) { ok++; console.log(`  OK  (batch) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
+          if (result.success) { ok++; console.log(`  OK  (batch) ${event.name?.slice(0, 50)} | categories:${result.categoriesCount}`) }
           else { err++; console.log(`  ERR (batch) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
         } else {
           const errorMsg = batchResult?.error || 'No batch result'
-          console.log(`  [batch] ${event.name?.slice(0, 40)} | バッチ失敗: ${errorMsg.slice(0, 40)} → 同期フォールバック`)
-          const result = await enrichEvent(event, { dryRun: false, anthropic, pool })
-          if (result.success) { ok++; console.log(`  OK  (sync-fallback) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
-          else { err++; console.log(`  ERR (sync-fallback) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
+          if (!DRY_RUN) await markEventBatchFailure(pool, event.id, `batch failed: ${errorMsg}`)
+          err++
+          console.log(`  ERR (batch) ${event.name?.slice(0, 50)} | ${errorMsg.slice(0, 60)}`)
         }
       }
 
@@ -946,13 +839,6 @@ async function runBatchCli() {
       chunkResults.clear()
       chunkMeta.clear()
       chunkRequests.length = 0
-    }
-
-    // 同期フォールバック分
-    for (const event of syncFallbackEvents) {
-      const result = await enrichEvent(event, { dryRun: DRY_RUN, anthropic, pool })
-      if (result.success) { ok++; console.log(`  OK  (sync) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
-      else { err++; console.log(`  ERR (sync) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
     }
 
     console.log(`\n完了: OK ${ok} / ERR ${err}`)
@@ -980,24 +866,23 @@ export async function runOrchestratedEventBatch(events, { dryRun = false } = {})
     // --- パス1: イベント候補を分類（HTML 取得は遅延） ---
     const CHUNK_SIZE = 10
     const batchableEvents = []
-    const syncFallbackEvents = []
+
+    let ok = 0, err = 0
 
     for (const event of events) {
       const { id: eventId, name, official_url: officialUrl } = event
       const needsTavilyLookup = !officialUrl || isPortalUrl(officialUrl)
 
       if (needsTavilyLookup) {
-        syncFallbackEvents.push(event)
-        console.log(`  [orchestrator-batch] ${name?.slice(0, 40)} → 同期フォールバック（ポータルURL / URL なし）`)
-      } else {
-        batchableEvents.push(event)
+        if (!dryRun) await markEventBatchFailure(pool, eventId, 'Batch requires a fetchable official_url')
+        err++
+        console.log(`  ERR (orchestrator-batch-skip) ${name?.slice(0, 50)} | official_url missing or portal`)
+        continue
       }
+      batchableEvents.push(event)
     }
 
-    console.log(`[orchestrator-batch] ${batchableEvents.length} 件をバッチ処理（10件チャンク），${syncFallbackEvents.length} 件は同期フォールバック\n`)
-
     // --- パス2+3: チャンク単位でHTML取得→バッチ送信→結果処理 ---
-    let ok = 0, err = 0
 
     for (let chunkIdx = 0; chunkIdx < batchableEvents.length; chunkIdx += CHUNK_SIZE) {
       const chunkEvents = batchableEvents.slice(chunkIdx, chunkIdx + CHUNK_SIZE)
@@ -1015,14 +900,16 @@ export async function runOrchestratedEventBatch(events, { dryRun = false } = {})
           html = await fetchHtml(officialUrl)
         } catch (e) {
           console.log(`  [orchestrator-batch] ${name?.slice(0, 40)} → fetch失敗: ${e.message?.slice(0, 30)}`)
-          syncFallbackEvents.push(event)
+          if (!dryRun) await markEventBatchFailure(pool, eventId, `fetch failed: ${e.message}`)
+          err++
           continue
         }
 
         const content = extractRelevantContent(html) || ''
         if (content.length < 50) {
           console.log(`  [orchestrator-batch] ${name?.slice(0, 40)} → コンテンツ短い`)
-          syncFallbackEvents.push(event)
+          if (!dryRun) await markEventBatchFailure(pool, eventId, 'page content too short for batch extraction')
+          err++
           html = null
           continue
         }
@@ -1072,14 +959,13 @@ export async function runOrchestratedEventBatch(events, { dryRun = false } = {})
             anthropic,
             pool
           })
-          if (result.success) { ok++; console.log(`  OK  (orchestrator-batch) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
+          if (result.success) { ok++; console.log(`  OK  (orchestrator-batch) ${event.name?.slice(0, 50)} | categories:${result.categoriesCount}`) }
           else { err++; console.log(`  ERR (orchestrator-batch) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
         } else {
           const errorMsg = batchResult?.error || 'No batch result'
-          console.log(`  [orchestrator-batch] ${event.name?.slice(0, 40)} | バッチ失敗: ${errorMsg.slice(0, 40)} → 同期フォールバック`)
-          const result = await enrichEvent(event, { dryRun: false, anthropic, pool })
-          if (result.success) { ok++; console.log(`  OK  (orchestrator-sync-fallback) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
-          else { err++; console.log(`  ERR (orchestrator-sync-fallback) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
+          if (!dryRun) await markEventBatchFailure(pool, event.id, `batch failed: ${errorMsg}`)
+          err++
+          console.log(`  ERR (orchestrator-batch) ${event.name?.slice(0, 50)} | ${errorMsg.slice(0, 60)}`)
         }
       }
 
@@ -1087,13 +973,6 @@ export async function runOrchestratedEventBatch(events, { dryRun = false } = {})
       chunkResults.clear()
       chunkMeta.clear()
       chunkRequests.length = 0
-    }
-
-    // 同期フォールバック分
-    for (const event of syncFallbackEvents) {
-      const result = await enrichEvent(event, { dryRun, anthropic, pool })
-      if (result.success) { ok++; console.log(`  OK  (orchestrator-sync) ${event.name?.slice(0, 50)} | courses:${result.categoriesCount}`) }
-      else { err++; console.log(`  ERR (orchestrator-sync) ${event.name?.slice(0, 50)} | ${result.error?.slice(0, 60)}`) }
     }
 
     console.log(`\n[orchestrator-batch] 完了: OK ${ok} / ERR ${err}`)
@@ -1107,6 +986,9 @@ export async function runOrchestratedEventBatch(events, { dryRun = false } = {})
 const isDirectRun = process.argv[1]?.includes('enrich-event')
 if (isDirectRun) {
   const useBatch = process.argv.includes('--batch')
-  const runner = useBatch ? runBatchCli : runCli
-  runner().catch((e) => { console.error(e); process.exit(1) })
+  if (!useBatch) {
+    console.error('enrich-event.js now requires --batch. Synchronous mode is disabled.')
+    process.exit(1)
+  }
+  runBatchCli().catch((e) => { console.error(e); process.exit(1) })
 }

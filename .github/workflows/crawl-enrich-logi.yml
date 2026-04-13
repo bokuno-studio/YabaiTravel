@@ -8,9 +8,6 @@ on:
         description: '処理件数上限'
         required: false
         default: '200'
-  schedule:
-    - cron: '0 17 * * *'  # 毎日 UTC 17:00 = JST 02:00
-
 permissions:
   issues: write
 

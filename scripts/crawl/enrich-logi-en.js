@@ -1,3 +1,4 @@
+// DEPRECATED: 次期版で廃止
 /**
  * ③-en 英語版ロジ（会場アクセスポイント情報）
  * Google Places API + Google Routes API で空港・駅を検索し、会場へのルートを取得
@@ -324,7 +325,11 @@ JSON only.`,
 /**
  * 単一イベントの英語版ロジ情報をエンリッチする
  */
-export async function enrichLogiEn(event, opts = { dryRun: false, force: false, useBatch: false }) {
+export async function enrichLogiEn() {
+  throw new Error('enrich-logi-en.js is deprecated for the next version.')
+}
+
+async function _enrichLogiEnImpl(event, opts = { dryRun: false, force: false, useBatch: false }) {
   const { dryRun = false, force = false, useBatch = false } = opts
   const apiKey = process.env.GOOGLE_DIRECTIONS_API_KEY
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
@@ -808,10 +813,6 @@ JSON only.`,
 }
 
 if (process.argv[1]?.endsWith('enrich-logi-en.js')) {
-  const useBatch = process.argv.includes('--batch')
-  const runner = useBatch ? runBatchCli : runCli
-  runner().catch((e) => {
-    console.error(e)
-    process.exit(1)
-  })
+  console.error('enrich-logi-en.js is deprecated for the next version.')
+  process.exit(1)
 }
