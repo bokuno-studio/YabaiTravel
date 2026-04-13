@@ -241,7 +241,7 @@ export function EventCard({
             </span>
           )}
 
-          {mapsHref ? (
+          {mapsHref && (
             <a
               href={mapsHref}
               target="_blank"
@@ -251,11 +251,6 @@ export function EventCard({
               <MapIcon className="h-4 w-4" />
               Google Maps
             </a>
-          ) : (
-            <span className="inline-flex items-center gap-1 text-muted-foreground">
-              <MapIcon className="h-4 w-4" />
-              {isEn ? 'Map unavailable' : '地図なし'}
-            </span>
           )}
         </div>
       </CardFooter>
