@@ -1,3 +1,4 @@
+// DEPRECATED: 次期版で廃止
 /**
  * ②-B カテゴリ詳細収集スクリプト
  * 1コース1LLM呼び出しで、参加費・制限時間・必携品等を日英同時に抽出
@@ -219,7 +220,11 @@ function sanitizeTimeLimit(val) {
  * @param {object} category - {id, name, distance_km}
  * @param {object} opts - {dryRun, html, _batchResult} _batchResult は Batch API の結果を注入（内部用）
  */
-export async function enrichCategoryDetail(event, category, opts = { dryRun: false }) {
+export async function enrichCategoryDetail() {
+  throw new Error('enrich-category-detail.js is deprecated. Categories are now enriched in Step2 via enrich-event.js.')
+}
+
+async function _enrichCategoryDetailImpl(event, category, opts = { dryRun: false }) {
   const { dryRun = false, force = false, _batchResult = null } = opts
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
@@ -756,9 +761,7 @@ async function runBatchCli() {
   console.log(`\n完了: OK ${ok} / ERR ${err}`)
 }
 
-const isDirectRun = process.argv[1]?.includes('enrich-category-detail')
-if (isDirectRun) {
-  const useBatch = process.argv.includes('--batch')
-  const runner = useBatch ? runBatchCli : runCli
-  runner().catch((e) => { console.error(e); process.exit(1) })
+if (process.argv[1]?.includes('enrich-category-detail')) {
+  console.error('enrich-category-detail.js is deprecated. Categories are now enriched in Step2 via enrich-event.js.')
+  process.exit(1)
 }

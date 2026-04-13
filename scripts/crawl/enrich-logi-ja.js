@@ -1,3 +1,4 @@
+// DEPRECATED: 次期版で廃止
 /**
  * ③-ja 日本語版ロジ（東京起点）
  * events テーブルのうち access_routes が未登録なレコードを対象に、
@@ -331,7 +332,11 @@ function buildTaxiEstimate(logiInfo) {
  * @param {object} opts - {dryRun: boolean}
  * @returns {Promise<{success: boolean, eventId: string, error?: string}>}
  */
-export async function enrichLogi(event, opts = { dryRun: false, force: false, useBatch: false }) {
+export async function enrichLogi() {
+  throw new Error('enrich-logi-ja.js is deprecated for the next version.')
+}
+
+async function _enrichLogiImpl(event, opts = { dryRun: false, force: false, useBatch: false }) {
   const { dryRun = false, force = false, useBatch = false } = opts
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
@@ -1060,12 +1065,7 @@ JSONのみ返してください。`,
   console.log(`\n完了: OK ${ok} / ERR ${errors}`)
 }
 
-// スクリプトとして直接実行された場合のみ CLI を起動
 if (process.argv[1]?.endsWith('enrich-logi-ja.js')) {
-  const useBatch = process.argv.includes('--batch')
-  const runner = useBatch ? runBatchCli : runCli
-  runner().catch((e) => {
-    console.error(e)
-    process.exit(1)
-  })
+  console.error('enrich-logi-ja.js is deprecated for the next version.')
+  process.exit(1)
 }

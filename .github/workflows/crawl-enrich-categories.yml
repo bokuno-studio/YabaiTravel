@@ -8,9 +8,6 @@ on:
         description: 'バッチサイズ（処理件数上限）'
         required: false
         default: '50'
-  schedule:
-    - cron: '30 */4 * * *'  # 4時間おき（通常運用）
-
 permissions:
   issues: write
 
