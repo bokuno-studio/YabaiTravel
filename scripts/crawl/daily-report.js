@@ -59,21 +59,23 @@ async function collectStats(client) {
   const [
     totalEvents,
     totalCategories,
-    enrichedEvents,
-    enrichedCategories,
-    eventsWithDetailPage,
+    step2Completed,
+    officialUrlFilled,
+    descriptionFilled,
     eventDateFilled,
     eventLatLngFilled,
+    eventsWithCategories,
     entryFeeFilled,
     todayProcessedStep2,
   ] = await Promise.all([
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE collected_at IS NOT NULL`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE entry_fee IS NOT NULL`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE official_url IS NOT NULL AND official_url != ''`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE description IS NOT NULL AND description != ''`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE event_date IS NOT NULL`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE latitude IS NOT NULL AND longitude IS NOT NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE id IN (SELECT DISTINCT event_id FROM ${SCHEMA}.categories)`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE entry_fee IS NOT NULL`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE collected_at >= CURRENT_DATE AND deleted_at IS NULL`),
   ])
@@ -99,11 +101,12 @@ async function collectStats(client) {
   return {
     totalEvents,
     totalCategories,
-    enrichedEvents,
-    enrichedCategories,
-    eventsWithDetailPage,
+    step2Completed,
+    officialUrlFilled,
+    descriptionFilled,
     eventDateFilled,
     eventLatLngFilled,
+    eventsWithCategories,
     entryFeeFilled,
     todayProcessedStep2,
     batchPendingByStep,
@@ -121,7 +124,7 @@ async function upsertSnapshot(client, stats) {
       total_categories = EXCLUDED.total_categories,
       enriched_events = EXCLUDED.enriched_events,
       enriched_categories = EXCLUDED.enriched_categories
-  `, [today, stats.totalEvents, stats.totalCategories, stats.enrichedEvents, stats.enrichedCategories])
+  `, [today, stats.totalEvents, stats.totalCategories, stats.step2Completed, stats.entryFeeFilled])
 }
 
 async function getHistory(client, days = 7) {
@@ -257,7 +260,7 @@ function padEndW(str, width) {
 function buildReport(stats, yesterday, history, errors, workflowRuns) {
   const today = new Date().toISOString().slice(0, 10)
 
-  const eventBacklog = stats.totalEvents - stats.enrichedEvents
+  const eventBacklog = stats.totalEvents - stats.step2Completed
 
   const lines = []
   lines.push(`📊 クロール進捗レポート（${today}）`)
@@ -271,8 +274,8 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   lines.push('')
   lines.push('[Step2] イベント詳細（AI Batch）')
   lines.push(`  母数: ${fmt(stats.totalEvents)}件`)
-  lines.push(`  完了: ${fmt(stats.enrichedEvents)}件 (${pct(stats.enrichedEvents, stats.totalEvents)})`)
-  const step2Remaining = stats.totalEvents - stats.enrichedEvents
+  lines.push(`  完了: ${fmt(stats.step2Completed)}件 (${pct(stats.step2Completed, stats.totalEvents)})`)
+  const step2Remaining = stats.totalEvents - stats.step2Completed
   const step2Pending = stats.batchPendingByStep['enrich-event'] || 0
   const step2Waiting = Math.max(0, step2Remaining - step2Pending)
   lines.push(`  未処理: ${fmt(step2Remaining)}件`)
@@ -321,18 +324,20 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   }
 
   // --- Data Quality Metrics ---
-  lines.push('■ 指標充填率（目標達成状況）')
-  const detailPagePct = pct(stats.eventsWithDetailPage, stats.totalEvents)
-  const detailFillPct = pct(stats.enrichedEvents, stats.totalEvents)
-  const entryFeePct = pct(stats.entryFeeFilled, stats.totalCategories)
+  lines.push('■ データ品質指標')
+  const officialUrlPct = pct(stats.officialUrlFilled, stats.totalEvents)
+  const descriptionPct = pct(stats.descriptionFilled, stats.totalEvents)
   const datePct = pct(stats.eventDateFilled, stats.totalEvents)
   const latlngPct = pct(stats.eventLatLngFilled, stats.totalEvents)
+  const categoryPct = pct(stats.eventsWithCategories, stats.totalEvents)
+  const entryFeePct = pct(stats.entryFeeFilled, stats.totalCategories)
 
-  lines.push(`  詳細ページあり  ${detailPagePct.padStart(5)} [目標 90%] ${statusIcon(detailPagePct, 90)}`)
-  lines.push(`  詳細充填        ${detailFillPct.padStart(5)} [目標 95%] ${statusIcon(detailFillPct, 95)}`)
-  lines.push(`  レース料金      ${entryFeePct.padStart(5)} [目標 70%] ${statusIcon(entryFeePct, 70)}`)
-  lines.push(`  日程            ${datePct.padStart(5)} [目標 95%] ${statusIcon(datePct, 95)}`)
+  lines.push(`  公式サイトあり  ${officialUrlPct.padStart(5)} [目標 90%] ${statusIcon(officialUrlPct, 90)}`)
+  lines.push(`  説明文あり      ${descriptionPct.padStart(5)} [目標 95%] ${statusIcon(descriptionPct, 95)}`)
+  lines.push(`  日程充填        ${datePct.padStart(5)} [目標 95%] ${statusIcon(datePct, 95)}`)
   lines.push(`  場所(lat/lng)   ${latlngPct.padStart(5)} [目標 95%] ${statusIcon(latlngPct, 95)}`)
+  lines.push(`  カテゴリあり    ${categoryPct.padStart(5)} [目標 95%] ${statusIcon(categoryPct, 95)}`)
+  lines.push(`  料金充填        ${entryFeePct.padStart(5)} [目標 70%] ${statusIcon(entryFeePct, 70)}`)
   lines.push('')
 
   return '<pre>' + lines.join('\n').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>'
