@@ -1,5 +1,21 @@
 import '@testing-library/jest-dom'
 
+// Mock localStorage for components that use it (e.g. useViewLimit)
+// jsdom may provide a broken localStorage, so always override
+const localStorageStore: Record<string, string> = {}
+Object.defineProperty(globalThis, 'localStorage', {
+  value: {
+    getItem: (key: string) => localStorageStore[key] ?? null,
+    setItem: (key: string, value: string) => { localStorageStore[key] = value },
+    removeItem: (key: string) => { delete localStorageStore[key] },
+    clear: () => { Object.keys(localStorageStore).forEach((k) => delete localStorageStore[k]) },
+    get length() { return Object.keys(localStorageStore).length },
+    key: (index: number) => Object.keys(localStorageStore)[index] ?? null,
+  },
+  writable: true,
+  configurable: true,
+})
+
 // Mock IntersectionObserver for components that use it (e.g. LazyLoadWrapper)
 globalThis.IntersectionObserver = class {
   root = null

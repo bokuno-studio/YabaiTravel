@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { EventCard } from '../EventCard'
-import type { EventWithCategories, Category } from '@/types/event'
+import type { EventWithCategories } from '@/types/event'
 
 function makeEvent(overrides: Partial<EventWithCategories> = {}): EventWithCategories {
   return {
@@ -48,42 +48,8 @@ function makeEvent(overrides: Partial<EventWithCategories> = {}): EventWithCateg
   }
 }
 
-function makeCategory(overrides: Partial<Category> = {}): Category {
-  return {
-    id: 'cat-1',
-    event_id: 'ev-1',
-    name: '50km',
-    stay_status: null,
-    distance_km: 50,
-    elevation_gain: 3000,
-    start_time: null,
-    reception_end: null,
-    reception_place: null,
-    start_place: null,
-    finish_rate: null,
-    time_limit: null,
-    cutoff_times: null,
-    required_pace: null,
-    required_climb_pace: null,
-    mandatory_gear: null,
-    recommended_gear: null,
-    prohibited_items: null,
-    poles_allowed: null,
-    entry_fee: null,
-    entry_fee_currency: null,
-    itra_points: null,
-    collected_at: null,
-    updated_at: null,
-    ...overrides,
-  }
-}
-
 const defaultProps = {
-  langPrefix: '/ja',
   raceTypeLabel: (type: string | null) => type || 'other',
-  cardLink: '/ja/events/ev-1',
-  chipsToShow: [] as Category[],
-  isEnriched: true,
   t: (key: string) => key,
   lang: 'ja',
 }
@@ -106,15 +72,15 @@ describe('EventCard', () => {
     expect(screen.getByText('Test Trail Race 2025')).toBeInTheDocument()
   })
 
-  it('renders race type badge when enriched', () => {
+  it('renders race type badge', () => {
     renderCard()
     expect(screen.getByText('trail')).toBeInTheDocument()
   })
 
   it('renders date with day of week', () => {
     renderCard()
-    // 2025-06-15 is Sunday
-    expect(screen.getByText(/2025-06-15/)).toBeInTheDocument()
+    // 2025-06-15 is Sunday → 日
+    expect(screen.getByText('2025-06-15（日）')).toBeInTheDocument()
   })
 
   it('renders location', () => {
@@ -122,32 +88,35 @@ describe('EventCard', () => {
     expect(screen.getByText('Japan / Tokyo')).toBeInTheDocument()
   })
 
-  it('renders cost estimate', () => {
-    renderCard()
-    expect(screen.getByText(/50,000/)).toBeInTheDocument()
-  })
-
-  it('renders un-enriched state with reduced opacity', () => {
-    const { container } = renderCard({ isEnriched: false })
-    const card = container.querySelector('.opacity-60')
-    expect(card).not.toBeNull()
-  })
-
-  it('renders category chips', () => {
-    const cat = makeCategory({ name: '50km' })
-    renderCard({ chipsToShow: [cat] })
+  it('renders distances from categories', () => {
+    renderCard({}, {
+      categories: [
+        { id: 'cat-1', event_id: 'ev-1', name: '50km', distance_km: 50 },
+      ],
+    })
     expect(screen.getByText('50km')).toBeInTheDocument()
   })
 
-  it('renders entry period', () => {
-    renderCard({}, { entry_start: '2025-01-01', entry_end: '2025-05-01' })
-    expect(screen.getByText(/2025-01-01/)).toBeInTheDocument()
+  it('renders entry status badge', () => {
+    // entry_end is 2025-05-01 which is in the past, so status should be "closed"
+    renderCard()
+    expect(screen.getByText('受付終了')).toBeInTheDocument()
+  })
+
+  it('renders official site link', () => {
+    renderCard()
+    expect(screen.getByText('公式サイト')).toBeInTheDocument()
   })
 
   it('renders date range when event_date_end differs', () => {
     renderCard({}, { event_date: '2025-06-15', event_date_end: '2025-06-16' })
-    // Both dates should appear
-    expect(screen.getByText(/2025-06-15/)).toBeInTheDocument()
-    expect(screen.getByText(/2025-06-16/)).toBeInTheDocument()
+    // Both dates should appear in range format
+    expect(screen.getByText(/2025-06-15（日）/)).toBeInTheDocument()
+    expect(screen.getByText(/2025-06-16（月）/)).toBeInTheDocument()
+  })
+
+  it('renders no description message when description is null', () => {
+    renderCard()
+    expect(screen.getByText('紹介文はありません。')).toBeInTheDocument()
   })
 })
