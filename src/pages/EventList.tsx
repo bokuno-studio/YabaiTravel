@@ -160,8 +160,8 @@ function EventList() {
     const fromParams = parseNumSetParam(searchParams, 'distances')
     return fromParams.size > 0 ? fromParams : new Set(saved.distanceRanges)
   })
-  const [entryOpenOnly, setEntryOpenOnly] = useState<boolean>(() =>
-    parseBooleanParam(searchParams, 'entryOpenOnly', saved.entryOpenOnly)
+  const [futureOnly, setFutureOnly] = useState<boolean>(() =>
+    parseBooleanParam(searchParams, 'futureOnly', saved.futureOnly)
   )
   // Default map hidden on mobile to avoid loading Google Maps API
   const [showMap, setShowMap] = useState(() =>
@@ -179,7 +179,7 @@ function EventList() {
       dateRangeStart,
       dateRangeEnd,
       distanceRanges: [...distanceRanges],
-      entryOpenOnly,
+      futureOnly,
     })
     const params = new URLSearchParams()
     if (raceTypes.size > 0) params.set('raceTypes', [...raceTypes].join(','))
@@ -187,9 +187,9 @@ function EventList() {
     if (dateRangeStart) params.set('date_from', dateRangeStart)
     if (dateRangeEnd) params.set('date_to', dateRangeEnd)
     if (distanceRanges.size > 0) params.set('distances', [...distanceRanges].join(','))
-    if (!entryOpenOnly) params.set('entryOpenOnly', '0')
+    if (!futureOnly) params.set('futureOnly', '0')
     setSearchParams(params, { replace: true })
-  }, [raceTypes, countries, dateRangeStart, dateRangeEnd, distanceRanges, entryOpenOnly, setSearchParams])
+  }, [raceTypes, countries, dateRangeStart, dateRangeEnd, distanceRanges, futureOnly, setSearchParams])
 
   useEffect(() => {
     async function fetchEvents() {
@@ -360,7 +360,7 @@ function EventList() {
     || Boolean(dateRangeStart)
     || Boolean(dateRangeEnd)
     || distanceRanges.size > 0
-    || !entryOpenOnly
+    || !futureOnly
 
   // #2: Reset all filters
   const resetAllFilters = useCallback(() => {
@@ -369,7 +369,7 @@ function EventList() {
     setDateRangeStart(null)
     setDateRangeEnd(null)
     setDistanceRanges(new Set())
-    setEntryOpenOnly(true)
+    setFutureOnly(true)
     resetFilterState()
   }, [])
 
@@ -384,7 +384,7 @@ function EventList() {
       if (dateRangeStart && event.event_date < dateRangeStart) return false
       if (dateRangeEnd && event.event_date > dateRangeEnd) return false
     }
-    if (entryOpenOnly && (!event.entry_start || !event.entry_end || event.entry_start > today || event.entry_end < today)) {
+    if (futureOnly && (!event.event_date || event.event_date < today)) {
       return false
     }
     if (!eventMatchesDistanceFilter(event)) return false
@@ -415,8 +415,8 @@ function EventList() {
     distanceRanges,
     onDistanceRangeToggle: toggleDistanceRange,
     distanceRangeOptions: DISTANCE_RANGES,
-    entryOpenOnly,
-    onEntryOpenOnlyChange: setEntryOpenOnly,
+    futureOnly,
+    onFutureOnlyChange: setFutureOnly,
     t,
     lang,
   }
@@ -425,7 +425,7 @@ function EventList() {
   const { setFilterNode } = useSidebarFilter()
   const filterDepsKey = JSON.stringify([
     [...raceTypes], [...countries], dateRangeStart, dateRangeEnd,
-    [...distanceRanges], entryOpenOnly, raceTypes.size, countries.size, loading,
+    [...distanceRanges], futureOnly, raceTypes.size, countries.size, loading,
   ])
   useEffect(() => {
     setFilterNode(<FiltersSidebar {...filterProps} />)
@@ -441,7 +441,7 @@ function EventList() {
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(INITIAL_RENDER_COUNT)
-  }, [raceTypes.size, countries.size, dateRangeStart, dateRangeEnd, distanceRanges.size, entryOpenOnly])
+  }, [raceTypes.size, countries.size, dateRangeStart, dateRangeEnd, distanceRanges.size, futureOnly])
 
   if (error) {
     return (
