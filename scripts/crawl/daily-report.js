@@ -61,61 +61,24 @@ async function collectStats(client) {
     totalCategories,
     enrichedEvents,
     enrichedCategories,
-    accessRoutes,
-    accommodations,
-    catWithEventDetail,
-    catPending,
-    catFailed,
     eventsWithDetailPage,
-    logiDone,
-    catDone,
     eventDateFilled,
     eventLatLngFilled,
     entryFeeFilled,
-    accommodationEventsFilled,
-    accessRouteCostFilled,
-    catBase,
-    catPendingNew,
-    logiBase,
-    logiPending,
-    tokyoAccessRoutes,
-    catUncollectedFuture,
-    catUncollectedPast,
     todayProcessedStep2,
-    todayProcessedStep3,
-    todayProcessedStep4,
   ] = await Promise.all([
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE collected_at IS NOT NULL`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE entry_fee IS NOT NULL`),
-    queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.access_routes`),
-    queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.accommodations`),
-    queryCount(client, `SELECT count(DISTINCT ec.event_id) FROM ${SCHEMA}.categories ec WHERE ec.collected_at IS NOT NULL`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE collected_at IS NULL AND attempt_count < 5`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE attempt_count >= 5`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE official_url IS NOT NULL AND official_url != ''`),
-    queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.access_routes`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE collected_at IS NOT NULL`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE event_date IS NOT NULL`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE latitude IS NOT NULL AND longitude IS NOT NULL`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE entry_fee IS NOT NULL`),
-    queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.accommodations`),
-    queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.access_routes WHERE cost_estimate IS NOT NULL`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id WHERE e.collected_at IS NOT NULL`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id WHERE c.collected_at IS NULL AND c.attempt_count < 3 AND e.collected_at IS NOT NULL`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE collected_at IS NOT NULL AND location IS NOT NULL`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events e LEFT JOIN ${SCHEMA}.access_routes ar ON ar.event_id = e.id WHERE e.collected_at IS NOT NULL AND e.location IS NOT NULL AND ar.id IS NULL`),
-    queryCount(client, `SELECT count(DISTINCT event_id) FROM ${SCHEMA}.access_routes WHERE origin_type = 'tokyo'`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id WHERE e.collected_at IS NOT NULL AND c.collected_at IS NULL AND (e.event_date IS NULL OR e.event_date >= CURRENT_DATE)`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories c JOIN ${SCHEMA}.events e ON c.event_id = e.id WHERE e.collected_at IS NOT NULL AND c.collected_at IS NULL AND e.event_date IS NOT NULL AND e.event_date < CURRENT_DATE`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE collected_at >= CURRENT_DATE AND deleted_at IS NULL`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE updated_at >= CURRENT_DATE AND distance_km IS NOT NULL`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.access_routes WHERE updated_at >= CURRENT_DATE`),
   ])
 
   // batch_jobs: 現在処理中（status='pending'）のrequest_countをscript_typeごとに取得
-  // batchPendingByStep[scriptType] = 処理中リクエスト数
   const batchPendingByStep = {}
   try {
     const batchRes = await client.query(`
@@ -138,29 +101,11 @@ async function collectStats(client) {
     totalCategories,
     enrichedEvents,
     enrichedCategories,
-    accessRoutes,
-    accommodations,
-    catWithEventDetail,
-    catPending,
-    catFailed,
     eventsWithDetailPage,
-    logiDone,
-    catDone,
     eventDateFilled,
     eventLatLngFilled,
     entryFeeFilled,
-    accommodationEventsFilled,
-    accessRouteCostFilled,
-    catBase,
-    catPendingNew,
-    logiBase,
-    logiPending,
-    tokyoAccessRoutes,
-    catUncollectedFuture,
-    catUncollectedPast,
     todayProcessedStep2,
-    todayProcessedStep3,
-    todayProcessedStep4,
     batchPendingByStep,
   }
 }
@@ -169,22 +114,19 @@ async function upsertSnapshot(client, stats) {
   const today = new Date().toISOString().slice(0, 10)
   await client.query(`
     INSERT INTO ${SCHEMA}.crawl_daily_stats
-      (stat_date, total_events, total_categories, enriched_events, enriched_categories, access_routes_count, accommodations_count)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
+      (stat_date, total_events, total_categories, enriched_events, enriched_categories)
+    VALUES ($1, $2, $3, $4, $5)
     ON CONFLICT (stat_date) DO UPDATE SET
       total_events = EXCLUDED.total_events,
       total_categories = EXCLUDED.total_categories,
       enriched_events = EXCLUDED.enriched_events,
-      enriched_categories = EXCLUDED.enriched_categories,
-      access_routes_count = EXCLUDED.access_routes_count,
-      accommodations_count = EXCLUDED.accommodations_count
-  `, [today, stats.totalEvents, stats.totalCategories, stats.enrichedEvents, stats.enrichedCategories, stats.accessRoutes, stats.accommodations])
+      enriched_categories = EXCLUDED.enriched_categories
+  `, [today, stats.totalEvents, stats.totalCategories, stats.enrichedEvents, stats.enrichedCategories])
 }
 
 async function getHistory(client, days = 7) {
   const { rows } = await client.query(`
-    SELECT stat_date, total_events, total_categories, enriched_events, enriched_categories,
-           access_routes_count, accommodations_count
+    SELECT stat_date, total_events, total_categories, enriched_events, enriched_categories
     FROM ${SCHEMA}.crawl_daily_stats
     ORDER BY stat_date DESC
     LIMIT $1
@@ -209,7 +151,7 @@ async function getErrorBreakdown(client) {
 
 async function getWorkflowRuns() {
   if (!GITHUB_TOKEN || !GITHUB_REPOSITORY) return null
-  const workflows = ['crawl-collect.yml', 'crawl-enrich.yml']
+  const workflows = ['crawl-collect.yml', 'crawl-enrich-events.yml']
   const results = []
   for (const wf of workflows) {
     try {
@@ -316,9 +258,6 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   const today = new Date().toISOString().slice(0, 10)
 
   const eventBacklog = stats.totalEvents - stats.enrichedEvents
-  const catBacklog = stats.totalCategories - stats.catDone
-  const accessBacklog = stats.enrichedEvents - stats.accessRoutes
-  const accomBacklog = stats.enrichedEvents - stats.accommodations
 
   const lines = []
   lines.push(`📊 クロール進捗レポート（${today}）`)
@@ -341,39 +280,11 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   if (step2Pending > 0) lines.push(`    うち API待ち（Batch処理中）: ${fmt(step2Pending)}件`)
   if (step2Waiting > 0) lines.push(`    うち Cron待ち: ${fmt(step2Waiting)}件`)
   lines.push('')
-  lines.push('[Step3] カテゴリ詳細（AI）')
-  lines.push(`  母数: ${fmt(stats.catBase)}件（Step2完了イベントのカテゴリ）`)
-  lines.push(`  完了: ${fmt(stats.catDone)}件 (${pct(stats.catDone, stats.catBase)})`)
-  const step3Remaining = stats.catBase - stats.catDone
-  const step3Pending = stats.batchPendingByStep['enrich-category-detail'] || 0
-  const step3Future = stats.catUncollectedFuture
-  const step3Past = stats.catUncollectedPast
-  const step3Waiting = Math.max(0, step3Remaining - step3Pending - step3Future - step3Past)
-  lines.push(`  未処理: ${fmt(step3Remaining)}件`)
-  lines.push(`  当日処理: ${fmt(stats.todayProcessedStep3)}件 (消化率${pct(stats.todayProcessedStep3, step3Remaining)})`)
-  if (step3Pending > 0) lines.push(`    うち API待ち（Batch処理中）: ${fmt(step3Pending)}件`)
-  if (step3Waiting > 0)  lines.push(`    うち Cron待ち（未来イベント）: ${fmt(step3Waiting)}件`)
-  if (step3Past > 0)     lines.push(`    うち 対象外（過去開催）:       ${fmt(step3Past)}件`)
-  lines.push('')
-  lines.push('[Step4] ロジ情報（AI）')
-  lines.push(`  母数: ${fmt(stats.enrichedEvents)}件（Step2完了イベント）`)
-  lines.push(`  完了: ${fmt(stats.accessRoutes)}件 (${pct(stats.accessRoutes, stats.enrichedEvents)})`)
-  const step4Remaining = stats.enrichedEvents - stats.accessRoutes
-  const step4LocationMissing = stats.enrichedEvents - stats.logiBase
-  const step4Pending = stats.batchPendingByStep['enrich-logi'] || 0
-  const step4Waiting = Math.max(0, stats.logiPending - step4Pending)
-  lines.push(`  未処理: ${fmt(step4Remaining)}件`)
-  lines.push(`  当日処理: ${fmt(stats.todayProcessedStep4)}件 (消化率${pct(stats.todayProcessedStep4, step4Remaining)})`)
-  if (step4LocationMissing > 0) lines.push(`    うち location未取得: ${fmt(step4LocationMissing)}件`)
-  if (step4Waiting > 0 || step4Pending > 0) lines.push(`    うち Cron待ち: ${fmt(step4Waiting)}件（+ API待ち${fmt(step4Pending)}件）`)
-  lines.push('')
 
   // --- Backlog estimate ---
   lines.push('■ バックログ消化見込み')
   const eventEst = estimateDays(eventBacklog, history, 'enriched_events')
-  const catEst = estimateDays(catBacklog, history, 'enriched_categories')
-  lines.push(`  イベント基本: ${eventBacklog}件残 → ${eventEst}日後に完了`)
-  lines.push(`  カテゴリ詳細: ${catBacklog}件残 → ${catEst}日後に完了`)
+  lines.push(`  イベント詳細: ${eventBacklog}件残 → ${eventEst}日後に完了`)
   lines.push('')
 
   // --- Error breakdown ---
@@ -410,26 +321,18 @@ function buildReport(stats, yesterday, history, errors, workflowRuns) {
   }
 
   // --- Data Quality Metrics ---
-  lines.push('■ 10指標充填率（目標達成状況）')
+  lines.push('■ 指標充填率（目標達成状況）')
   const detailPagePct = pct(stats.eventsWithDetailPage, stats.totalEvents)
   const detailFillPct = pct(stats.enrichedEvents, stats.totalEvents)
-  const logiPct = pct(stats.accessRoutes, stats.totalEvents)
   const entryFeePct = pct(stats.entryFeeFilled, stats.totalCategories)
-  const accomPct = pct(stats.accommodationEventsFilled, stats.totalEvents)
   const datePct = pct(stats.eventDateFilled, stats.totalEvents)
   const latlngPct = pct(stats.eventLatLngFilled, stats.totalEvents)
-  const moveCostPct = pct(stats.accessRouteCostFilled, stats.totalEvents)
-  const accessPct = pct(stats.tokyoAccessRoutes, stats.totalEvents)
 
   lines.push(`  詳細ページあり  ${detailPagePct.padStart(5)} [目標 90%] ${statusIcon(detailPagePct, 90)}`)
   lines.push(`  詳細充填        ${detailFillPct.padStart(5)} [目標 95%] ${statusIcon(detailFillPct, 95)}`)
-  lines.push(`  ロジ充填        ${logiPct.padStart(5)} [目標 95%] ${statusIcon(logiPct, 95)}`)
   lines.push(`  レース料金      ${entryFeePct.padStart(5)} [目標 70%] ${statusIcon(entryFeePct, 70)}`)
-  lines.push(`  宿泊料金        ${accomPct.padStart(5)} [目標 60%] ${statusIcon(accomPct, 60)}`)
   lines.push(`  日程            ${datePct.padStart(5)} [目標 95%] ${statusIcon(datePct, 95)}`)
   lines.push(`  場所(lat/lng)   ${latlngPct.padStart(5)} [目標 95%] ${statusIcon(latlngPct, 95)}`)
-  lines.push(`  移動料金        ${moveCostPct.padStart(5)} [目標 60%] ${statusIcon(moveCostPct, 60)}`)
-  lines.push(`  東京アクセス    ${accessPct.padStart(5)} [目標 95%] ${statusIcon(accessPct, 95)}`)
   lines.push('')
 
   return '<pre>' + lines.join('\n').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>'

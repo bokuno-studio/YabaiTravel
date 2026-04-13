@@ -110,7 +110,7 @@ async function getWorkflowRuns() {
     return null
   }
 
-  const workflows = ['crawl-collect.yml', 'crawl-enrich-events.yml', 'crawl-enrich-categories.yml']
+  const workflows = ['crawl-collect.yml', 'crawl-enrich-events.yml']
   const results = []
 
   for (const wf of workflows) {
