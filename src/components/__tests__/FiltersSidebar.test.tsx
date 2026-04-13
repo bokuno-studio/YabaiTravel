@@ -5,11 +5,13 @@ import type { FiltersSidebarProps } from '../FiltersSidebar'
 
 function makeDefaultProps(overrides: Partial<FiltersSidebarProps> = {}): FiltersSidebarProps {
   return {
+    availableCountries: [],
+    countries: new Set<string>(),
+    onCountryToggle: vi.fn(),
     availableRaceTypes: ['trail', 'marathon'],
     raceTypes: new Set<string>(),
     onRaceTypeToggle: vi.fn(),
     raceTypeLabel: (type: string | null) => type || 'other',
-    availableMonths: ['2025-06', '2025-07'],
     dateRangeStart: null,
     dateRangeEnd: null,
     onDateRangeChange: vi.fn(),
@@ -19,19 +21,8 @@ function makeDefaultProps(overrides: Partial<FiltersSidebarProps> = {}): Filters
       { label: '~10km', min: 0, max: 10 },
       { label: '10~20km', min: 10, max: 20 },
     ],
-    timeLimitMin: '',
-    onTimeLimitChange: vi.fn(),
-    costPrices: [],
-    costMin: 0,
-    costMax: Infinity,
-    costGlobalMax: 100000,
-    onCostRangeChange: vi.fn(),
-    poleFilter: '',
-    onPoleFilterChange: vi.fn(),
-    entryStatus: 'active',
-    onEntryStatusChange: vi.fn(),
-    showPastEvents: false,
-    onShowPastEventsChange: vi.fn(),
+    entryOpenOnly: true,
+    onEntryOpenOnlyChange: vi.fn(),
     t: (key: string) => key,
     lang: 'ja',
     ...overrides,
@@ -39,9 +30,9 @@ function makeDefaultProps(overrides: Partial<FiltersSidebarProps> = {}): Filters
 }
 
 describe('FilterBar', () => {
-  it('renders "No filters" message when no filters active', () => {
+  it('renders default message when no filters active', () => {
     render(<FilterBar {...makeDefaultProps()} />)
-    expect(screen.getByText('フィルターなし')).toBeInTheDocument()
+    expect(screen.getByText('デフォルト条件で表示中')).toBeInTheDocument()
   })
 
   it('renders filter button', () => {
@@ -61,12 +52,12 @@ describe('FilterBar', () => {
 
   it('displays active filter chip for date range', () => {
     render(<FilterBar {...makeDefaultProps({ dateRangeStart: '2025-06-01', dateRangeEnd: '2025-06-30' })} />)
-    expect(screen.getByText('2025年6月~6月')).toBeInTheDocument()
+    expect(screen.getByText('2025年6月1日 - 2025年6月30日')).toBeInTheDocument()
   })
 
   it('shows active count badge when filters are applied', () => {
-    render(<FilterBar {...makeDefaultProps({ raceTypes: new Set(['trail']), showPastEvents: true })} />)
-    // Two active filters: raceType + showPastEvents
+    render(<FilterBar {...makeDefaultProps({ raceTypes: new Set(['trail']), entryOpenOnly: false })} />)
+    // Two active filters: raceType + entryOpenOnly off
     expect(screen.getByText('2')).toBeInTheDocument()
   })
 
@@ -78,13 +69,13 @@ describe('FilterBar', () => {
     expect(onRaceTypeToggle).toHaveBeenCalledWith('trail')
   })
 
-  it('renders cost chip when cost filter is active', () => {
-    render(<FilterBar {...makeDefaultProps({ costMin: 10000, costMax: 50000 })} />)
-    expect(screen.getByText(/コスト/)).toBeInTheDocument()
+  it('displays country filter chips', () => {
+    render(<FilterBar {...makeDefaultProps({ countries: new Set(['Japan']) })} />)
+    expect(screen.getByText('Japan')).toBeInTheDocument()
   })
 
-  it('renders past events chip when showPastEvents is true', () => {
-    render(<FilterBar {...makeDefaultProps({ showPastEvents: true })} />)
-    expect(screen.getByText('filter.showPast')).toBeInTheDocument()
+  it('renders entry open only chip when disabled', () => {
+    render(<FilterBar {...makeDefaultProps({ entryOpenOnly: false })} />)
+    expect(screen.getByText('すべての受付状況')).toBeInTheDocument()
   })
 })
