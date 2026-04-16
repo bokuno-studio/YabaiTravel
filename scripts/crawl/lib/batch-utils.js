@@ -156,8 +156,8 @@ export async function runBatch(anthropic, requests, opts = {}) {
   if (dbPool) {
     try {
       await dbPool.query(
-        `INSERT INTO ${SCHEMA}.batch_jobs (batch_id, script_type, status, request_count) VALUES ($1, $2, 'pending', $3) ON CONFLICT (batch_id) DO NOTHING`,
-        [batchId, scriptType, requests.length]
+        `INSERT INTO ${SCHEMA}.batch_jobs (batch_id, status) VALUES ($1, 'pending') ON CONFLICT (batch_id) DO NOTHING`,
+        [batchId]
       )
     } catch (e) {
       console.warn(`[batch] batch_jobs INSERT failed: ${e.message}`)
@@ -174,8 +174,8 @@ export async function runBatch(anthropic, requests, opts = {}) {
   if (dbPool) {
     try {
       await dbPool.query(
-        `UPDATE ${SCHEMA}.batch_jobs SET status='ended', succeeded=$2, failed=$3, completed_at=NOW() WHERE batch_id=$1`,
-        [batchId, succeeded, failed]
+        `UPDATE ${SCHEMA}.batch_jobs SET status='ended', result_summary=$2, completed_at=NOW() WHERE batch_id=$1`,
+        [batchId, JSON.stringify({ succeeded, failed, total: requests.length })]
       )
     } catch (e) {
       console.warn(`[batch] batch_jobs UPDATE failed: ${e.message}`)
