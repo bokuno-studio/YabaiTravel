@@ -28,6 +28,7 @@ async function runQueries() {
     const q1a = await client.query(`
       SELECT COUNT(*) as count
       FROM yabai_travel.events
+      WHERE deleted_at IS NULL
     `)
     const A_total = parseInt(q1a.rows[0].count, 10)
 
@@ -35,7 +36,7 @@ async function runQueries() {
     const q1c = await client.query(`
       SELECT COUNT(*) as count
       FROM yabai_travel.events
-      WHERE (
+      WHERE deleted_at IS NULL AND (
         official_url LIKE '%facebook.com%'
         OR official_url LIKE '%events.zoom.us%'
         OR official_url LIKE '%connect.justrunlah.com%'
@@ -55,6 +56,7 @@ async function runQueries() {
       SELECT COUNT(*) as count
       FROM yabai_travel.categories c
       JOIN yabai_travel.events e ON c.event_id = e.id
+      WHERE e.deleted_at IS NULL AND c.deleted_at IS NULL
     `)
     const D_categories = parseInt(q2.rows[0].count, 10)
 
@@ -67,6 +69,7 @@ async function runQueries() {
         COUNT(CASE WHEN c.entry_fee IS NOT NULL THEN 1 END) as has_fee
       FROM yabai_travel.categories c
       JOIN yabai_travel.events e ON c.event_id = e.id
+      WHERE e.deleted_at IS NULL AND c.deleted_at IS NULL
     `)
     const row3 = q3.rows[0]
     const D_total = parseInt(row3.total, 10)
@@ -81,7 +84,7 @@ async function runQueries() {
         COUNT(CASE WHEN e.latitude IS NOT NULL AND e.longitude IS NOT NULL THEN 1 END) as has_latlng
       FROM yabai_travel.categories c
       JOIN yabai_travel.events e ON c.event_id = e.id
-      WHERE e.location IS NOT NULL
+      WHERE e.deleted_at IS NULL AND c.deleted_at IS NULL AND e.location IS NOT NULL
     `)
     const row4 = q4.rows[0]
     const F_has_location_with_latlng = parseInt(row4.has_location, 10)
