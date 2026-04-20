@@ -7,23 +7,23 @@
 // --- Inlined SSR bundle ---
 import { jsx, jsxs, Fragment } from "react/jsx-runtime";
 import { renderToString } from "react-dom/server";
-import { Link, useParams, useLocation, useSearchParams, Navigate, StaticRouter, Routes, Route, Outlet } from "react-router-dom";
+import { useParams, useLocation, useSearchParams, Link, Navigate, StaticRouter, Routes, Route, Outlet } from "react-router-dom";
 import * as React from "react";
 import { createContext, useState, useCallback, useEffect, useContext, Component, useRef, useMemo, lazy, Suspense } from "react";
 import i18n from "i18next";
 import { initReactI18next, useTranslation } from "react-i18next";
 import { createClient } from "@supabase/supabase-js";
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { Calendar as Calendar$1, MapPin, Ruler, ChevronUp, ChevronDown, ExternalLink, ChevronLeft, ChevronRight, XIcon, X, SlidersHorizontal, CalendarIcon, RotateCcw, MapPinOff, MapIcon, Loader2, Send, ArrowLeft, Train, Sun, Moon, FileEdit, Home, ArrowRight, Heart, Pencil, TrendingUp, Mountain, Clock, Banknote, Map as Map$1, Users, Plus, MessageSquare, Bug, Lightbulb, LogOut, Menu, Search, BookOpen, CalendarDays, Info, FileText } from "lucide-react";
 import { cva } from "class-variance-authority";
 import { Slot, Dialog } from "radix-ui";
-import { Calendar as Calendar$1, MapPin, Banknote, XIcon, ChevronLeft, ChevronRight, CalendarIcon, ChevronDown, X, SlidersHorizontal, RotateCcw, MapPinOff, MapIcon, Loader2, Send, ArrowLeft, Train, Sun, Moon, ExternalLink, FileEdit, Home, ArrowRight, Heart, Pencil, TrendingUp, Mountain, Clock, Map, Users, Plus, MessageSquare, ChevronUp, Bug, Lightbulb, LogOut, Menu, Search, BookOpen, CalendarDays, Info, FileText } from "lucide-react";
+import { clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 import { DayPicker } from "react-day-picker";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { APIProvider, Map as Map$1, Marker, InfoWindow } from "@vis.gl/react-google-maps";
+import { APIProvider, Map as Map$2, Marker, InfoWindow } from "@vis.gl/react-google-maps";
 import { useJsApiLoader, GoogleMap, Marker as Marker$1, Polyline } from "@react-google-maps/api";
 function isAuthError(error) {
   if (!error) return false;
@@ -297,6 +297,93 @@ function LazyLoadWrapper({
 function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
+const badgeVariants = cva(
+  "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
+        secondary: "bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
+        destructive: "bg-destructive text-white focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40 [a&]:hover:bg-destructive/90",
+        outline: "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+        ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 [a&]:hover:underline"
+      }
+    },
+    defaultVariants: {
+      variant: "default"
+    }
+  }
+);
+function Badge({
+  className,
+  variant = "default",
+  asChild = false,
+  ...props
+}) {
+  const Comp = asChild ? Slot.Root : "span";
+  return /* @__PURE__ */ jsx(
+    Comp,
+    {
+      "data-slot": "badge",
+      "data-variant": variant,
+      className: cn(badgeVariants({ variant }), className),
+      ...props
+    }
+  );
+}
+const buttonVariants = cva(
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive: "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40",
+        outline: "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+        link: "text-primary underline-offset-4 hover:underline"
+      },
+      size: {
+        default: "h-9 px-4 py-2 has-[>svg]:px-3",
+        xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5",
+        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+        icon: "size-9",
+        "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm": "size-8",
+        "icon-lg": "size-10"
+      }
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default"
+    }
+  }
+);
+const Button = React.forwardRef(
+  ({
+    className,
+    variant = "default",
+    size = "default",
+    asChild = false,
+    ...props
+  }, ref) => {
+    const Comp = asChild ? Slot.Root : "button";
+    return /* @__PURE__ */ jsx(
+      Comp,
+      {
+        ref,
+        "data-slot": "button",
+        "data-variant": variant,
+        "data-size": size,
+        className: cn(buttonVariants({ variant, size, className })),
+        ...props
+      }
+    );
+  }
+);
+Button.displayName = "Button";
 function Card({ className, ...props }) {
   return /* @__PURE__ */ jsx(
     "div",
@@ -363,83 +450,6 @@ function CardFooter({ className, ...props }) {
     }
   );
 }
-const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
-        secondary: "bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
-        destructive: "bg-destructive text-white focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40 [a&]:hover:bg-destructive/90",
-        outline: "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 [a&]:hover:underline"
-      }
-    },
-    defaultVariants: {
-      variant: "default"
-    }
-  }
-);
-function Badge({
-  className,
-  variant = "default",
-  asChild = false,
-  ...props
-}) {
-  const Comp = asChild ? Slot.Root : "span";
-  return /* @__PURE__ */ jsx(
-    Comp,
-    {
-      "data-slot": "badge",
-      "data-variant": variant,
-      className: cn(badgeVariants({ variant }), className),
-      ...props
-    }
-  );
-}
-const JPY_PER_USD = 150;
-const FX_TO_JPY = {
-  JPY: 1,
-  USD: 150,
-  EUR: 165,
-  GBP: 190,
-  CAD: 110,
-  AUD: 100,
-  NZD: 90,
-  PHP: 3,
-  THB: 4,
-  SGD: 112
-};
-const FX_TO_USD = {
-  USD: 1,
-  JPY: 1 / 150,
-  EUR: 1.1,
-  GBP: 1.27,
-  CAD: 0.73,
-  AUD: 0.67,
-  NZD: 0.6,
-  PHP: 0.02,
-  THB: 0.027,
-  SGD: 0.75
-};
-function convertJpyToUsd(amountJpy) {
-  return Math.round(amountJpy / JPY_PER_USD);
-}
-function formatCurrency(amount, isEn) {
-  if (isEn) {
-    return `$${convertJpyToUsd(amount).toLocaleString()}`;
-  }
-  return `¥${amount.toLocaleString()}`;
-}
-function costStringToUsd(cost) {
-  if (!cost) return null;
-  const match = cost.match(/[\d,]+/);
-  if (!match) return cost;
-  const yen = parseInt(match[0].replace(/,/g, ""), 10);
-  if (isNaN(yen) || yen === 0) return cost;
-  return `$${convertJpyToUsd(yen).toLocaleString()}`;
-}
 const raceTypeBorders = {
   spartan: "border-t-red-500",
   marathon: "border-t-blue-500",
@@ -449,6 +459,7 @@ const raceTypeBorders = {
   obstacle: "border-t-rose-500",
   tough_mudder: "border-t-rose-500",
   bike: "border-t-teal-500",
+  cycling: "border-t-teal-500",
   duathlon: "border-t-purple-500",
   rogaining: "border-t-lime-500",
   adventure: "border-t-orange-500",
@@ -467,6 +478,7 @@ const raceTypeBadgeBg = {
   obstacle: "bg-rose-500 text-white border-rose-500",
   tough_mudder: "bg-rose-500 text-white border-rose-500",
   bike: "bg-teal-500 text-white border-teal-500",
+  cycling: "bg-teal-500 text-white border-teal-500",
   duathlon: "bg-purple-500 text-white border-purple-500",
   rogaining: "bg-lime-500 text-white border-lime-500",
   adventure: "bg-orange-500 text-white border-orange-500",
@@ -477,133 +489,178 @@ const raceTypeBadgeBg = {
   other: "bg-gray-400 text-white border-gray-400"
 };
 function formatDateWithDay(dateStr, isEn) {
+  const date = /* @__PURE__ */ new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return dateStr;
   if (isEn) {
-    const daysEn = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const d2 = /* @__PURE__ */ new Date(dateStr + "T00:00:00");
-    if (isNaN(d2.getTime())) return dateStr;
-    return `${dateStr} (${daysEn[d2.getDay()]})`;
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      weekday: "short"
+    }).format(date);
   }
-  const days = ["日", "月", "火", "水", "木", "金", "土"];
-  const d = /* @__PURE__ */ new Date(dateStr + "T00:00:00");
-  if (isNaN(d.getTime())) return dateStr;
-  return `${dateStr}（${days[d.getDay()]}）`;
+  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+  return `${dateStr}（${weekdays[date.getDay()]}）`;
+}
+function formatDateRange(start, end, isEn) {
+  if (!start) return "---";
+  if (!end || end === start) return formatDateWithDay(start, isEn);
+  return `${formatDateWithDay(start, isEn)} ${isEn ? "-" : "〜"} ${formatDateWithDay(end, isEn)}`;
+}
+function getTodayString() {
+  return (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+}
+function getEntryStatus(event2) {
+  const today = getTodayString();
+  if (!event2.entry_start || !event2.entry_end) return "closed";
+  if (today < event2.entry_start) return "not_yet";
+  if (today > event2.entry_end) return "closed";
+  return "open";
 }
 function EventCard({
   event: event2,
-  langPrefix,
   raceTypeLabel,
-  cardLink,
-  chipsToShow,
-  isEnriched,
-  t,
   lang
 }) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const isEn = lang === "en";
   const displayName = isEn ? event2.name_en ?? event2.name : event2.name;
   const displayCountry = isEn ? event2.country_en ?? event2.country : event2.country;
   const displayLocation = isEn ? event2.location_en ?? event2.location : event2.location;
-  const sep = isEn ? " - " : "〜";
-  const dateText = event2.event_date_end && event2.event_date && event2.event_date_end !== event2.event_date ? `${formatDateWithDay(event2.event_date, isEn)}${sep}${formatDateWithDay(event2.event_date_end, isEn)}` : event2.event_date ? formatDateWithDay(event2.event_date, isEn) : null;
-  const entryPeriod = (() => {
-    if (event2.entry_start && event2.entry_end) return `${event2.entry_start}${sep}${event2.entry_end}`;
-    if (event2.entry_start_typical && event2.entry_end_typical) return `${event2.entry_start_typical}${sep}${event2.entry_end_typical}`;
-    return null;
-  })();
-  const totalCost = event2.total_cost_estimate ? parseInt(event2.total_cost_estimate, 10) : null;
-  const costEstimate = totalCost ? isEn ? `$${convertJpyToUsd(totalCost).toLocaleString()}` : `¥${totalCost.toLocaleString()}` : null;
-  const minEntryFeeJpy = event2.categories?.filter((c) => c.entry_fee != null && c.entry_fee > 0).map((c) => Math.round(c.entry_fee * (FX_TO_JPY[c.entry_fee_currency || "JPY"] || 1))).reduce((min, v) => min === null || v < min ? v : min, null) ?? null;
-  const minEntryFeeUsd = event2.categories?.filter((c) => c.entry_fee != null && c.entry_fee > 0).map((c) => Math.round(c.entry_fee * (FX_TO_USD[c.entry_fee_currency || "JPY"] || 1))).reduce((min, v) => min === null || v < min ? v : min, null) ?? null;
-  const minEntryFeeDisplay = isEn ? minEntryFeeUsd : minEntryFeeJpy;
-  const entryCurrSymbol = isEn ? "$" : "¥";
-  const restCost = totalCost && minEntryFeeJpy ? totalCost - minEntryFeeJpy : 0;
+  const description = (isEn ? event2.description_en ?? event2.description : event2.description)?.trim() ?? "";
+  const entryStatus = getEntryStatus(event2);
+  const entryStatusConfig = {
+    open: {
+      badge: isEn ? "Open" : "受付中",
+      button: isEn ? "Go to entry page" : "申込ページへ",
+      badgeClass: "bg-green-500 text-white border-green-500",
+      buttonEnabled: Boolean(event2.entry_url)
+    },
+    not_yet: {
+      badge: isEn ? "Not yet open" : "受付前",
+      button: isEn ? "Entry not open yet" : "申込開始前",
+      badgeClass: "bg-amber-500 text-white border-amber-500",
+      buttonEnabled: false
+    },
+    closed: {
+      badge: isEn ? "Closed" : "受付終了",
+      button: isEn ? "Entry closed" : "申込終了",
+      badgeClass: "bg-red-500 text-white border-red-500",
+      buttonEnabled: false
+    }
+  };
+  const distances = useMemo(() => {
+    const values = (event2.categories ?? []).map((category) => category.distance_km).filter((distance) => distance != null).sort((a, b) => a - b);
+    if (values.length === 0) return "---";
+    return [...new Set(values)].map((distance) => `${distance}km`).join(", ");
+  }, [event2.categories]);
+  const descriptionPreview = description ? description.length > 100 ? `${description.slice(0, 100)}...` : description : isEn ? "No description available." : "紹介文はありません。";
+  const hasExpandableDescription = description.length > 100;
+  const mapsHref = event2.latitude != null && event2.longitude != null ? `https://www.google.com/maps?q=${event2.latitude},${event2.longitude}` : null;
   const borderColor = raceTypeBorders[event2.race_type ?? "other"] ?? raceTypeBorders.other;
   const badgeBg = raceTypeBadgeBg[event2.race_type ?? "other"] ?? raceTypeBadgeBg.other;
-  if (!isEnriched) {
-    return /* @__PURE__ */ jsx(Card, { className: cn(
-      "overflow-hidden border-t-4 bg-white shadow-sm opacity-60 py-0",
-      borderColor
-    ), children: /* @__PURE__ */ jsxs(CardContent, { className: "p-4", children: [
-      /* @__PURE__ */ jsx("h3", { className: "truncate text-sm font-semibold text-foreground", children: displayName }),
-      /* @__PURE__ */ jsxs("div", { className: "mt-1 flex items-center gap-4 text-xs text-muted-foreground", children: [
-        dateText && /* @__PURE__ */ jsxs("span", { className: "flex items-center gap-1", children: [
-          /* @__PURE__ */ jsx(Calendar$1, { className: "h-3 w-3 shrink-0" }),
-          dateText
-        ] }),
-        displayCountry && /* @__PURE__ */ jsx("span", { children: displayCountry })
-      ] })
-    ] }) });
-  }
-  return /* @__PURE__ */ jsx(Card, { className: cn(
-    "group overflow-hidden border-t-4 bg-white shadow-sm py-0 flex flex-col min-h-[220px]",
-    borderColor,
-    "transition-all duration-200 hover:shadow-md"
-  ), children: /* @__PURE__ */ jsxs(CardContent, { className: "flex flex-1 flex-col p-0", children: [
-    /* @__PURE__ */ jsx(Link, { to: cardLink, className: "block flex-1 no-underline", children: /* @__PURE__ */ jsxs("div", { className: "flex h-full flex-col p-4", children: [
-      /* @__PURE__ */ jsx("div", { className: "mb-2", children: /* @__PURE__ */ jsx(
-        Badge,
-        {
-          className: cn("shrink-0 text-[10px] px-1.5 py-0.5", badgeBg),
-          children: raceTypeLabel(event2.race_type)
-        }
-      ) }),
-      /* @__PURE__ */ jsx("h3", { className: "text-sm font-semibold text-foreground line-clamp-2 leading-snug mb-2", children: displayName }),
-      /* @__PURE__ */ jsxs("div", { className: "space-y-1 mb-auto", children: [
-        dateText && /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1.5 text-xs text-muted-foreground", children: [
-          /* @__PURE__ */ jsx(Calendar$1, { className: "h-3 w-3 shrink-0 text-primary/70" }),
-          /* @__PURE__ */ jsx("span", { children: dateText })
-        ] }),
-        (displayCountry || displayLocation) && /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1.5 text-xs text-muted-foreground", children: [
-          /* @__PURE__ */ jsx(MapPin, { className: "h-3 w-3 shrink-0 text-primary/70" }),
-          /* @__PURE__ */ jsx("span", { className: "truncate", children: displayCountry && displayLocation ? `${displayCountry} / ${displayLocation}` : displayCountry || displayLocation })
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxs("div", { className: "mt-2 space-y-1", children: [
-        entryPeriod && /* @__PURE__ */ jsxs("p", { className: "text-[11px] text-muted-foreground leading-tight", children: [
-          t("event.entry"),
-          ": ",
-          entryPeriod
-        ] }),
-        costEstimate && /* @__PURE__ */ jsxs("div", { children: [
-          /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1 text-xs font-semibold text-primary", children: [
-            /* @__PURE__ */ jsx(Banknote, { className: "h-3 w-3" }),
-            /* @__PURE__ */ jsxs("span", { children: [
-              isEn ? "Est." : "目安",
-              " ",
-              costEstimate
+  const status = entryStatusConfig[entryStatus];
+  return /* @__PURE__ */ jsxs(
+    Card,
+    {
+      className: cn(
+        "flex h-full flex-col overflow-hidden border-t-4 bg-white py-0 shadow-sm transition-all duration-200 hover:shadow-lg",
+        borderColor
+      ),
+      children: [
+        /* @__PURE__ */ jsxs(CardContent, { className: "flex flex-1 flex-col gap-4 p-5", children: [
+          /* @__PURE__ */ jsxs("div", { className: "space-y-2", children: [
+            /* @__PURE__ */ jsx("p", { className: "line-clamp-2 text-lg font-bold leading-tight text-foreground", children: displayName }),
+            /* @__PURE__ */ jsx(Badge, { className: cn("w-fit text-[10px] uppercase", badgeBg), children: raceTypeLabel(event2.race_type) }),
+            /* @__PURE__ */ jsx(Badge, { className: cn("w-fit text-[10px]", status.badgeClass), children: status.badge })
+          ] }),
+          /* @__PURE__ */ jsxs("div", { className: "space-y-2 text-sm", children: [
+            /* @__PURE__ */ jsxs("div", { className: "flex items-start gap-2 text-muted-foreground", children: [
+              /* @__PURE__ */ jsx(Calendar$1, { className: "mt-0.5 h-4 w-4 shrink-0 text-primary" }),
+              /* @__PURE__ */ jsx("span", { children: formatDateRange(event2.event_date, event2.event_date_end ?? null, isEn) })
+            ] }),
+            /* @__PURE__ */ jsxs("div", { className: "flex items-start gap-2 text-muted-foreground", children: [
+              /* @__PURE__ */ jsx(MapPin, { className: "mt-0.5 h-4 w-4 shrink-0 text-primary" }),
+              mapsHref ? /* @__PURE__ */ jsx(
+                "a",
+                {
+                  href: mapsHref,
+                  target: "_blank",
+                  rel: "noopener noreferrer",
+                  className: "text-primary underline-offset-4 hover:underline",
+                  children: [displayCountry, displayLocation].filter(Boolean).join(" / ") || "---"
+                }
+              ) : /* @__PURE__ */ jsx("span", { children: [displayCountry, displayLocation].filter(Boolean).join(" / ") || "---" })
+            ] }),
+            /* @__PURE__ */ jsxs("div", { className: "flex items-start gap-2 text-muted-foreground", children: [
+              /* @__PURE__ */ jsx(Ruler, { className: "mt-0.5 h-4 w-4 shrink-0 text-primary" }),
+              /* @__PURE__ */ jsx("span", { className: "text-foreground", children: distances })
             ] })
           ] }),
-          (minEntryFeeDisplay || restCost > 0) && /* @__PURE__ */ jsxs("div", { className: "mt-0.5 text-[10px] text-muted-foreground leading-tight", children: [
-            minEntryFeeDisplay && /* @__PURE__ */ jsxs("span", { children: [
-              isEn ? "Entry" : "参加",
-              " ",
-              entryCurrSymbol,
-              minEntryFeeDisplay.toLocaleString()
+          /* @__PURE__ */ jsxs("div", { className: "border-t border-border/50 pt-4", children: [
+            /* @__PURE__ */ jsx("p", { className: "text-sm leading-relaxed text-foreground/85", children: isExpanded ? description || descriptionPreview : descriptionPreview }),
+            hasExpandableDescription && /* @__PURE__ */ jsxs(
+              "button",
+              {
+                type: "button",
+                onClick: () => setIsExpanded((prev) => !prev),
+                className: "mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary/80",
+                "aria-expanded": isExpanded,
+                children: [
+                  isExpanded ? /* @__PURE__ */ jsx(ChevronUp, { className: "h-3.5 w-3.5" }) : /* @__PURE__ */ jsx(ChevronDown, { className: "h-3.5 w-3.5" }),
+                  isExpanded ? isEn ? "Show less" : "折りたたむ" : isEn ? "Show more" : "続きを読む"
+                ]
+              }
+            )
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxs(CardFooter, { className: "flex flex-col items-stretch gap-3 border-t border-border/40 p-5", children: [
+          status.buttonEnabled && /* @__PURE__ */ jsx(
+            Button,
+            {
+              type: "button",
+              onClick: () => {
+                if (event2.entry_url) window.open(event2.entry_url, "_blank", "noopener,noreferrer");
+              },
+              className: "w-full font-semibold",
+              children: status.button
+            }
+          ),
+          /* @__PURE__ */ jsxs("div", { className: "flex flex-wrap items-center gap-x-4 gap-y-2 text-sm", children: [
+            event2.official_url ? /* @__PURE__ */ jsxs(
+              "a",
+              {
+                href: event2.official_url,
+                target: "_blank",
+                rel: "noopener noreferrer",
+                className: "inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline",
+                children: [
+                  /* @__PURE__ */ jsx(ExternalLink, { className: "h-4 w-4" }),
+                  isEn ? "Official site" : "公式サイト"
+                ]
+              }
+            ) : /* @__PURE__ */ jsxs("span", { className: "inline-flex items-center gap-1 text-muted-foreground", children: [
+              /* @__PURE__ */ jsx(ExternalLink, { className: "h-4 w-4" }),
+              isEn ? "Official site unavailable" : "公式サイトなし"
             ] }),
-            minEntryFeeDisplay && restCost > 0 && /* @__PURE__ */ jsx("span", { children: " / " }),
-            restCost > 0 && /* @__PURE__ */ jsxs("span", { children: [
-              isEn ? "Travel+Stay" : "交通+宿泊",
-              " ",
-              isEn ? `$${convertJpyToUsd(restCost).toLocaleString()}` : `¥${restCost.toLocaleString()}`
-            ] })
+            event2.entry_url && /* @__PURE__ */ jsxs(
+              "a",
+              {
+                href: event2.entry_url,
+                target: "_blank",
+                rel: "noopener noreferrer",
+                className: "inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline",
+                children: [
+                  /* @__PURE__ */ jsx(ExternalLink, { className: "h-4 w-4" }),
+                  isEn ? "Entry page" : "申込ページ"
+                ]
+              }
+            )
           ] })
         ] })
-      ] })
-    ] }) }),
-    chipsToShow.length > 0 && /* @__PURE__ */ jsx("div", { className: "flex flex-wrap gap-1 border-t border-border/40 px-3 py-2", children: chipsToShow.map((cat) => /* @__PURE__ */ jsx(
-      Link,
-      {
-        to: `${langPrefix}/events/${event2.id}/categories/${cat.id}`,
-        className: cn(
-          "inline-flex items-center rounded-md border border-border/60 bg-secondary/50 px-2 py-0.5",
-          "text-[11px] text-secondary-foreground no-underline transition-colors",
-          "hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
-        ),
-        title: cat.distance_km != null || cat.elevation_gain != null ? `${cat.distance_km != null ? `${cat.distance_km}km` : ""} ${cat.elevation_gain != null ? `D+${cat.elevation_gain}m` : ""}`.trim() : void 0,
-        children: isEn ? cat.name_en ?? cat.name : cat.name
-      },
-      cat.id
-    )) })
-  ] }) });
+      ]
+    }
+  );
 }
 function Skeleton({ className, ...props }) {
   return /* @__PURE__ */ jsx(
@@ -643,58 +700,73 @@ function EventCardSkeleton() {
     ] })
   ] }) });
 }
-const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive: "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40",
-        outline: "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-        link: "text-primary underline-offset-4 hover:underline"
+function Calendar({
+  className,
+  classNames,
+  showOutsideDays = true,
+  ...props
+}) {
+  return /* @__PURE__ */ jsx(
+    DayPicker,
+    {
+      showOutsideDays,
+      className: cn("p-1", className),
+      classNames: {
+        months: "flex flex-col gap-2",
+        month: "space-y-2",
+        month_caption: "flex justify-center pt-1 relative items-center h-8",
+        caption_label: "text-xs font-medium",
+        nav: "flex items-center gap-1",
+        button_previous: cn(
+          buttonVariants({ variant: "outline" }),
+          "absolute left-0 h-6 w-6 bg-transparent p-0 opacity-50 hover:opacity-100 z-10"
+        ),
+        button_next: cn(
+          buttonVariants({ variant: "outline" }),
+          "absolute right-0 h-6 w-6 bg-transparent p-0 opacity-50 hover:opacity-100 z-10"
+        ),
+        month_grid: "w-full border-collapse",
+        weekdays: "flex",
+        weekday: "text-muted-foreground rounded-md w-8 font-normal text-[0.7rem] text-center",
+        week: "flex w-full mt-1",
+        day: "h-8 w-8 text-center text-xs p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+        day_button: cn(
+          buttonVariants({ variant: "ghost" }),
+          "h-8 w-8 p-0 text-xs font-normal aria-selected:opacity-100"
+        ),
+        range_end: "day-range-end",
+        selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+        today: "font-semibold underline underline-offset-2",
+        outside: "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
+        disabled: "text-muted-foreground opacity-50",
+        range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+        hidden: "invisible",
+        ...classNames
       },
-      size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-        icon: "size-9",
-        "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8",
-        "icon-lg": "size-10"
-      }
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default"
+      components: {
+        Chevron: ({ orientation }) => orientation === "left" ? /* @__PURE__ */ jsx(ChevronLeft, { className: "h-3 w-3" }) : /* @__PURE__ */ jsx(ChevronRight, { className: "h-3 w-3" })
+      },
+      ...props
     }
-  }
-);
-const Button = React.forwardRef(
-  ({
-    className,
-    variant = "default",
-    size = "default",
-    asChild = false,
+  );
+}
+Calendar.displayName = "Calendar";
+const Popover = PopoverPrimitive.Root;
+const PopoverTrigger = PopoverPrimitive.Trigger;
+const PopoverContent = React.forwardRef(({ className, align = "start", sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsx(PopoverPrimitive.Portal, { children: /* @__PURE__ */ jsx(
+  PopoverPrimitive.Content,
+  {
+    ref,
+    align,
+    sideOffset,
+    className: cn(
+      "z-50 w-auto rounded-md border border-border bg-background p-0 shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+      className
+    ),
     ...props
-  }, ref) => {
-    const Comp = asChild ? Slot.Root : "button";
-    return /* @__PURE__ */ jsx(
-      Comp,
-      {
-        ref,
-        "data-slot": "button",
-        "data-variant": variant,
-        "data-size": size,
-        className: cn(buttonVariants({ variant, size, className })),
-        ...props
-      }
-    );
   }
-);
-Button.displayName = "Button";
+) }));
+PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 function Sheet({ ...props }) {
   return /* @__PURE__ */ jsx(Dialog.Root, { "data-slot": "sheet", ...props });
 }
@@ -780,103 +852,43 @@ function SheetTitle({
     }
   );
 }
-const BUCKET_COUNT = 20;
-function PriceHistogramSlider({ prices, min, max, onRangeChange, currency = "¥", lang }) {
-  const isEn = lang === "en";
-  const { buckets, globalMin, globalMax, step } = useMemo(() => {
-    if (prices.length === 0) return { buckets: [], globalMin: 0, globalMax: 0, step: 1 };
-    const sorted = [...prices].sort((a, b2) => a - b2);
-    const gMin = 0;
-    const gMax = Math.ceil(sorted[sorted.length - 1] / 1e4) * 1e4 || 1e5;
-    const s = Math.max(Math.round((gMax - gMin) / BUCKET_COUNT), 1e3);
-    const b = new Array(BUCKET_COUNT).fill(0);
-    for (const p of sorted) {
-      const idx = Math.min(Math.floor((p - gMin) / s), BUCKET_COUNT - 1);
-      b[idx]++;
-    }
-    return { buckets: b, globalMin: gMin, globalMax: gMax, step: s };
-  }, [prices]);
-  const maxBucket = Math.max(...buckets, 1);
-  const handleMinChange = useCallback((e) => {
-    const val = parseInt(e.target.value);
-    onRangeChange(Math.min(val, max - step), max);
-  }, [max, step, onRangeChange]);
-  const handleMaxChange = useCallback((e) => {
-    const val = parseInt(e.target.value);
-    onRangeChange(min, Math.max(val, min + step));
-  }, [min, step, onRangeChange]);
-  if (prices.length === 0) return null;
-  const formatPrice = (v) => {
-    if (v >= 1e4) return `${currency}${Math.round(v / 1e3)}K`;
-    return `${currency}${v.toLocaleString()}`;
-  };
-  const minPct = (min - globalMin) / (globalMax - globalMin) * 100;
-  const maxPct = (max - globalMin) / (globalMax - globalMin) * 100;
-  return /* @__PURE__ */ jsxs("div", { className: "price-histogram-slider", children: [
-    /* @__PURE__ */ jsxs("div", { className: "price-histogram-labels", children: [
-      /* @__PURE__ */ jsx("span", { children: formatPrice(min) }),
-      /* @__PURE__ */ jsxs("span", { children: [
-        formatPrice(max),
-        max >= globalMax ? "+" : ""
-      ] })
-    ] }),
-    /* @__PURE__ */ jsx("div", { className: "price-histogram-bars", children: buckets.map((count, i) => {
-      const bucketStart = globalMin + i * step;
-      const bucketEnd = bucketStart + step;
-      const inRange = bucketEnd > min && bucketStart < max;
-      return /* @__PURE__ */ jsx(
-        "div",
-        {
-          className: `price-histogram-bar${inRange ? " price-histogram-bar--active" : ""}`,
-          style: { height: `${count / maxBucket * 100}%` },
-          title: isEn ? `${formatPrice(bucketStart)}-${formatPrice(bucketEnd)}: ${count} events` : `${formatPrice(bucketStart)}〜${formatPrice(bucketEnd)}: ${count}件`
-        },
-        i
-      );
-    }) }),
-    /* @__PURE__ */ jsxs("div", { className: "price-slider-track", children: [
-      /* @__PURE__ */ jsx(
-        "div",
-        {
-          className: "price-slider-range",
-          style: { left: `${minPct}%`, width: `${maxPct - minPct}%` }
-        }
-      ),
-      /* @__PURE__ */ jsx(
-        "input",
-        {
-          type: "range",
-          className: "price-slider price-slider--min",
-          min: globalMin,
-          max: globalMax,
-          step,
-          value: min,
-          onChange: handleMinChange
-        }
-      ),
-      /* @__PURE__ */ jsx(
-        "input",
-        {
-          type: "range",
-          className: "price-slider price-slider--max",
-          min: globalMin,
-          max: globalMax,
-          step,
-          value: max,
-          onChange: handleMaxChange
-        }
-      )
-    ] })
-  ] });
+const toLocalDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+function formatShortDate(dateStr, lang) {
+  const date = /* @__PURE__ */ new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return dateStr;
+  return new Intl.DateTimeFormat(lang === "en" ? "en-US" : "ja-JP", {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  }).format(date);
 }
-function formatYearMonth(ym, lang) {
-  const [year, month] = ym.split("-");
-  const m = parseInt(month, 10);
-  if (lang === "en") return `${year}/${month}`;
-  return `${year}年${m}月`;
+function countActiveFilters(props) {
+  let count = 0;
+  if (props.dateRangeStart || props.dateRangeEnd) count++;
+  if (props.countries.size > 0) count++;
+  if (props.raceTypes.size > 0) count++;
+  if (props.distanceRanges.size > 0) count++;
+  if (!props.futureOnly) count++;
+  return count;
 }
 function getActiveFilterChips(props) {
   const chips = [];
+  if (props.dateRangeStart || props.dateRangeEnd) {
+    const start = props.dateRangeStart ? formatShortDate(props.dateRangeStart, props.lang) : "...";
+    const end = props.dateRangeEnd ? formatShortDate(props.dateRangeEnd, props.lang) : "...";
+    chips.push({
+      key: "date-range",
+      label: `${start} - ${end}`,
+      onRemove: () => props.onDateRangeChange(null, null)
+    });
+  }
+  for (const country of props.countries) {
+    chips.push({
+      key: `country-${country}`,
+      label: country,
+      onRemove: () => props.onCountryToggle(country)
+    });
+  }
   for (const type of props.raceTypes) {
     chips.push({
       key: `race-${type}`,
@@ -884,389 +896,263 @@ function getActiveFilterChips(props) {
       onRemove: () => props.onRaceTypeToggle(type)
     });
   }
-  if (props.dateRangeStart || props.dateRangeEnd) {
-    const isEn = props.lang === "en";
-    let label = "";
-    if (props.dateRangeStart && props.dateRangeEnd) {
-      const startMonth = parseInt(props.dateRangeStart.slice(5, 7), 10);
-      const endMonth = parseInt(props.dateRangeEnd.slice(5, 7), 10);
-      const startYear = props.dateRangeStart.slice(0, 4);
-      const endYear = props.dateRangeEnd.slice(0, 4);
-      if (isEn) {
-        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        label = startYear === endYear ? `${months[startMonth - 1]}~${months[endMonth - 1]} ${startYear}` : `${months[startMonth - 1]} ${startYear}~${months[endMonth - 1]} ${endYear}`;
-      } else {
-        label = startYear === endYear ? `${startYear}年${startMonth}月~${endMonth}月` : `${startYear}年${startMonth}月~${endYear}年${endMonth}月`;
-      }
-    } else if (props.dateRangeStart) {
-      label = isEn ? `${formatYearMonth(props.dateRangeStart, props.lang)}~` : `${formatYearMonth(props.dateRangeStart, props.lang)}~`;
-    } else if (props.dateRangeEnd) {
-      label = isEn ? `~${formatYearMonth(props.dateRangeEnd, props.lang)}` : `~${formatYearMonth(props.dateRangeEnd, props.lang)}`;
-    }
-    if (label) {
-      chips.push({
-        key: "dateRange",
-        label,
-        onRemove: () => props.onDateRangeChange(null, null)
-      });
-    }
-  }
   for (const idx of props.distanceRanges) {
     const range = props.distanceRangeOptions[idx];
-    if (range) {
-      chips.push({
-        key: `dist-${idx}`,
-        label: range.label,
-        onRemove: () => props.onDistanceRangeToggle(idx)
-      });
-    }
-  }
-  if (props.timeLimitMin) {
+    if (!range) continue;
     chips.push({
-      key: "timelimit",
-      label: props.t("filter.hoursOrMore", { hours: parseFloat(props.timeLimitMin) }),
-      onRemove: () => props.onTimeLimitChange("")
+      key: `distance-${idx}`,
+      label: range.label,
+      onRemove: () => props.onDistanceRangeToggle(idx)
     });
   }
-  if (props.costMin > 0 || props.costMax < Infinity) {
-    const currency = props.lang === "en" ? "$" : "¥";
-    const minLabel = props.costMin > 0 ? `${currency}${props.costMin.toLocaleString()}` : "";
-    const maxLabel = props.costMax < Infinity ? `${currency}${props.costMax.toLocaleString()}` : "";
-    const label = minLabel && maxLabel ? `${minLabel}〜${maxLabel}` : minLabel ? `${minLabel}〜` : `〜${maxLabel}`;
+  if (!props.futureOnly) {
     chips.push({
-      key: "cost",
-      label: `${props.lang === "en" ? "Cost" : "コスト"}: ${label}`,
-      onRemove: () => props.onCostRangeChange(0, Infinity)
-    });
-  }
-  if (props.poleFilter) {
-    const poleLabels = {
-      allowed: props.t("filter.poleAllowed"),
-      prohibited: props.t("filter.poleProhibited")
-    };
-    chips.push({
-      key: "pole",
-      label: poleLabels[props.poleFilter] || props.poleFilter,
-      onRemove: () => props.onPoleFilterChange("")
-    });
-  }
-  if (props.entryStatus !== "active") {
-    const statusLabels = {
-      open: props.t("filter.entryOpen"),
-      upcoming: props.t("filter.entryUpcoming"),
-      closed: props.t("filter.entryClosed"),
-      "": props.t("filter.entryAll")
-    };
-    chips.push({
-      key: "entry",
-      label: statusLabels[props.entryStatus] || props.entryStatus,
-      onRemove: () => props.onEntryStatusChange("active")
-    });
-  }
-  if (props.showPastEvents) {
-    chips.push({
-      key: "past",
-      label: props.t("filter.showPast"),
-      onRemove: () => props.onShowPastEventsChange(false)
+      key: "future-only",
+      label: props.lang === "en" ? "Including past" : "過去も含む",
+      onRemove: () => props.onFutureOnlyChange(true)
     });
   }
   return chips;
 }
-function Calendar({
-  className,
-  classNames,
-  showOutsideDays = true,
-  ...props
+const TOP_COUNTRY_COUNT = 10;
+function CountryCheckbox({
+  country,
+  checked,
+  onToggle
 }) {
-  return /* @__PURE__ */ jsx(
-    DayPicker,
+  return /* @__PURE__ */ jsxs(
+    "label",
     {
-      showOutsideDays,
-      className: cn("p-1", className),
-      classNames: {
-        months: "flex flex-col gap-2",
-        month: "space-y-2",
-        month_caption: "flex justify-center pt-1 relative items-center h-8",
-        caption_label: "text-xs font-medium",
-        nav: "flex items-center gap-1",
-        button_previous: cn(
-          buttonVariants({ variant: "outline" }),
-          "absolute left-0 h-6 w-6 bg-transparent p-0 opacity-50 hover:opacity-100 z-10"
+      className: "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-secondary/50",
+      children: [
+        /* @__PURE__ */ jsx(
+          "input",
+          {
+            type: "checkbox",
+            checked,
+            onChange: () => onToggle(country.name),
+            className: "h-4 w-4 rounded border-input text-primary accent-primary"
+          }
         ),
-        button_next: cn(
-          buttonVariants({ variant: "outline" }),
-          "absolute right-0 h-6 w-6 bg-transparent p-0 opacity-50 hover:opacity-100 z-10"
-        ),
-        month_grid: "w-full border-collapse",
-        weekdays: "flex",
-        weekday: "text-muted-foreground rounded-md w-8 font-normal text-[0.7rem] text-center",
-        week: "flex w-full mt-1",
-        day: "h-8 w-8 text-center text-xs p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-        day_button: cn(
-          buttonVariants({ variant: "ghost" }),
-          "h-8 w-8 p-0 text-xs font-normal aria-selected:opacity-100"
-        ),
-        range_end: "day-range-end",
-        selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        today: "font-semibold underline underline-offset-2",
-        outside: "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
-        disabled: "text-muted-foreground opacity-50",
-        range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
-        hidden: "invisible",
-        ...classNames
-      },
-      components: {
-        Chevron: ({ orientation }) => orientation === "left" ? /* @__PURE__ */ jsx(ChevronLeft, { className: "h-3 w-3" }) : /* @__PURE__ */ jsx(ChevronRight, { className: "h-3 w-3" })
-      },
-      ...props
+        /* @__PURE__ */ jsxs("span", { className: "flex min-w-0 flex-1 items-center justify-between gap-2 text-sm", children: [
+          /* @__PURE__ */ jsx("span", { className: "truncate", children: country.name }),
+          /* @__PURE__ */ jsxs("span", { className: "shrink-0 text-xs text-muted-foreground", children: [
+            "(",
+            country.count,
+            ")"
+          ] })
+        ] })
+      ]
     }
   );
 }
-Calendar.displayName = "Calendar";
-const Popover = PopoverPrimitive.Root;
-const PopoverTrigger = PopoverPrimitive.Trigger;
-const PopoverContent = React.forwardRef(({ className, align = "start", sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsx(PopoverPrimitive.Portal, { children: /* @__PURE__ */ jsx(
-  PopoverPrimitive.Content,
-  {
-    ref,
-    align,
-    sideOffset,
-    className: cn(
-      "z-50 w-auto rounded-md border border-border bg-background p-0 shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-      className
-    ),
-    ...props
-  }
-) }));
-PopoverContent.displayName = PopoverPrimitive.Content.displayName;
-const toLocalDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-function formatDate(dateStr, isEn) {
-  const d = new Date(dateStr);
-  if (isEn) {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return `${months[d.getMonth()]} ${d.getDate()}`;
-  }
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
-function FilterSection({
-  title,
-  defaultOpen = false,
-  children
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return /* @__PURE__ */ jsxs("div", { className: "border-b border-border/50 last:border-b-0", children: [
-    /* @__PURE__ */ jsxs(
-      "button",
-      {
-        type: "button",
-        onClick: () => setOpen(!open),
-        "aria-expanded": open,
-        className: "flex w-full items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors bg-transparent border-0 cursor-pointer",
-        children: [
-          /* @__PURE__ */ jsx("span", { children: title }),
-          /* @__PURE__ */ jsx(
-            ChevronDown,
-            {
-              className: cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")
-            }
-          )
-        ]
-      }
-    ),
-    open && /* @__PURE__ */ jsx("div", { className: "px-3 pb-3", children })
-  ] });
-}
-function countActiveFilters(props) {
-  let count = 0;
-  if (props.raceTypes.size > 0) count++;
-  if (props.dateRangeStart || props.dateRangeEnd) count++;
-  if (props.distanceRanges.size > 0) count++;
-  if (props.timeLimitMin) count++;
-  if (props.costMin > 0 || props.costMax < Infinity) count++;
-  if (props.poleFilter) count++;
-  if (props.entryStatus !== "active") count++;
-  if (props.showPastEvents) count++;
-  return count;
-}
-function SidebarFilters(props) {
+function FiltersSheetBody(props) {
   const isEn = props.lang === "en";
-  const activeCount = countActiveFilters(props);
-  const clearAll = () => {
-    for (const type of props.raceTypes) props.onRaceTypeToggle(type);
-    props.onDateRangeChange(null, null);
-    for (const idx of props.distanceRanges) props.onDistanceRangeToggle(idx);
-    if (props.timeLimitMin) props.onTimeLimitChange("");
-    if (props.costMin > 0 || props.costMax < Infinity) props.onCostRangeChange(0, Infinity);
-    if (props.poleFilter) props.onPoleFilterChange("");
-    if (props.entryStatus !== "active") props.onEntryStatusChange("active");
-    if (props.showPastEvents) props.onShowPastEventsChange(false);
-  };
-  return /* @__PURE__ */ jsxs("div", { className: "space-y-0", children: [
-    /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between px-3 pb-1", children: [
-      /* @__PURE__ */ jsx("p", { className: "text-xs text-muted-foreground uppercase tracking-wider", children: isEn ? "Filters" : "絞り込み" }),
-      activeCount > 0 && /* @__PURE__ */ jsx("span", { className: "inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground", children: activeCount })
-    ] }),
-    /* @__PURE__ */ jsxs(FilterSection, { title: isEn ? "Date Range" : "開催時期", defaultOpen: true, children: [
+  const [countriesExpanded, setCountriesExpanded] = useState(false);
+  const topCountries = props.availableCountries.slice(0, TOP_COUNTRY_COUNT);
+  const restCountries = props.availableCountries.slice(TOP_COUNTRY_COUNT);
+  const otherRegionLabel = isEn ? "Other" : "その他";
+  const regionGroups = restCountries.reduce((map, country) => {
+    const region = country.region ?? otherRegionLabel;
+    if (!map.has(region)) map.set(region, []);
+    map.get(region).push(country);
+    return map;
+  }, /* @__PURE__ */ new Map());
+  return /* @__PURE__ */ jsxs("div", { className: "space-y-5 px-4 pb-6", children: [
+    /* @__PURE__ */ jsxs("div", { className: "space-y-2", children: [
+      /* @__PURE__ */ jsx("h3", { className: "text-xs font-semibold uppercase tracking-wider text-muted-foreground", children: isEn ? "Event date" : "開催日" }),
       /* @__PURE__ */ jsxs(Popover, { children: [
         /* @__PURE__ */ jsx(PopoverTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(
-          "button",
+          Button,
           {
-            type: "button",
+            variant: "outline",
             className: cn(
-              "flex w-full items-center gap-2 rounded border border-input bg-background px-2 py-1.5 text-xs transition-colors hover:bg-secondary/50",
-              props.dateRangeStart || props.dateRangeEnd ? "text-foreground" : "text-muted-foreground"
+              "w-full justify-start text-left font-normal",
+              !props.dateRangeStart && !props.dateRangeEnd && "text-muted-foreground"
             ),
             children: [
-              /* @__PURE__ */ jsx(CalendarIcon, { className: "h-3.5 w-3.5 shrink-0" }),
-              /* @__PURE__ */ jsx("span", { className: "truncate", children: props.dateRangeStart && props.dateRangeEnd ? `${formatDate(props.dateRangeStart, isEn)} – ${formatDate(props.dateRangeEnd, isEn)}` : props.dateRangeStart ? `${formatDate(props.dateRangeStart, isEn)} –` : isEn ? "Select dates" : "日付を選択" })
+              /* @__PURE__ */ jsx(CalendarIcon, { className: "mr-2 h-4 w-4" }),
+              props.dateRangeStart || props.dateRangeEnd ? `${props.dateRangeStart ? formatShortDate(props.dateRangeStart, props.lang) : "..."} - ${props.dateRangeEnd ? formatShortDate(props.dateRangeEnd, props.lang) : "..."}` : isEn ? "Select date range" : "開催日を選択"
             ]
           }
         ) }),
-        /* @__PURE__ */ jsx(PopoverContent, { className: "p-0 w-auto z-[9999] max-h-[85vh] overflow-y-auto overscroll-contain", side: "bottom", align: "start", sideOffset: 4, avoidCollisions: false, children: /* @__PURE__ */ jsx(
+        /* @__PURE__ */ jsx(PopoverContent, { className: "w-auto p-0", align: "start", children: /* @__PURE__ */ jsx(
           Calendar,
           {
             mode: "range",
             selected: {
-              from: props.dateRangeStart ? new Date(props.dateRangeStart) : void 0,
-              to: props.dateRangeEnd ? new Date(props.dateRangeEnd) : void 0
+              from: props.dateRangeStart ? /* @__PURE__ */ new Date(`${props.dateRangeStart}T00:00:00`) : void 0,
+              to: props.dateRangeEnd ? /* @__PURE__ */ new Date(`${props.dateRangeEnd}T00:00:00`) : void 0
             },
             onSelect: (range) => {
-              const start = range?.from ? toLocalDate(range.from) : null;
-              const end = range?.to ? toLocalDate(range.to) : null;
-              props.onDateRangeChange(start, end);
+              props.onDateRangeChange(
+                range?.from ? toLocalDate(range.from) : null,
+                range?.to ? toLocalDate(range.to) : null
+              );
             },
-            numberOfMonths: 2,
-            classNames: {
-              day_button: "h-9 w-9",
-              day: "h-9 w-9"
-            }
+            numberOfMonths: 2
           }
         ) })
-      ] }),
-      /* @__PURE__ */ jsx(
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxs("div", { className: "space-y-2", children: [
+      /* @__PURE__ */ jsx("h3", { className: "text-xs font-semibold uppercase tracking-wider text-muted-foreground", children: isEn ? "Country" : "国" }),
+      /* @__PURE__ */ jsxs("div", { className: "space-y-1.5", children: [
+        topCountries.map((country) => /* @__PURE__ */ jsx(
+          CountryCheckbox,
+          {
+            country,
+            checked: props.countries.has(country.name),
+            onToggle: props.onCountryToggle
+          },
+          country.name
+        )),
+        restCountries.length > 0 && /* @__PURE__ */ jsxs(Fragment, { children: [
+          /* @__PURE__ */ jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => setCountriesExpanded((prev) => !prev),
+              className: "px-2 py-1 text-sm font-medium text-primary transition-colors hover:text-primary/80",
+              children: countriesExpanded ? isEn ? "Collapse" : "折りたたむ" : isEn ? `Show more (${restCountries.length})` : `もっと見る (${restCountries.length})`
+            }
+          ),
+          countriesExpanded && /* @__PURE__ */ jsx("div", { className: "space-y-3 pt-1", children: [...regionGroups.entries()].map(([region, countries]) => /* @__PURE__ */ jsxs("div", { className: "space-y-1.5", children: [
+            /* @__PURE__ */ jsx("div", { className: "px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground", children: region }),
+            /* @__PURE__ */ jsx("div", { className: "space-y-1.5", children: countries.map((country) => /* @__PURE__ */ jsx(
+              CountryCheckbox,
+              {
+                country,
+                checked: props.countries.has(country.name),
+                onToggle: props.onCountryToggle
+              },
+              country.name
+            )) })
+          ] }, region)) })
+        ] })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxs("div", { className: "space-y-2", children: [
+      /* @__PURE__ */ jsx("h3", { className: "text-xs font-semibold uppercase tracking-wider text-muted-foreground", children: props.t("filter.raceType") }),
+      /* @__PURE__ */ jsx("div", { className: "space-y-1.5", children: props.availableRaceTypes.map((type) => /* @__PURE__ */ jsxs(
+        "label",
+        {
+          className: "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-secondary/50",
+          children: [
+            /* @__PURE__ */ jsx(
+              "input",
+              {
+                type: "checkbox",
+                checked: props.raceTypes.has(type),
+                onChange: () => props.onRaceTypeToggle(type),
+                className: "h-4 w-4 rounded border-input text-primary accent-primary"
+              }
+            ),
+            /* @__PURE__ */ jsx("span", { className: "text-sm", children: props.raceTypeLabel(type) })
+          ]
+        },
+        type
+      )) })
+    ] }),
+    /* @__PURE__ */ jsxs("div", { className: "space-y-2", children: [
+      /* @__PURE__ */ jsx("h3", { className: "text-xs font-semibold uppercase tracking-wider text-muted-foreground", children: props.t("filter.distance") }),
+      /* @__PURE__ */ jsx("div", { className: "flex flex-wrap gap-1.5", children: props.distanceRangeOptions.map((range, idx) => /* @__PURE__ */ jsx(
         "button",
         {
           type: "button",
-          onClick: () => props.onDateRangeChange(null, null),
-          disabled: !props.dateRangeStart && !props.dateRangeEnd,
-          className: "mt-1.5 w-full text-xs px-2 py-1 rounded border border-border/50 hover:bg-secondary/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
-          children: isEn ? "Clear" : "クリア"
+          onClick: () => props.onDistanceRangeToggle(idx),
+          className: cn(
+            "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+            props.distanceRanges.has(idx) ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+          ),
+          children: range.label
+        },
+        idx
+      )) })
+    ] }),
+    /* @__PURE__ */ jsxs("div", { className: "space-y-2", children: [
+      /* @__PURE__ */ jsx("h3", { className: "text-xs font-semibold uppercase tracking-wider text-muted-foreground", children: isEn ? "Future only" : "未来のみ" }),
+      /* @__PURE__ */ jsxs(
+        "button",
+        {
+          type: "button",
+          role: "switch",
+          "aria-checked": props.futureOnly,
+          onClick: () => props.onFutureOnlyChange(!props.futureOnly),
+          className: cn(
+            "flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors",
+            props.futureOnly ? "border-primary bg-primary/5" : "border-border bg-background"
+          ),
+          children: [
+            /* @__PURE__ */ jsx("span", { children: isEn ? "Show upcoming events only" : "開催予定の大会だけ表示" }),
+            /* @__PURE__ */ jsx(
+              "span",
+              {
+                className: cn(
+                  "inline-flex h-6 w-11 items-center rounded-full p-1 transition-colors",
+                  props.futureOnly ? "bg-primary" : "bg-muted"
+                ),
+                children: /* @__PURE__ */ jsx(
+                  "span",
+                  {
+                    className: cn(
+                      "h-4 w-4 rounded-full bg-white transition-transform",
+                      props.futureOnly ? "translate-x-5" : "translate-x-0"
+                    )
+                  }
+                )
+              }
+            )
+          ]
         }
       )
-    ] }),
-    props.availableRaceTypes.length > 0 && /* @__PURE__ */ jsx(FilterSection, { title: isEn ? "Race Type" : "レース種別", defaultOpen: true, children: /* @__PURE__ */ jsx("div", { className: "space-y-0.5", children: props.availableRaceTypes.map((type) => /* @__PURE__ */ jsxs(
-      "label",
-      {
-        className: "flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-secondary/50 transition-colors",
-        children: [
-          /* @__PURE__ */ jsx(
-            "input",
-            {
-              type: "checkbox",
-              checked: props.raceTypes.has(type),
-              onChange: () => props.onRaceTypeToggle(type),
-              className: "h-3.5 w-3.5 rounded border-input text-primary accent-primary"
-            }
-          ),
-          /* @__PURE__ */ jsx("span", { className: "text-xs", children: props.raceTypeLabel(type) })
-        ]
-      },
-      type
-    )) }) }),
-    /* @__PURE__ */ jsx(FilterSection, { title: props.t("filter.distance"), children: /* @__PURE__ */ jsx("div", { className: "flex flex-wrap gap-1", children: props.distanceRangeOptions.map((range, idx) => /* @__PURE__ */ jsx(
-      "button",
-      {
-        type: "button",
-        onClick: () => props.onDistanceRangeToggle(idx),
-        className: cn(
-          "rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors",
-          props.distanceRanges.has(idx) ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-        ),
-        children: range.label
-      },
-      idx
-    )) }) }),
-    /* @__PURE__ */ jsx(FilterSection, { title: props.t("filter.timeLimit"), children: /* @__PURE__ */ jsxs(
-      "select",
-      {
-        value: props.timeLimitMin,
-        onChange: (e) => props.onTimeLimitChange(e.target.value),
-        className: "w-full rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30",
-        children: [
-          /* @__PURE__ */ jsx("option", { value: "", children: props.t("filter.noLimit") }),
-          /* @__PURE__ */ jsx("option", { value: "6", children: props.t("filter.hoursOrMore", { hours: 6 }) }),
-          /* @__PURE__ */ jsx("option", { value: "12", children: props.t("filter.hoursOrMore", { hours: 12 }) }),
-          /* @__PURE__ */ jsx("option", { value: "24", children: props.t("filter.hoursOrMore", { hours: 24 }) }),
-          /* @__PURE__ */ jsx("option", { value: "36", children: props.t("filter.hoursOrMore", { hours: 36 }) })
-        ]
-      }
-    ) }),
-    /* @__PURE__ */ jsx(FilterSection, { title: isEn ? "Est. Cost" : "コスト目安", children: /* @__PURE__ */ jsx(
-      PriceHistogramSlider,
-      {
-        prices: props.costPrices,
-        min: props.costMin,
-        max: props.costMax >= Infinity ? props.costGlobalMax : props.costMax,
-        onRangeChange: (newMin, newMax) => {
-          props.onCostRangeChange(newMin, newMax >= props.costGlobalMax ? Infinity : newMax);
-        },
-        currency: isEn ? "$" : "¥",
-        lang: props.lang
-      }
-    ) }),
-    /* @__PURE__ */ jsx(FilterSection, { title: props.t("filter.poleFilter"), children: /* @__PURE__ */ jsxs(
-      "select",
-      {
-        value: props.poleFilter,
-        onChange: (e) => props.onPoleFilterChange(e.target.value),
-        className: "w-full rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30",
-        children: [
-          /* @__PURE__ */ jsx("option", { value: "", children: props.t("filter.poleAll") }),
-          /* @__PURE__ */ jsx("option", { value: "allowed", children: props.t("filter.poleAllowed") }),
-          /* @__PURE__ */ jsx("option", { value: "prohibited", children: props.t("filter.poleProhibited") })
-        ]
-      }
-    ) }),
-    /* @__PURE__ */ jsx(FilterSection, { title: props.t("filter.entryStatus"), children: /* @__PURE__ */ jsxs(
-      "select",
-      {
-        value: props.entryStatus,
-        onChange: (e) => props.onEntryStatusChange(e.target.value),
-        className: "w-full rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30",
-        children: [
-          /* @__PURE__ */ jsx("option", { value: "active", children: props.t("filter.entryActive") }),
-          /* @__PURE__ */ jsx("option", { value: "open", children: props.t("filter.entryOpen") }),
-          /* @__PURE__ */ jsx("option", { value: "upcoming", children: props.t("filter.entryUpcoming") }),
-          /* @__PURE__ */ jsx("option", { value: "closed", children: props.t("filter.entryClosed") }),
-          /* @__PURE__ */ jsx("option", { value: "", children: props.t("filter.entryAll") })
-        ]
-      }
-    ) }),
-    /* @__PURE__ */ jsx("div", { className: "px-3 py-2", children: /* @__PURE__ */ jsxs("label", { className: "flex cursor-pointer items-center gap-2", children: [
-      /* @__PURE__ */ jsx(
-        "input",
-        {
-          type: "checkbox",
-          checked: props.showPastEvents,
-          onChange: (e) => props.onShowPastEventsChange(e.target.checked),
-          className: "h-3.5 w-3.5 rounded border-input text-primary accent-primary"
-        }
-      ),
-      /* @__PURE__ */ jsx("span", { className: "text-xs font-medium text-foreground", children: props.t("filter.showPast") })
-    ] }) }),
-    activeCount > 0 && /* @__PURE__ */ jsx("div", { className: "px-3 pb-2", children: /* @__PURE__ */ jsxs(
-      "button",
-      {
-        type: "button",
-        onClick: clearAll,
-        className: "flex w-full items-center justify-center gap-1 rounded-md border border-border px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors bg-transparent cursor-pointer",
-        children: [
-          /* @__PURE__ */ jsx(X, { className: "h-3 w-3" }),
-          isEn ? "Clear filters" : "条件をクリア"
-        ]
-      }
-    ) })
+    ] })
   ] });
+}
+function FilterBar(props) {
+  const [open, setOpen] = useState(false);
+  const activeChips = getActiveFilterChips(props);
+  const activeCount = countActiveFilters(props);
+  return /* @__PURE__ */ jsx("div", { className: "space-y-2", children: /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-3", children: [
+    /* @__PURE__ */ jsxs("div", { className: "flex min-w-0 flex-1 flex-wrap items-center gap-1.5", children: [
+      activeChips.length === 0 && /* @__PURE__ */ jsx("span", { className: "text-sm text-muted-foreground", children: props.lang === "en" ? "Default filters applied" : "デフォルト条件で表示中" }),
+      activeChips.map((chip) => /* @__PURE__ */ jsxs(
+        Badge,
+        {
+          variant: "secondary",
+          className: "flex items-center gap-1 py-0.5 pl-2 pr-1 text-xs",
+          children: [
+            /* @__PURE__ */ jsx("span", { children: chip.label }),
+            /* @__PURE__ */ jsx(
+              "button",
+              {
+                type: "button",
+                onClick: chip.onRemove,
+                className: "ml-0.5 rounded-full p-0.5 transition-colors hover:bg-destructive/20",
+                "aria-label": `Remove ${chip.label}`,
+                children: /* @__PURE__ */ jsx(X, { className: "h-3 w-3" })
+              }
+            )
+          ]
+        },
+        chip.key
+      ))
+    ] }),
+    /* @__PURE__ */ jsxs(Sheet, { open, onOpenChange: setOpen, children: [
+      /* @__PURE__ */ jsx(SheetTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(Button, { variant: "outline", size: "sm", className: "shrink-0", children: [
+        /* @__PURE__ */ jsx(SlidersHorizontal, { className: "mr-1.5 h-3.5 w-3.5" }),
+        props.lang === "en" ? "Filters" : "絞り込み",
+        activeCount > 0 && /* @__PURE__ */ jsx("span", { className: "ml-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground", children: activeCount })
+      ] }) }),
+      /* @__PURE__ */ jsxs(SheetContent, { side: "right", className: "w-80 overflow-y-auto", children: [
+        /* @__PURE__ */ jsx(SheetHeader, { children: /* @__PURE__ */ jsx(SheetTitle, { children: props.lang === "en" ? "Filters" : "絞り込み" }) }),
+        /* @__PURE__ */ jsx("div", { className: "mt-4", children: /* @__PURE__ */ jsx(FiltersSheetBody, { ...props }) })
+      ] })
+    ] })
+  ] }) });
+}
+function FiltersSidebar(props) {
+  return /* @__PURE__ */ jsx(FilterBar, { ...props });
 }
 const SidebarFilterContext = createContext({
   filterNode: null,
@@ -1299,15 +1185,11 @@ function useSidebarStats() {
 const STORAGE_KEY$1 = "yabai_filters";
 const DEFAULT = {
   raceTypes: [],
+  countries: [],
   dateRangeStart: null,
   dateRangeEnd: null,
   distanceRanges: [],
-  timeLimitMin: "",
-  costMin: 0,
-  costMax: Infinity,
-  poleFilter: "",
-  entryStatus: "active",
-  showPastEvents: false
+  futureOnly: true
 };
 let _state = null;
 function loadFromSession() {
@@ -1318,15 +1200,11 @@ function loadFromSession() {
     const parsed = JSON.parse(raw);
     return {
       raceTypes: parsed.raceTypes ?? [],
+      countries: parsed.countries ?? [],
       dateRangeStart: parsed.dateRangeStart ?? null,
       dateRangeEnd: parsed.dateRangeEnd ?? null,
       distanceRanges: parsed.distanceRanges ?? [],
-      timeLimitMin: parsed.timeLimitMin ?? "",
-      costMin: parsed.costMin ?? 0,
-      costMax: parsed.costMax ?? Infinity,
-      poleFilter: parsed.poleFilter ?? "",
-      entryStatus: parsed.entryStatus ?? "active",
-      showPastEvents: parsed.showPastEvents ?? false
+      futureOnly: parsed.futureOnly ?? true
     };
   } catch {
     return { ...DEFAULT };
@@ -1408,33 +1286,12 @@ function useScrollDepth(pageType) {
   }, [pageType]);
 }
 const EventMap$5 = lazy(() => Promise.resolve().then(() => EventMap$3));
-function parseIntervalHours(v) {
-  if (!v) return null;
-  const hms = v.match(/^(\d+):(\d+):(\d+)/);
-  if (hms) {
-    const h = parseInt(hms[1], 10);
-    const min = parseInt(hms[2], 10);
-    const sec = parseInt(hms[3], 10);
-    return h + min / 60 + sec / 3600;
-  }
-  const hourMatch = v.match(/(\d+)\s*hour/);
-  const dayMatch = v.match(/(\d+)\s*day/);
-  const minMatch = v.match(/(\d+)\s*minute/);
-  let hours = 0;
-  if (hourMatch) hours += parseInt(hourMatch[1], 10);
-  if (dayMatch) hours += parseInt(dayMatch[1], 10) * 24;
-  if (minMatch) hours += parseInt(minMatch[1], 10) / 60;
-  return hours > 0 ? hours : null;
-}
 function getDistanceRanges(isEn) {
   const sep = isEn ? "-" : "〜";
   return [
     { label: `${sep}10km`, min: 0, max: 10 },
-    { label: `10${sep}20km`, min: 10, max: 20 },
-    { label: `20${sep}30km`, min: 20, max: 30 },
-    { label: `30${sep}50km`, min: 30, max: 50 },
-    { label: `50${sep}100km`, min: 50, max: 100 },
-    { label: `100km${sep}`, min: 100, max: Infinity }
+    { label: `10${sep}30km`, min: 10, max: 30 },
+    { label: `30km${sep}`, min: 30, max: Infinity }
   ];
 }
 function parseSetParam(searchParams, key) {
@@ -1446,6 +1303,133 @@ function parseNumSetParam(searchParams, key) {
   const val = searchParams.get(key);
   if (!val) return /* @__PURE__ */ new Set();
   return new Set(val.split(",").filter(Boolean).map(Number));
+}
+function parseBooleanParam(searchParams, key, defaultValue) {
+  const value = searchParams.get(key);
+  if (value == null) return defaultValue;
+  return value !== "0" && value !== "false";
+}
+function getEventCountryLabel(event2, isEn) {
+  return isEn ? event2.country_en ?? event2.country : event2.country;
+}
+const REGION_MAP = {
+  "日本": "アジア",
+  "中国": "アジア",
+  "韓国": "アジア",
+  "台湾": "アジア",
+  "タイ": "アジア",
+  "フィリピン": "アジア",
+  "マレーシア": "アジア",
+  "インドネシア": "アジア",
+  "ベトナム": "アジア",
+  "シンガポール": "アジア",
+  "インド": "アジア",
+  "ネパール": "アジア",
+  "香港": "アジア",
+  "フランス": "ヨーロッパ",
+  "スペイン": "ヨーロッパ",
+  "イタリア": "ヨーロッパ",
+  "スイス": "ヨーロッパ",
+  "イギリス": "ヨーロッパ",
+  "ドイツ": "ヨーロッパ",
+  "ギリシャ": "ヨーロッパ",
+  "ポルトガル": "ヨーロッパ",
+  "オーストリア": "ヨーロッパ",
+  "スウェーデン": "ヨーロッパ",
+  "ノルウェー": "ヨーロッパ",
+  "チェコ": "ヨーロッパ",
+  "クロアチア": "ヨーロッパ",
+  "トルコ": "ヨーロッパ",
+  "ポーランド": "ヨーロッパ",
+  "ハンガリー": "ヨーロッパ",
+  "ルーマニア": "ヨーロッパ",
+  "ブルガリア": "ヨーロッパ",
+  "オランダ": "ヨーロッパ",
+  "ベルギー": "ヨーロッパ",
+  "アイルランド": "ヨーロッパ",
+  "フィンランド": "ヨーロッパ",
+  "デンマーク": "ヨーロッパ",
+  "アメリカ": "アメリカ",
+  "カナダ": "アメリカ",
+  "メキシコ": "アメリカ",
+  "ブラジル": "アメリカ",
+  "アルゼンチン": "アメリカ",
+  "チリ": "アメリカ",
+  "コロンビア": "アメリカ",
+  "ペルー": "アメリカ",
+  "コスタリカ": "アメリカ",
+  "オーストラリア": "オセアニア",
+  "ニュージーランド": "オセアニア",
+  "南アフリカ": "アフリカ",
+  "モロッコ": "アフリカ",
+  "ケニア": "アフリカ",
+  "エジプト": "アフリカ",
+  "タンザニア": "アフリカ",
+  "アラブ首長国連邦": "中東",
+  "イスラエル": "中東",
+  "ヨルダン": "中東",
+  "オマーン": "中東",
+  "サウジアラビア": "中東",
+  "Japan": "Asia",
+  "China": "Asia",
+  "South Korea": "Asia",
+  "Taiwan": "Asia",
+  "Thailand": "Asia",
+  "Philippines": "Asia",
+  "Malaysia": "Asia",
+  "Indonesia": "Asia",
+  "Vietnam": "Asia",
+  "Singapore": "Asia",
+  "India": "Asia",
+  "Nepal": "Asia",
+  "Hong Kong": "Asia",
+  "France": "Europe",
+  "Spain": "Europe",
+  "Italy": "Europe",
+  "Switzerland": "Europe",
+  "United Kingdom": "Europe",
+  "Germany": "Europe",
+  "Greece": "Europe",
+  "Portugal": "Europe",
+  "Austria": "Europe",
+  "Sweden": "Europe",
+  "Norway": "Europe",
+  "Czech Republic": "Europe",
+  "Croatia": "Europe",
+  "Turkey": "Europe",
+  "Poland": "Europe",
+  "Hungary": "Europe",
+  "Romania": "Europe",
+  "Bulgaria": "Europe",
+  "Netherlands": "Europe",
+  "Belgium": "Europe",
+  "Ireland": "Europe",
+  "Finland": "Europe",
+  "Denmark": "Europe",
+  "United States": "Americas",
+  "Canada": "Americas",
+  "Mexico": "Americas",
+  "Brazil": "Americas",
+  "Argentina": "Americas",
+  "Chile": "Americas",
+  "Colombia": "Americas",
+  "Peru": "Americas",
+  "Costa Rica": "Americas",
+  "Australia": "Oceania",
+  "New Zealand": "Oceania",
+  "South Africa": "Africa",
+  "Morocco": "Africa",
+  "Kenya": "Africa",
+  "Egypt": "Africa",
+  "Tanzania": "Africa",
+  "United Arab Emirates": "Middle East",
+  "Israel": "Middle East",
+  "Jordan": "Middle East",
+  "Oman": "Middle East",
+  "Saudi Arabia": "Middle East"
+};
+function getRegion(countryName, isEn) {
+  return REGION_MAP[countryName] ?? (isEn ? "Other" : "その他");
 }
 function getSSREvents() {
   if (typeof window !== "undefined" && window.__SSR_EVENTS__) {
@@ -1477,6 +1461,10 @@ function EventList() {
     if (initialType) return /* @__PURE__ */ new Set([initialType]);
     return new Set(saved.raceTypes);
   });
+  const [countries, setCountries] = useState(() => {
+    const fromParams = parseSetParam(searchParams, "countries");
+    return fromParams.size > 0 ? fromParams : new Set(saved.countries);
+  });
   const [dateRangeStart, setDateRangeStart] = useState(() => {
     const fromParams = searchParams.get("date_from");
     return fromParams ?? (saved.dateRangeStart ?? null);
@@ -1489,18 +1477,9 @@ function EventList() {
     const fromParams = parseNumSetParam(searchParams, "distances");
     return fromParams.size > 0 ? fromParams : new Set(saved.distanceRanges);
   });
-  const [timeLimitMin, setTimeLimitMin] = useState(() => searchParams.get("timeLimitMin") ?? saved.timeLimitMin);
-  const [costMin, setCostMin] = useState(() => {
-    const v = searchParams.get("costMin");
-    return v ? Number(v) : saved.costMin;
-  });
-  const [costMax, setCostMax] = useState(() => {
-    const v = searchParams.get("costMax");
-    return v ? Number(v) : saved.costMax;
-  });
-  const [poleFilter, setPoleFilter] = useState(() => searchParams.get("poleFilter") ?? saved.poleFilter);
-  const [entryStatus, setEntryStatus] = useState(() => searchParams.get("entryStatus") ?? saved.entryStatus);
-  const [showPastEvents, setShowPastEvents] = useState(() => searchParams.get("showPast") === "1" || saved.showPastEvents);
+  const [futureOnly, setFutureOnly] = useState(
+    () => parseBooleanParam(searchParams, "futureOnly", saved.futureOnly)
+  );
   const [showMap, setShowMap] = useState(
     () => typeof window !== "undefined" ? window.innerWidth >= 960 : false
   );
@@ -1508,29 +1487,21 @@ function EventList() {
   useEffect(() => {
     saveFilterState({
       raceTypes: [...raceTypes],
+      countries: [...countries],
       dateRangeStart,
       dateRangeEnd,
       distanceRanges: [...distanceRanges],
-      timeLimitMin,
-      costMin,
-      costMax,
-      poleFilter,
-      entryStatus,
-      showPastEvents
+      futureOnly
     });
     const params = new URLSearchParams();
     if (raceTypes.size > 0) params.set("raceTypes", [...raceTypes].join(","));
+    if (countries.size > 0) params.set("countries", [...countries].join(","));
     if (dateRangeStart) params.set("date_from", dateRangeStart);
     if (dateRangeEnd) params.set("date_to", dateRangeEnd);
     if (distanceRanges.size > 0) params.set("distances", [...distanceRanges].join(","));
-    if (timeLimitMin) params.set("timeLimitMin", timeLimitMin);
-    if (costMin > 0) params.set("costMin", String(costMin));
-    if (costMax < Infinity) params.set("costMax", String(costMax));
-    if (poleFilter) params.set("poleFilter", poleFilter);
-    if (entryStatus !== "active") params.set("entryStatus", entryStatus);
-    if (showPastEvents) params.set("showPast", "1");
+    if (!futureOnly) params.set("futureOnly", "0");
     setSearchParams(params, { replace: true });
-  }, [raceTypes, dateRangeStart, dateRangeEnd, distanceRanges, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents, setSearchParams]);
+  }, [raceTypes, countries, dateRangeStart, dateRangeEnd, distanceRanges, futureOnly, setSearchParams]);
   useEffect(() => {
     async function fetchEvents() {
       try {
@@ -1589,17 +1560,6 @@ function EventList() {
     fetchEvents();
     fetchStats();
   }, [setSidebarLastUpdated, setSidebarWeeklyNewCount, ssrEvents]);
-  const costPrices = useMemo(() => {
-    const all = events.map((e) => e.total_cost_estimate ? parseInt(e.total_cost_estimate, 10) : NaN).filter((v) => !isNaN(v) && v > 0);
-    if (all.length === 0) return all;
-    const sorted = [...all].sort((a, b) => a - b);
-    const p95 = sorted[Math.min(Math.floor(sorted.length * 0.95), sorted.length - 1)];
-    return all.filter((v) => v <= p95);
-  }, [events]);
-  const costGlobalMax = useMemo(() => {
-    if (costPrices.length === 0) return 1e5;
-    return Math.ceil(Math.max(...costPrices) / 1e4) * 1e4;
-  }, [costPrices]);
   const RACE_TYPE_ORDER = [
     "marathon",
     "trail",
@@ -1621,6 +1581,22 @@ function EventList() {
     });
     return RACE_TYPE_ORDER.filter((t2) => types.has(t2));
   }, [events]);
+  const availableCountries = useMemo(() => {
+    const countMap = /* @__PURE__ */ new Map();
+    events.forEach((event2) => {
+      const country = getEventCountryLabel(event2, isEn);
+      if (!country) return;
+      countMap.set(country, (countMap.get(country) ?? 0) + 1);
+    });
+    return [...countMap.entries()].map(([name, count]) => ({
+      name,
+      count,
+      region: getRegion(name, isEn)
+    })).sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return a.name.localeCompare(b.name, isEn ? "en" : "ja");
+    });
+  }, [events, isEn]);
   const toggleRaceType = (t2) => {
     setRaceTypes((prev) => {
       const next = new Set(prev);
@@ -1629,18 +1605,14 @@ function EventList() {
       return next;
     });
   };
-  const availableMonths = useMemo(() => {
-    const months = /* @__PURE__ */ new Set();
-    const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 7);
-    events.forEach((e) => {
-      if (e.event_date) {
-        const ym = e.event_date.slice(0, 7);
-        if (!showPastEvents && ym < today) return;
-        months.add(ym);
-      }
+  const toggleCountry = (country) => {
+    setCountries((prev) => {
+      const next = new Set(prev);
+      if (next.has(country)) next.delete(country);
+      else next.add(country);
+      return next;
     });
-    return [...months].sort();
-  }, [events, showPastEvents]);
+  };
   const toggleDistanceRange = (idx) => {
     setDistanceRanges((prev) => {
       const next = new Set(prev);
@@ -1649,145 +1621,93 @@ function EventList() {
       return next;
     });
   };
-  const categoryMatchesFilter = (cat) => {
-    const timeMin = timeLimitMin ? parseFloat(timeLimitMin) : null;
-    if (distanceRanges.size > 0) {
-      if (cat.distance_km == null) return false;
-      const matchesAny = [...distanceRanges].some((idx) => {
+  const eventMatchesDistanceFilter = (event2) => {
+    if (distanceRanges.size === 0) return true;
+    return (event2.categories ?? []).some((category) => {
+      const km = category.distance_km;
+      if (km == null) return false;
+      return [...distanceRanges].some((idx) => {
         const range = DISTANCE_RANGES[idx];
-        return cat.distance_km >= range.min && (range.max === Infinity || cat.distance_km <= range.max);
+        return km >= range.min && (range.max === Infinity || km <= range.max);
       });
-      if (!matchesAny) return false;
-    }
-    if (timeMin != null) {
-      const catHours = parseIntervalHours(cat.time_limit);
-      if (catHours == null || catHours < timeMin) return false;
-    }
-    return true;
-  };
-  const getMatchingCategories = (event2) => {
-    const cats = event2.categories ?? [];
-    return cats.filter((cat) => {
-      return categoryMatchesFilter(cat);
     });
   };
-  const hasAnyFilter = raceTypes.size > 0 || distanceRanges.size > 0 || !!timeLimitMin || costMin > 0 || costMax < Infinity || !!poleFilter || entryStatus !== "active" || showPastEvents;
+  const hasAnyFilter = raceTypes.size > 0 || countries.size > 0 || Boolean(dateRangeStart) || Boolean(dateRangeEnd) || distanceRanges.size > 0 || !futureOnly;
   const resetAllFilters = useCallback(() => {
     setRaceTypes(/* @__PURE__ */ new Set());
+    setCountries(/* @__PURE__ */ new Set());
+    setDateRangeStart(null);
+    setDateRangeEnd(null);
     setDistanceRanges(/* @__PURE__ */ new Set());
-    setTimeLimitMin("");
-    setCostMin(0);
-    setCostMax(Infinity);
-    setPoleFilter("");
-    setEntryStatus("active");
-    setShowPastEvents(false);
+    setFutureOnly(true);
     resetFilterState();
   }, []);
   const filtered = events.filter((event2) => {
     const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-    if (!showPastEvents && event2.event_date && event2.event_date < today) return false;
     if (raceTypes.size > 0 && (event2.race_type == null || !raceTypes.has(event2.race_type))) return false;
+    if (countries.size > 0) {
+      const country = getEventCountryLabel(event2, isEn);
+      if (!country || !countries.has(country)) return false;
+    }
     if ((dateRangeStart || dateRangeEnd) && event2.event_date) {
       if (dateRangeStart && event2.event_date < dateRangeStart) return false;
       if (dateRangeEnd && event2.event_date > dateRangeEnd) return false;
     }
-    if (entryStatus) {
-      if (entryStatus === "active") {
-        if (event2.entry_end && event2.entry_end < today) return false;
-      } else if (entryStatus === "open") {
-        if (!event2.entry_start || !event2.entry_end) return false;
-        if (event2.entry_start > today || event2.entry_end < today) return false;
-      } else if (entryStatus === "upcoming") {
-        if (!event2.entry_start || event2.entry_start <= today) return false;
-      } else if (entryStatus === "closed") {
-        if (!event2.entry_end || event2.entry_end >= today) return false;
-      }
+    if (futureOnly && (!event2.event_date || event2.event_date < today)) {
+      return false;
     }
-    if (costMin > 0 || costMax < Infinity) {
-      if (!event2.total_cost_estimate) return false;
-      const cost = parseInt(event2.total_cost_estimate, 10);
-      if (isNaN(cost) || cost < costMin || cost > costMax) return false;
-    }
-    const categories = event2.categories ?? [];
-    if (poleFilter) {
-      if (categories.length === 0) return false;
-      if (poleFilter === "allowed" && !categories.some((c) => c.poles_allowed === true)) return false;
-      if (poleFilter === "prohibited" && !categories.some((c) => c.poles_allowed === false)) return false;
-    }
-    const hasCategoryFilter = distanceRanges.size > 0 || timeLimitMin;
-    if (hasCategoryFilter && categories.length > 0) {
-      const hasMatch = categories.some(categoryMatchesFilter);
-      if (!hasMatch) return false;
-    }
+    if (!eventMatchesDistanceFilter(event2)) return false;
     return true;
   });
   const raceTypeLabel = (type) => {
     if (!type) return t("raceType.other");
     return t(`raceType.${type}`, type);
   };
-  const handleCostRangeChange = (newMin, newMax) => {
-    setCostMin(newMin);
-    setCostMax(newMax);
-  };
   const onDateRangeChange = (start, end) => {
     setDateRangeStart(start);
     setDateRangeEnd(end);
   };
   const filterProps = {
+    availableCountries,
+    countries,
+    onCountryToggle: toggleCountry,
     availableRaceTypes,
     raceTypes,
     onRaceTypeToggle: toggleRaceType,
     raceTypeLabel,
-    availableMonths,
     dateRangeStart,
     dateRangeEnd,
     onDateRangeChange,
     distanceRanges,
     onDistanceRangeToggle: toggleDistanceRange,
     distanceRangeOptions: DISTANCE_RANGES,
-    timeLimitMin,
-    onTimeLimitChange: setTimeLimitMin,
-    costPrices,
-    costMin,
-    costMax,
-    costGlobalMax,
-    onCostRangeChange: handleCostRangeChange,
-    poleFilter,
-    onPoleFilterChange: setPoleFilter,
-    entryStatus,
-    onEntryStatusChange: setEntryStatus,
-    showPastEvents,
-    onShowPastEventsChange: setShowPastEvents,
+    futureOnly,
+    onFutureOnlyChange: setFutureOnly,
     t,
     lang
   };
   const { setFilterNode } = useSidebarFilter();
   const filterDepsKey = JSON.stringify([
     [...raceTypes],
+    [...countries],
     dateRangeStart,
     dateRangeEnd,
     [...distanceRanges],
-    timeLimitMin,
-    costMin,
-    costMax,
-    poleFilter,
-    entryStatus,
-    showPastEvents,
+    futureOnly,
     raceTypes.size,
+    countries.size,
     loading
   ]);
   useEffect(() => {
-    setFilterNode(/* @__PURE__ */ jsx(SidebarFilters, { ...filterProps }));
+    setFilterNode(/* @__PURE__ */ jsx(FiltersSidebar, { ...filterProps }));
     return () => setFilterNode(null);
   }, [filterDepsKey]);
-  const activeChips = getActiveFilterChips(filterProps);
-  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const INITIAL_RENDER_COUNT = 20;
   const LOAD_MORE_COUNT = 20;
   const [visibleCount, setVisibleCount] = useState(INITIAL_RENDER_COUNT);
   useEffect(() => {
     setVisibleCount(INITIAL_RENDER_COUNT);
-  }, [raceTypes.size, dateRangeStart, dateRangeEnd, distanceRanges.size, timeLimitMin, costMin, costMax, poleFilter, entryStatus, showPastEvents]);
+  }, [raceTypes.size, countries.size, dateRangeStart, dateRangeEnd, distanceRanges.size, futureOnly]);
   if (error) {
     return /* @__PURE__ */ jsx("div", { className: "mx-auto max-w-7xl px-4 py-12 text-center", children: /* @__PURE__ */ jsxs("p", { className: "text-destructive", children: [
       isEn ? "Error:" : "エラー:",
@@ -1864,43 +1784,7 @@ function EventList() {
         /* @__PURE__ */ jsx(Button, { asChild: true, children: /* @__PURE__ */ jsx("a", { href: `${langPrefix}/pricing`, children: "詳しく見る" }) })
       ] }),
       /* @__PURE__ */ jsxs("div", { id: "race-list", className: "mb-4 space-y-2", children: [
-        /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2", children: [
-          /* @__PURE__ */ jsxs(Sheet, { open: mobileFilterOpen, onOpenChange: setMobileFilterOpen, children: [
-            /* @__PURE__ */ jsx(SheetTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(Button, { variant: "outline", size: "sm", className: "shrink-0 min-[960px]:hidden", children: [
-              /* @__PURE__ */ jsx(SlidersHorizontal, { className: "mr-1.5 h-3.5 w-3.5" }),
-              lang === "en" ? "Filters" : "絞り込み",
-              activeChips.length > 0 && /* @__PURE__ */ jsx("span", { className: "ml-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground", children: activeChips.length })
-            ] }) }),
-            /* @__PURE__ */ jsxs(SheetContent, { side: "left", className: "w-72 overflow-y-auto p-0", children: [
-              /* @__PURE__ */ jsx(SheetHeader, { className: "px-4 pt-4", children: /* @__PURE__ */ jsx(SheetTitle, { children: lang === "en" ? "Filters" : "絞り込み" }) }),
-              /* @__PURE__ */ jsx("div", { className: "mt-2", children: /* @__PURE__ */ jsx(SidebarFilters, { ...filterProps }) })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxs("div", { className: "flex min-w-0 flex-1 flex-wrap items-center gap-1.5", children: [
-            activeChips.length === 0 && /* @__PURE__ */ jsx("span", { className: "text-sm text-muted-foreground hidden min-[960px]:inline", children: lang === "en" ? "No filters applied" : "フィルターなし" }),
-            activeChips.map((chip) => /* @__PURE__ */ jsxs(
-              Badge,
-              {
-                variant: "secondary",
-                className: "flex items-center gap-1 pl-2 pr-1 py-0.5 text-xs",
-                children: [
-                  /* @__PURE__ */ jsx("span", { children: chip.label }),
-                  /* @__PURE__ */ jsx(
-                    "button",
-                    {
-                      type: "button",
-                      onClick: chip.onRemove,
-                      className: "ml-0.5 rounded-full p-0.5 hover:bg-destructive/20 transition-colors",
-                      "aria-label": `Remove ${chip.label}`,
-                      children: /* @__PURE__ */ jsx(X, { className: "h-3 w-3" })
-                    }
-                  )
-                ]
-              },
-              chip.key
-            ))
-          ] })
-        ] }),
+        /* @__PURE__ */ jsx(FiltersSidebar, { ...filterProps }),
         /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between", children: [
           /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2", children: [
             /* @__PURE__ */ jsx("span", { className: "text-sm text-muted-foreground", children: loading ? "..." : `${filtered.length} ${lang === "en" ? "events" : "件"}` }),
@@ -1962,27 +1846,16 @@ function EventList() {
         /* @__PURE__ */ jsx("p", { className: "text-base font-medium text-foreground", children: t("event.empty") }),
         /* @__PURE__ */ jsx("p", { className: "mt-1 text-sm text-muted-foreground", children: lang === "en" ? "Try adjusting your filters" : "フィルターを調整してみてください" })
       ] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
-        /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4", children: filtered.slice(0, visibleCount).map((event2) => {
-          const matchingCats = getMatchingCategories(event2);
-          const cardLink = hasAnyFilter && matchingCats.length === 1 ? `${langPrefix}/events/${event2.id}/categories/${matchingCats[0].id}` : `${langPrefix}/events/${event2.id}`;
-          const chipsToShow = hasAnyFilter && matchingCats.length > 0 ? matchingCats : event2.categories ?? [];
-          const cats = event2.categories ?? [];
-          const isEnriched = event2.location != null && (cats.length === 0 || cats.some((c) => c.distance_km != null || c.elevation_gain != null));
-          return /* @__PURE__ */ jsx(
-            EventCard,
-            {
-              event: event2,
-              langPrefix,
-              raceTypeLabel,
-              cardLink,
-              chipsToShow,
-              isEnriched,
-              t,
-              lang
-            },
-            event2.id
-          );
-        }) }),
+        /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4", children: filtered.slice(0, visibleCount).map((event2) => /* @__PURE__ */ jsx(
+          EventCard,
+          {
+            event: event2,
+            raceTypeLabel,
+            t,
+            lang
+          },
+          event2.id
+        )) }),
         filtered.length > visibleCount && /* @__PURE__ */ jsx("div", { className: "mt-6 flex justify-center", children: /* @__PURE__ */ jsx(
           Button,
           {
@@ -2202,7 +2075,7 @@ function EventComments({ eventId, categoryId, raceType: raceType2, isEn, limit }
       setSubmitting(false);
     }
   };
-  const formatDate2 = (d) => {
+  const formatDate = (d) => {
     try {
       const date = new Date(d);
       return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
@@ -2220,7 +2093,7 @@ function EventComments({ eventId, categoryId, raceType: raceType2, isEn, limit }
       loading ? /* @__PURE__ */ jsx("p", { className: "text-sm text-muted-foreground", children: isEn ? "Loading..." : "読み込み中..." }) : comments.length === 0 ? /* @__PURE__ */ jsx("p", { className: "text-sm text-muted-foreground", children: isEn ? "No reports yet. Be the first!" : "まだレポートはありません。最初の投稿者になりましょう！" }) : /* @__PURE__ */ jsx("div", { className: "space-y-4", children: comments.map((c) => /* @__PURE__ */ jsxs("div", { className: "border-b border-border/40 pb-3 last:border-0", children: [
         /* @__PURE__ */ jsxs("div", { className: "mb-1 flex items-center gap-2 text-xs text-muted-foreground", children: [
           /* @__PURE__ */ jsx("span", { className: "font-medium text-foreground", children: c.display_name || (isEn ? "Anonymous" : "匿名") }),
-          /* @__PURE__ */ jsx("span", { children: formatDate2(c.created_at) })
+          /* @__PURE__ */ jsx("span", { children: formatDate(c.created_at) })
         ] }),
         /* @__PURE__ */ jsx("p", { className: "whitespace-pre-line text-sm leading-relaxed text-muted-foreground", children: c.content })
       ] }, c.id)) }),
@@ -2901,6 +2774,36 @@ function SaveButton({ categoryId, isFavorite, isGoing, onToggle, isEn }) {
     )
   ] });
 }
+const JPY_PER_USD = 150;
+const FX_TO_JPY = {
+  JPY: 1,
+  USD: 150,
+  EUR: 165,
+  GBP: 190,
+  CAD: 110,
+  AUD: 100,
+  NZD: 90,
+  PHP: 3,
+  THB: 4,
+  SGD: 112
+};
+function convertJpyToUsd(amountJpy) {
+  return Math.round(amountJpy / JPY_PER_USD);
+}
+function formatCurrency(amount, isEn) {
+  if (isEn) {
+    return `$${convertJpyToUsd(amount).toLocaleString()}`;
+  }
+  return `¥${amount.toLocaleString()}`;
+}
+function costStringToUsd(cost) {
+  if (!cost) return null;
+  const match = cost.match(/[\d,]+/);
+  if (!match) return cost;
+  const yen = parseInt(match[0].replace(/,/g, ""), 10);
+  if (isNaN(yen) || yen === 0) return cost;
+  return `$${convertJpyToUsd(yen).toLocaleString()}`;
+}
 function SectionCard({
   title,
   icon,
@@ -3414,7 +3317,7 @@ function CostBreakdown({ event: event2, category, outbound, returnRoute, accommo
   );
 }
 function CourseMap({ event: event2, courseMapFiles, isEn }) {
-  return /* @__PURE__ */ jsx(SectionCard, { title: isEn ? "Course map" : "コースマップはある？", icon: /* @__PURE__ */ jsx(Map, { className: "h-4 w-4 text-primary" }), children: courseMapFiles.length > 0 ? /* @__PURE__ */ jsxs(Fragment, { children: [
+  return /* @__PURE__ */ jsx(SectionCard, { title: isEn ? "Course map" : "コースマップはある？", icon: /* @__PURE__ */ jsx(Map$1, { className: "h-4 w-4 text-primary" }), children: courseMapFiles.length > 0 ? /* @__PURE__ */ jsxs(Fragment, { children: [
     /* @__PURE__ */ jsx("p", { className: "mb-2 text-sm text-muted-foreground", children: isEn ? "Stored on site" : "サイト内保管" }),
     /* @__PURE__ */ jsx("ul", { className: "space-y-1.5", children: courseMapFiles.map((cm) => /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx(
       "a",
@@ -3432,7 +3335,7 @@ function CourseMap({ event: event2, courseMapFiles, isEn }) {
     /* @__PURE__ */ jsx("a", { href: event2.course_map_url, target: "_blank", rel: "noreferrer", className: "break-all text-sm text-primary hover:underline", children: event2.course_map_url })
   ] }) : /* @__PURE__ */ jsx("p", { className: "text-sm italic text-muted-foreground/60", children: "—" }) });
 }
-function PastEditions({ event: event2, category, pastEditions, isEn, formatDate: formatDate2 }) {
+function PastEditions({ event: event2, category, pastEditions, isEn, formatDate }) {
   return /* @__PURE__ */ jsxs(Fragment, { children: [
     event2.previous_edition_url && /* @__PURE__ */ jsx(SectionCard, { title: isEn ? "Previous edition" : "去年のレース", children: /* @__PURE__ */ jsx(
       "a",
@@ -3458,9 +3361,9 @@ function PastEditions({ event: event2, category, pastEditions, isEn, formatDate:
             pe.entry_start_typical && /* @__PURE__ */ jsxs(Fragment, { children: [
               /* @__PURE__ */ jsx("dt", { className: "text-muted-foreground", children: isEn ? "Entry period" : "申込期間" }),
               /* @__PURE__ */ jsxs("dd", { children: [
-                formatDate2(pe.entry_start_typical),
+                formatDate(pe.entry_start_typical),
                 "\\u301C",
-                formatDate2(pe.entry_end_typical)
+                formatDate(pe.entry_end_typical)
               ] })
             ] }),
             sameCat?.entry_fee != null && /* @__PURE__ */ jsxs(Fragment, { children: [
@@ -3732,7 +3635,7 @@ function CategoryDetail() {
     }
     return v;
   };
-  const formatDate2 = (d) => {
+  const formatDate = (d) => {
     if (!d) return null;
     const m = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (m) return `${m[1]}/${parseInt(m[2], 10)}/${parseInt(m[3], 10)}`;
@@ -3946,9 +3849,9 @@ function CategoryDetail() {
           /* @__PURE__ */ jsx(DLRow, { label: isEn ? "Entry deadline?" : "申込み締切はいつ？", value: event2.entry_end }),
           /* @__PURE__ */ jsx("dt", { className: "text-muted-foreground", children: isEn ? "Typical entry period?" : "例年の申込時期は？" }),
           /* @__PURE__ */ jsx("dd", { className: event2.entry_start_typical ? "" : "italic text-muted-foreground/60", children: event2.entry_start_typical && event2.entry_end_typical ? /* @__PURE__ */ jsxs(Fragment, { children: [
-            formatDate2(event2.entry_start_typical),
+            formatDate(event2.entry_start_typical),
             "〜",
-            formatDate2(event2.entry_end_typical),
+            formatDate(event2.entry_end_typical),
             /* @__PURE__ */ jsx("span", { className: "mt-0.5 block text-xs text-muted-foreground", children: isEn ? "(reference for this year's entry period)" : "（今年の申込開始の目安）" })
           ] }) : "—" })
         ] }) }),
@@ -4014,7 +3917,7 @@ function CategoryDetail() {
             category,
             pastEditions,
             isEn,
-            formatDate: formatDate2
+            formatDate
           }
         ),
         displayWeatherForecast && /* @__PURE__ */ jsx(SectionCard, { title: isEn ? "Weather forecast" : "当日の天候は？", children: /* @__PURE__ */ jsx("dl", { className: "grid grid-cols-[minmax(120px,1fr)_minmax(180px,2fr)] gap-x-6 gap-y-3 text-sm", children: /* @__PURE__ */ jsx(DLRow, { label: isEn ? "Expected weather?" : "天気は？", value: displayWeatherForecast, eventId: event2.id, categoryId: category.id }) }) }),
@@ -4719,6 +4622,29 @@ function Pricing() {
       ] })
     ] }),
     error && /* @__PURE__ */ jsx("div", { className: "mb-6 text-center", children: /* @__PURE__ */ jsx("p", { className: "text-sm text-destructive", children: error }) }),
+    !isSupporter && /* @__PURE__ */ jsx("div", { className: "mb-10 text-center", children: !user ? /* @__PURE__ */ jsx(
+      Button,
+      {
+        size: "lg",
+        onClick: () => {
+          trackCtaClick("cta_top", "/pricing");
+          setPendingCrewCheckout(true);
+          signInWithGoogle();
+        },
+        children: isEn ? "Join Crew" : "Crew に参加する"
+      }
+    ) : /* @__PURE__ */ jsx(
+      Button,
+      {
+        size: "lg",
+        onClick: () => {
+          trackCtaClick("cta_top", "/pricing");
+          handleSubscribe();
+        },
+        disabled: subscriptionLoading,
+        children: subscriptionLoading ? isEn ? "Redirecting..." : "リダイレクト中..." : isEn ? "Join Crew" : "Crew に参加する"
+      }
+    ) }),
     /* @__PURE__ */ jsx("div", { className: "mb-10 overflow-x-auto", children: /* @__PURE__ */ jsxs("table", { className: "w-full border-collapse border border-border rounded-lg", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsxs("tr", { className: "bg-muted", children: [
         /* @__PURE__ */ jsx("th", { className: "border border-border px-4 py-3 text-left font-medium", children: isEn ? "Features" : "機能" }),
@@ -4756,6 +4682,29 @@ function Pricing() {
         ] })
       ] })
     ] }) }),
+    !isSupporter && /* @__PURE__ */ jsx("div", { className: "mb-10 text-center", children: !user ? /* @__PURE__ */ jsx(
+      Button,
+      {
+        size: "lg",
+        onClick: () => {
+          trackCtaClick("cta_middle", "/pricing");
+          setPendingCrewCheckout(true);
+          signInWithGoogle();
+        },
+        children: isEn ? "Join Crew" : "Crew に参加する"
+      }
+    ) : /* @__PURE__ */ jsx(
+      Button,
+      {
+        size: "lg",
+        onClick: () => {
+          trackCtaClick("cta_middle", "/pricing");
+          handleSubscribe();
+        },
+        disabled: subscriptionLoading,
+        children: subscriptionLoading ? isEn ? "Redirecting..." : "リダイレクト中..." : isEn ? "Join Crew" : "Crew に参加する"
+      }
+    ) }),
     /* @__PURE__ */ jsxs("div", { className: "grid gap-6 md:grid-cols-2", children: [
       /* @__PURE__ */ jsxs(Card, { className: "flex flex-col", children: [
         /* @__PURE__ */ jsxs(CardHeader, { children: [
@@ -4872,7 +4821,7 @@ function Pricing() {
                 setPendingCrewCheckout(true);
                 signInWithGoogle();
               },
-              children: isEn ? "Sign in with Google to get started" : "Googleでログインして登録する"
+              children: isEn ? "Join Crew" : "Crew に参加する"
             }
           ),
           /* @__PURE__ */ jsx("p", { className: "text-xs text-muted-foreground text-center", children: isEn ? "Sign in first, then subscribe to become Crew." : "まずGoogleでログインし、その後サブスクリプション登録に進みます。" })
@@ -4887,7 +4836,7 @@ function Pricing() {
                 handleSubscribe();
               },
               disabled: subscriptionLoading,
-              children: subscriptionLoading ? isEn ? "Redirecting..." : "リダイレクト中..." : isEn ? "Become Crew" : "Crewになる"
+              children: subscriptionLoading ? isEn ? "Redirecting..." : "リダイレクト中..." : isEn ? "Join Crew" : "Crew に参加する"
             }
           ),
           /* @__PURE__ */ jsx("p", { className: "text-xs text-muted-foreground text-center", children: isEn ? "You will be redirected to Square for secure payment." : "Square の安全な決済ページにリダイレクトされます。" })
@@ -7729,7 +7678,7 @@ function EventMap$2({ events, langPrefix, raceTypeLabel, lang: langProp }) {
   if (mappable.length === 0) return null;
   const mapLanguage = isEn ? "en" : "ja";
   return /* @__PURE__ */ jsx(APIProvider, { apiKey: API_KEY, language: mapLanguage, children: /* @__PURE__ */ jsx("div", { style: { width: "100%", height: "400px", borderRadius: "0.75rem", border: "1px solid #e2e8f0", overflow: "hidden" }, children: /* @__PURE__ */ jsxs(
-    Map$1,
+    Map$2,
     {
       defaultCenter: { lat: 36, lng: 139.6 },
       defaultZoom: 3,
@@ -7930,7 +7879,7 @@ export {
 
 // --- End SSR bundle ---
 
-const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png\" />\n    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>yabai.travel</title>\n    <meta name=\"description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:title\" content=\"yabai.travel\" />\n    <meta property=\"og:description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Preconnect to critical origins -->\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link rel=\"dns-prefetch\" href=\"https://maps.googleapis.com\" />\n    <link rel=\"dns-prefetch\" href=\"https://supabase.co\" />\n    <!-- Font display swap for system font fallback during load -->\n    <style>\n      @font-face {\n        font-family: 'Inter';\n        font-display: swap;\n        src: local('Inter');\n      }\n    </style>\n    <!-- Google Search Console verification: add meta tag here after registration -->\n    <!-- Google tag (gtag.js) - deferred to reduce TBT -->\n    <script>\n      window.addEventListener('load', function() {\n        var s = document.createElement('script');\n        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';\n        s.async = true;\n        document.head.appendChild(s);\n        s.onload = function() {\n          window.dataLayer = window.dataLayer || [];\n          function gtag(){dataLayer.push(arguments);}\n          gtag('js', new Date());\n          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });\n        };\n      });\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-CCYk7wx3.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-react-CEChUk-l.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-maps-Do-SDavS.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-i18n-5xXoTvtS.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-ui-yJeg2EDs.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-xPOXoC3h.css\">\n  </head>\n  <body>\n    <div id=\"root\"><!--ssr-outlet--></div>\n  </body>\n</html>\n"
+const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png\" />\n    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>yabai.travel</title>\n    <meta name=\"description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:title\" content=\"yabai.travel\" />\n    <meta property=\"og:description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Preconnect to critical origins -->\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link rel=\"dns-prefetch\" href=\"https://maps.googleapis.com\" />\n    <link rel=\"dns-prefetch\" href=\"https://supabase.co\" />\n    <!-- Font display swap for system font fallback during load -->\n    <style>\n      @font-face {\n        font-family: 'Inter';\n        font-display: swap;\n        src: local('Inter');\n      }\n    </style>\n    <!-- Google Search Console verification: add meta tag here after registration -->\n    <!-- Google tag (gtag.js) - deferred to reduce TBT -->\n    <script>\n      window.addEventListener('load', function() {\n        var s = document.createElement('script');\n        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';\n        s.async = true;\n        document.head.appendChild(s);\n        s.onload = function() {\n          window.dataLayer = window.dataLayer || [];\n          function gtag(){dataLayer.push(arguments);}\n          gtag('js', new Date());\n          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });\n        };\n      });\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-D3Icu83l.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-react-C9eTcbUC.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-i18n-G-q73JT-.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-ui-ByVhdQxU.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-DYY38vK9.css\">\n  </head>\n  <body>\n    <div id=\"root\"><!--ssr-outlet--></div>\n  </body>\n</html>\n"
 
 // Prefetch events from Supabase for top page SSR data injection
 // Uses AbortController timeout to avoid blocking SSR if Supabase is slow
