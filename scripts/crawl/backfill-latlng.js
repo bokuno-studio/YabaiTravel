@@ -20,6 +20,8 @@ if (existsSync(envPath)) {
 
 const args = process.argv.slice(2)
 const DRY_RUN = args.includes('--dry-run')
+const limitArg = args.find(a => a.startsWith('--limit='))
+const LIMIT = limitArg ? parseInt(limitArg.split('=')[1]) : 100
 
 const SCHEMA = process.env.SUPABASE_SCHEMA ?? 'yabai_travel'
 const GOOGLE_API_KEY = process.env.GOOGLE_DIRECTIONS_API_KEY || process.env.GOOGLE_API_KEY
@@ -66,17 +68,15 @@ async function main() {
 
   console.log(`=== lat/lng backfill 開始 (DRY_RUN: ${DRY_RUN}) ===\n`)
 
-  // 対象レコードを取得: lat/lng NULL または日本範囲外座標
+  // 対象レコードを取得: lat/lng NULL（全世界対応）
   const { rows: targets } = await client.query(`
     SELECT id, name, location, latitude, longitude FROM ${SCHEMA}.events
-    WHERE location IS NOT NULL
-      AND (
-        latitude IS NULL OR longitude IS NULL OR
-        latitude < $1 OR latitude > $2 OR
-        longitude < $3 OR longitude > $4
-      )
+    WHERE deleted_at IS NULL
+      AND location IS NOT NULL AND location != ''
+      AND (latitude IS NULL OR longitude IS NULL)
     ORDER BY updated_at DESC
-  `, [JAPAN_BBOX.lat_min, JAPAN_BBOX.lat_max, JAPAN_BBOX.lng_min, JAPAN_BBOX.lng_max])
+    LIMIT $1
+  `, [LIMIT])
 
   console.log(`対象: ${targets.length} 件\n`)
 
@@ -85,7 +85,6 @@ async function main() {
 
   for (let i = 0; i < targets.length; i++) {
     const { id, name, location, latitude, longitude } = targets[i]
-    const isInvalid = latitude === null || longitude === null || isOutsideJapan(latitude, longitude)
 
     try {
       const result = await geocodeLocation(location, GOOGLE_API_KEY)
@@ -99,8 +98,7 @@ async function main() {
             [result.lat, result.lng, id]
           )
         }
-        const reason = latitude === null || longitude === null ? '(NULL修正)' : '(範囲外修正)'
-        console.log(`  [${i + 1}/${targets.length}] UPDATE ${reason}: ${name?.slice(0, 50)} | lat=${result.lat.toFixed(4)}, lng=${result.lng.toFixed(4)}`)
+        console.log(`  [${i + 1}/${targets.length}] UPDATE: ${name?.slice(0, 50)} | lat=${result.lat.toFixed(4)}, lng=${result.lng.toFixed(4)}`)
         successCount++
       }
     } catch (e) {
