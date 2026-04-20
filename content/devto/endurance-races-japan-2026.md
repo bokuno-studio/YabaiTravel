@@ -1,6 +1,6 @@
 ---
 title: "Endurance Races in Japan: The Complete Guide for 2026"
-canonical_url: "https://yabai.travel/en/guide/endurance"
+canonical_url: "https://yabai.travel/en/guide/endurance?utm_source=devto&utm_medium=article&utm_campaign=devto-organic"
 tags: ["running", "japan", "fitness", "travel"]
 published_at: "2026-04-10"
 published: false

@@ -1,6 +1,6 @@
 ---
 title: "HYROX Japan 2026: Everything You Need to Know"
-canonical_url: "https://yabai.travel/en/guide/hyrox"
+canonical_url: "https://yabai.travel/en/guide/hyrox?utm_source=devto&utm_medium=article&utm_campaign=devto-organic"
 tags: ["fitness", "japan", "hyrox", "running"]
 published_at: "2026-04-21"
 published: false

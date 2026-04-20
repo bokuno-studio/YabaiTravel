@@ -16,6 +16,15 @@ if (!DEVTO_API_KEY) {
   process.exit(1)
 }
 
+function ensureUTMParams(url) {
+  if (!url) return undefined
+  const utmParams = '?utm_source=devto&utm_medium=article&utm_campaign=devto-organic'
+  // Only add UTM if not already present
+  if (url.includes('utm_source=')) return url
+  // Handle URLs with existing query params
+  return url.includes('?') ? `${url}&utm_source=devto&utm_medium=article&utm_campaign=devto-organic` : `${url}${utmParams}`
+}
+
 async function publishArticle(filePath, frontmatter, content) {
   const { title, canonical_url, tags, published_at } = frontmatter
 
@@ -23,7 +32,7 @@ async function publishArticle(filePath, frontmatter, content) {
     article: {
       title: title || 'Untitled',
       body_markdown: content,
-      canonical_url: canonical_url || undefined,
+      canonical_url: ensureUTMParams(canonical_url) || undefined,
       tags: tags || [],
       published: true,
     },

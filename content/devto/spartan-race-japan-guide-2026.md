@@ -1,6 +1,6 @@
 ---
 title: "Spartan Race Japan 2026: Complete Guide for International Participants"
-canonical_url: "https://yabai.travel/en/guide/spartan"
+canonical_url: "https://yabai.travel/en/guide/spartan?utm_source=devto&utm_medium=article&utm_campaign=devto-organic"
 tags: ["fitness", "japan", "spartanrace", "running"]
 published_at: "2026-04-28"
 published: false

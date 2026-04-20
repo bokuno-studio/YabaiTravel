@@ -1,6 +1,6 @@
 ---
 title: "Trail Running Near Tokyo: 10 Day-Trip Races You Can't Miss in 2026"
-canonical_url: "https://yabai.travel/en/blog/trail-running-near-tokyo-2026"
+canonical_url: "https://yabai.travel/en/blog/trail-running-near-tokyo-2026?utm_source=devto&utm_medium=article&utm_campaign=devto-organic"
 tags: ["running", "japan", "trailrunning", "travel"]
 published_at: "2026-04-14"
 published: false
