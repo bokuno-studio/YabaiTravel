@@ -541,14 +541,18 @@ export async function enrichEvent(event, opts = { dryRun: false }) {
           )
           console.log(`  [geocode] ${name?.slice(0, 40)} | ${e.location} → ${venueLat.toFixed(4)}, ${venueLng.toFixed(4)}`)
         } else {
-          // geocodeLocationがnullを返した場合（海上座標を検出した場合）
-          // 既存の座標をリセット
-          if (venueLat != null && venueLng != null) {
+          // geocodeLocation が null を返した = 海上座標（日本イベントのみ）またはGeocodingが精度不足
+          // 海上座標リセットは日本イベントのみ適用する
+          const isJapanEvent = e.country_en === 'Japan' || e.location?.includes('日本')
+          if (isJapanEvent && venueLat != null && venueLng != null) {
             await client.query(
               `UPDATE ${SCHEMA}.events SET latitude = NULL, longitude = NULL WHERE id = $1`,
               [eventId]
             )
             console.log(`  [geocode-sea] ${name?.slice(0, 40)} | sea coordinate detected, reset to NULL`)
+          } else {
+            // 海外イベントで精度不足の場合は既存座標を維持する
+            console.log(`  [geocode-skip] ${name?.slice(0, 40)} | geocode null (low accuracy or non-Japan), keeping existing latlng`)
           }
         }
       } catch (geoErr) {
