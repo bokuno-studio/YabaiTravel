@@ -23,8 +23,7 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { APIProvider, Map as Map$2, Marker, InfoWindow } from "@vis.gl/react-google-maps";
-import { useJsApiLoader, GoogleMap, Marker as Marker$1, Polyline } from "@react-google-maps/api";
+import { APIProvider, Map as Map$2, Marker, InfoWindow, useMap } from "@vis.gl/react-google-maps";
 function isAuthError(error) {
   if (!error) return false;
   if ("code" in error && error.code === "PGRST301") {
@@ -564,7 +563,7 @@ function EventCard({
     Card,
     {
       className: cn(
-        "flex h-full flex-col overflow-hidden border-t-4 bg-white py-0 shadow-sm transition-all duration-200 hover:shadow-lg",
+        "flex h-full flex-col overflow-hidden border-t-4 bg-white py-0 shadow-sm transition-all duration-200 hover:shadow-lg aspect-video",
         borderColor
       ),
       children: [
@@ -7717,17 +7716,14 @@ const EventMap$3 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePr
   __proto__: null,
   default: EventMap$2
 }, Symbol.toStringTag, { value: "Module" }));
-const containerStyle = { width: "100%", height: "300px" };
-function EventMap({ latitude, longitude, accommodations, accessRoutes, isEn }) {
-  const apiKey = (process.env.VITE_GOOGLE_MAPS_KEY || "");
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: apiKey
-  });
+const ROUTE_COLORS = ["#ef4444", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"];
+function EventMapContent({ latitude, longitude, accommodations, accessRoutes, isEn }) {
+  const map = useMap();
+  const polylinesRef = useRef([]);
   const center = useMemo(() => {
     if (!latitude || !longitude) return { lat: 35.68, lng: 139.76 };
     return { lat: latitude, lng: longitude };
   }, [latitude, longitude]);
-  const ROUTE_COLORS = ["#ef4444", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"];
   const polylineGroups = useMemo(() => {
     const groups = [];
     for (const ar of accessRoutes) {
@@ -7776,75 +7772,94 @@ function EventMap({ latitude, longitude, accommodations, accessRoutes, isEn }) {
     }
     return markers;
   }, [accessRoutes, isEn]);
-  const onLoad = useCallback((map) => {
-    const bounds = new google.maps.LatLngBounds();
+  useEffect(() => {
+    if (!map) return;
+    const gWindow = window;
+    const g = gWindow.google;
+    if (!g?.maps?.Polyline) return;
+    polylinesRef.current.forEach((polyline) => polyline.setMap(null));
+    polylinesRef.current = [];
+    for (const group of polylineGroups) {
+      for (const path of group.paths) {
+        const polyline = new g.maps.Polyline({
+          path,
+          strokeColor: group.color,
+          strokeWeight: 5,
+          strokeOpacity: 0.8,
+          map
+        });
+        polylinesRef.current.push(polyline);
+      }
+    }
+    return () => {
+      polylinesRef.current.forEach((polyline) => polyline.setMap(null));
+    };
+  }, [map, polylineGroups]);
+  const onLoad = useCallback((mapInstance) => {
+    const gWindow = window;
+    const g = gWindow.google;
+    if (!g?.maps?.LatLngBounds) return;
+    const bounds = new g.maps.LatLngBounds();
+    const m = mapInstance;
     if (latitude && longitude) bounds.extend({ lat: latitude, lng: longitude });
     for (const a of accommodations) {
       if (a.latitude && a.longitude) bounds.extend({ lat: a.latitude, lng: a.longitude });
     }
-    for (const m of transitMarkers) {
-      bounds.extend({ lat: m.lat, lng: m.lng });
+    for (const t of transitMarkers) {
+      bounds.extend({ lat: t.lat, lng: t.lng });
     }
-    if (!bounds.isEmpty()) {
-      map.fitBounds(bounds, 40);
-      const listener = google.maps.event.addListener(map, "idle", () => {
-        if (map.getZoom() > 13) map.setZoom(13);
-        google.maps.event.removeListener(listener);
+    if (!bounds.isEmpty() && m.fitBounds) {
+      m.fitBounds(bounds, 40);
+      const listener = g.maps.event.addListener(m, "idle", () => {
+        if ((m.getZoom?.() ?? 0) > 13) {
+          m.setZoom?.(13);
+        }
+        g.maps.event.removeListener(listener);
       });
     }
   }, [latitude, longitude, accommodations, transitMarkers]);
   if (!latitude || !longitude) return null;
-  if (!isLoaded) return /* @__PURE__ */ jsx("div", { className: "h-[300px] w-full animate-pulse rounded-lg bg-muted" });
-  return /* @__PURE__ */ jsxs(GoogleMap, { mapContainerStyle: containerStyle, center, zoom: 10, onLoad, children: [
-    /* @__PURE__ */ jsx(
-      Marker$1,
-      {
-        position: center,
-        title: isEn ? "Venue" : "会場",
-        label: { text: "📍", fontSize: "24px" },
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 0
-        }
-      }
-    ),
-    accommodations.filter((a) => a.latitude && a.longitude).map((a, i) => /* @__PURE__ */ jsx(
-      Marker$1,
-      {
-        position: { lat: a.latitude, lng: a.longitude },
-        title: isEn ? a.recommended_area_en ?? a.recommended_area ?? "Hotel" : a.recommended_area ?? "ホテル",
-        label: { text: "🏨", fontSize: "20px" },
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 0
-        }
-      },
-      `hotel-${i}`
-    )),
-    transitMarkers.map((m, i) => /* @__PURE__ */ jsx(
-      Marker$1,
-      {
-        position: { lat: m.lat, lng: m.lng },
-        title: m.label,
-        label: { text: m.label.toLowerCase().includes("airport") ? "✈️" : "🚉", fontSize: "20px" },
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 0
-        }
-      },
-      `transit-${i}`
-    )),
-    polylineGroups.map(
-      (group, gi) => group.paths.map((path, pi) => /* @__PURE__ */ jsx(
-        Polyline,
-        {
-          path,
-          options: { strokeColor: group.color, strokeWeight: 5, strokeOpacity: 0.8 }
-        },
-        `route-${gi}-${pi}`
-      ))
-    )
-  ] });
+  return /* @__PURE__ */ jsxs(
+    Map$2,
+    {
+      style: { width: "100%", height: "300px" },
+      defaultCenter: center,
+      defaultZoom: 10,
+      onLoad,
+      children: [
+        /* @__PURE__ */ jsx(
+          Marker,
+          {
+            position: center,
+            title: isEn ? "Venue" : "会場",
+            children: /* @__PURE__ */ jsx("div", { style: { fontSize: "24px" }, children: "📍" })
+          }
+        ),
+        accommodations.filter((a) => a.latitude && a.longitude).map((a, i) => /* @__PURE__ */ jsx(
+          Marker,
+          {
+            position: { lat: a.latitude, lng: a.longitude },
+            title: isEn ? a.recommended_area_en ?? a.recommended_area ?? "Hotel" : a.recommended_area ?? "ホテル",
+            children: /* @__PURE__ */ jsx("div", { style: { fontSize: "20px" }, children: "🏨" })
+          },
+          `hotel-${i}`
+        )),
+        transitMarkers.map((m, i) => /* @__PURE__ */ jsx(
+          Marker,
+          {
+            position: { lat: m.lat, lng: m.lng },
+            title: m.label,
+            children: /* @__PURE__ */ jsx("div", { style: { fontSize: "20px" }, children: m.label.toLowerCase().includes("airport") ? "✈️" : "🚉" })
+          },
+          `transit-${i}`
+        ))
+      ]
+    }
+  );
+}
+function EventMap(props) {
+  const apiKey = (process.env.VITE_GOOGLE_MAPS_KEY || "");
+  return /* @__PURE__ */ jsx(APIProvider, { apiKey, children: /* @__PURE__ */ jsx(EventMapContent, { ...props }) });
 }
 function decodePolyline(encoded) {
   const points = [];
@@ -7879,7 +7894,7 @@ export {
 
 // --- End SSR bundle ---
 
-const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png\" />\n    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>yabai.travel</title>\n    <meta name=\"description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:title\" content=\"yabai.travel\" />\n    <meta property=\"og:description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Preconnect to critical origins -->\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link rel=\"dns-prefetch\" href=\"https://maps.googleapis.com\" />\n    <link rel=\"dns-prefetch\" href=\"https://supabase.co\" />\n    <!-- Font display swap for system font fallback during load -->\n    <style>\n      @font-face {\n        font-family: 'Inter';\n        font-display: swap;\n        src: local('Inter');\n      }\n    </style>\n    <!-- Google Search Console verification: add meta tag here after registration -->\n    <!-- Google tag (gtag.js) - deferred to reduce TBT -->\n    <script>\n      window.addEventListener('load', function() {\n        var s = document.createElement('script');\n        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';\n        s.async = true;\n        document.head.appendChild(s);\n        s.onload = function() {\n          window.dataLayer = window.dataLayer || [];\n          function gtag(){dataLayer.push(arguments);}\n          gtag('js', new Date());\n          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });\n        };\n      });\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-D3Icu83l.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-react-C9eTcbUC.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-i18n-G-q73JT-.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-ui-ByVhdQxU.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-DYY38vK9.css\">\n  </head>\n  <body>\n    <div id=\"root\"><!--ssr-outlet--></div>\n  </body>\n</html>\n"
+const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png\" />\n    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>yabai.travel</title>\n    <meta name=\"description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:title\" content=\"yabai.travel\" />\n    <meta property=\"og:description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Preconnect to critical origins -->\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link rel=\"dns-prefetch\" href=\"https://maps.googleapis.com\" />\n    <link rel=\"dns-prefetch\" href=\"https://supabase.co\" />\n    <!-- Font display swap for system font fallback during load -->\n    <style>\n      @font-face {\n        font-family: 'Inter';\n        font-display: swap;\n        src: local('Inter');\n      }\n    </style>\n    <!-- Google Search Console verification: add meta tag here after registration -->\n    <!-- Google tag (gtag.js) - deferred to reduce TBT -->\n    <script>\n      window.addEventListener('load', function() {\n        var s = document.createElement('script');\n        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';\n        s.async = true;\n        document.head.appendChild(s);\n        s.onload = function() {\n          window.dataLayer = window.dataLayer || [];\n          function gtag(){dataLayer.push(arguments);}\n          gtag('js', new Date());\n          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });\n        };\n      });\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-DO3FwZO2.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-react-C9eTcbUC.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-i18n-G-q73JT-.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-ui-ByVhdQxU.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-CMHIvBd5.css\">\n  </head>\n  <body>\n    <div id=\"root\"><!--ssr-outlet--></div>\n  </body>\n</html>\n"
 
 // Prefetch events from Supabase for top page SSR data injection
 // Uses AbortController timeout to avoid blocking SSR if Supabase is slow
