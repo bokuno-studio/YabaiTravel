@@ -59,7 +59,16 @@ function getSourceConfig(url) {
     return { type: 'spartan', fetchUrl, baseUrl: base }
   }
   if (url.includes('toughmudder.com')) return { type: 'tough-mudder', fetchUrl: url }
-  if (url.includes('strongviking.com')) return { type: 'strong-viking', fetchUrl: url.includes('/tickets/') ? url : 'https://strongviking.com/en/tickets/' }
+  if (url.includes('strongviking.com')) {
+    return {
+      type: 'strong-viking',
+      fetchUrls: [
+        'https://strongviking.com/en/tickets/',
+        'https://strongviking.com/en/events/',
+        'https://strongviking.com/en/race-calendar/',
+      ]
+    }
+  }
   if (url.includes('devilscircuit.com')) return { type: 'devils-circuit', fetchUrl: url }
   if (url.includes('runnet.jp')) return { type: 'runnet', fetchUrl: url }
   if (url.includes('sportsentry.ne.jp')) return { type: 'sports-entry', fetchUrl: url }
@@ -234,8 +243,28 @@ async function run() {
         const races = extractToughMudder(html)
         race = races[0]
       } else if (config.type === 'strong-viking') {
-        const out = extractStrongViking(html)
-        race = out.races[0]
+        let allRaces = []
+        // Fetch from all configured URLs and combine results
+        const fetchUrls = config.fetchUrls || [config.fetchUrl]
+        for (const fetchUrl of fetchUrls) {
+          try {
+            const urlHtml = await fetchHtml(fetchUrl)
+            const out = extractStrongViking(urlHtml, fetchUrl)
+            allRaces = allRaces.concat(out.races)
+          } catch (e) {
+            console.warn(`Failed to fetch ${fetchUrl}: ${e.message}`)
+          }
+        }
+        // Deduplicate by official_url and take first occurrence
+        const seen = new Set()
+        const uniqueRaces = []
+        for (const r of allRaces) {
+          if (!seen.has(r.official_url)) {
+            seen.add(r.official_url)
+            uniqueRaces.push(r)
+          }
+        }
+        race = uniqueRaces[0]
       } else if (config.type === 'devils-circuit') {
         const races = extractDevilsCircuit(html)
         race = races[0]

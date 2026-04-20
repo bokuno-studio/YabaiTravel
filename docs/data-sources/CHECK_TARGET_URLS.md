@@ -79,8 +79,10 @@
 | 種別 | URL |
 |------|-----|
 | チケット（イベント一覧） | https://strongviking.com/en/tickets/ |
+| イベント一覧 | https://strongviking.com/en/events/ |
+| レースカレンダー | https://strongviking.com/en/race-calendar/ |
 
-オランダ・ベルギー・ドイツで開催。4km〜60kmの障害物レース。Family Run あり。
+オランダ・ベルギー・ドイツで開催。4km〜60kmの障害物レース。Family Run あり。複数URLから統合取得。
 
 ---
 

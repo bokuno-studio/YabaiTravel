@@ -737,10 +737,33 @@ async function runBatchCli() {
       const needsTavilyLookup = !officialUrl || isPortalUrl(officialUrl)
 
       if (needsTavilyLookup) {
-        if (!DRY_RUN) await markEventBatchFailure(pool, eventId, 'Batch requires a fetchable official_url')
-        err++
-        console.log(`  ERR (batch-skip) ${name?.slice(0, 50)} | official_url missing or portal`)
-        continue
+        let discoveredUrl = null
+        try {
+          const tavilyResults = await fetchTavilySearch(`${name} 公式サイト`, { max_results: 3 })
+          for (const r of tavilyResults || []) {
+            if (r.url && !isPortalUrl(r.url) && !AGGREGATOR_DOMAINS.some(d => r.url.includes(d))) {
+              discoveredUrl = r.url
+              break
+            }
+          }
+        } catch (e) {
+          console.log(`  [tavily-fallback] ${name?.slice(0, 40)} | error: ${e.message}`)
+        }
+
+        if (!discoveredUrl) {
+          if (!DRY_RUN) {
+            await markEventBatchFailure(pool, eventId, 'No fetchable URL found via Tavily')
+            await pool.query(
+              `UPDATE ${SCHEMA}.events SET last_error_type = 'not_available' WHERE id = $1`,
+              [eventId]
+            )
+          }
+          err++
+          console.log(`  ERR (no-url) ${name?.slice(0, 50)} | Tavily も見つからず`)
+          continue
+        }
+        event.official_url = discoveredUrl
+        console.log(`  [tavily-fallback] ${name?.slice(0, 40)} | discovered: ${discoveredUrl.slice(0, 50)}`)
       }
       batchableEvents.push(event)
     }
@@ -878,10 +901,33 @@ export async function runOrchestratedEventBatch(events, { dryRun = false } = {})
       const needsTavilyLookup = !officialUrl || isPortalUrl(officialUrl)
 
       if (needsTavilyLookup) {
-        if (!dryRun) await markEventBatchFailure(pool, eventId, 'Batch requires a fetchable official_url')
-        err++
-        console.log(`  ERR (orchestrator-batch-skip) ${name?.slice(0, 50)} | official_url missing or portal`)
-        continue
+        let discoveredUrl = null
+        try {
+          const tavilyResults = await fetchTavilySearch(`${name} 公式サイト`, { max_results: 3 })
+          for (const r of tavilyResults || []) {
+            if (r.url && !isPortalUrl(r.url) && !AGGREGATOR_DOMAINS.some(d => r.url.includes(d))) {
+              discoveredUrl = r.url
+              break
+            }
+          }
+        } catch (e) {
+          console.log(`  [tavily-fallback] ${name?.slice(0, 40)} | error: ${e.message}`)
+        }
+
+        if (!discoveredUrl) {
+          if (!dryRun) {
+            await markEventBatchFailure(pool, eventId, 'No fetchable URL found via Tavily')
+            await pool.query(
+              `UPDATE ${SCHEMA}.events SET last_error_type = 'not_available' WHERE id = $1`,
+              [eventId]
+            )
+          }
+          err++
+          console.log(`  ERR (no-url-orchestrator) ${name?.slice(0, 50)} | Tavily も見つからず`)
+          continue
+        }
+        event.official_url = discoveredUrl
+        console.log(`  [tavily-fallback] ${name?.slice(0, 40)} | discovered: ${discoveredUrl.slice(0, 50)}`)
       }
       batchableEvents.push(event)
     }

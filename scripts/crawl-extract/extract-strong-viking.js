@@ -14,13 +14,18 @@ function parseDate(str) {
   return `${m[3]}-${String(mon).padStart(2, '0')}-${m[1].padStart(2, '0')}`
 }
 
-const SOURCE_URL = 'https://strongviking.com/en/tickets/'
+const SOURCE_URLS = [
+  'https://strongviking.com/en/tickets/',
+  'https://strongviking.com/en/events/',
+  'https://strongviking.com/en/race-calendar/',
+]
 
 /**
  * @param {string} html
+ * @param {string} sourceUrl URL from which the HTML was fetched (for resolving relative URLs)
  * @returns {{ races: Array<{ name: string, event_date: string, official_url: string, entry_url: string, location: string, race_type: string }> }}
  */
-export function extract(html) {
+export function extract(html, sourceUrl = SOURCE_URLS[0]) {
   const $ = cheerio.load(html)
   const races = []
   const seen = new Set()
@@ -31,7 +36,7 @@ export function extract(html) {
     const href = $link.attr('href')
     if (!href) return
 
-    const officialUrl = href.startsWith('http') ? href : new URL(href, SOURCE_URL).href
+    const officialUrl = href.startsWith('http') ? href : new URL(href, sourceUrl).href
     if (seen.has(officialUrl)) return
     seen.add(officialUrl)
 
@@ -59,4 +64,8 @@ export function extract(html) {
   })
 
   return { races }
+}
+
+export function getSourceUrls() {
+  return SOURCE_URLS
 }
