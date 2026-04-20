@@ -134,6 +134,30 @@ function Pricing() {
         </div>
       )}
 
+      {/* Top CTA */}
+      {!isSupporter && (
+        <div className="mb-10 text-center">
+          {!user ? (
+            <Button
+              size="lg"
+              onClick={() => { trackCtaClick('cta_top', '/pricing'); setPendingCrewCheckout(true); signInWithGoogle() }}
+            >
+              {isEn ? 'Join Crew' : 'Crew に参加する'}
+            </Button>
+          ) : (
+            <Button
+              size="lg"
+              onClick={() => { trackCtaClick('cta_top', '/pricing'); handleSubscribe() }}
+              disabled={subscriptionLoading}
+            >
+              {subscriptionLoading
+                ? (isEn ? 'Redirecting...' : 'リダイレクト中...')
+                : (isEn ? 'Join Crew' : 'Crew に参加する')}
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Free/Crew Comparison Table */}
       <div className="mb-10 overflow-x-auto">
         <table className="w-full border-collapse border border-border rounded-lg">
@@ -189,6 +213,30 @@ function Pricing() {
           </tbody>
         </table>
       </div>
+
+      {/* Middle CTA */}
+      {!isSupporter && (
+        <div className="mb-10 text-center">
+          {!user ? (
+            <Button
+              size="lg"
+              onClick={() => { trackCtaClick('cta_middle', '/pricing'); setPendingCrewCheckout(true); signInWithGoogle() }}
+            >
+              {isEn ? 'Join Crew' : 'Crew に参加する'}
+            </Button>
+          ) : (
+            <Button
+              size="lg"
+              onClick={() => { trackCtaClick('cta_middle', '/pricing'); handleSubscribe() }}
+              disabled={subscriptionLoading}
+            >
+              {subscriptionLoading
+                ? (isEn ? 'Redirecting...' : 'リダイレクト中...')
+                : (isEn ? 'Join Crew' : 'Crew に参加する')}
+            </Button>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* One-time Donation Card */}
@@ -341,7 +389,7 @@ function Pricing() {
                   size="lg"
                   onClick={() => { trackCtaClick('google_login', '/pricing'); setPendingCrewCheckout(true); signInWithGoogle() }}
                 >
-                  {isEn ? 'Sign in with Google to get started' : 'Googleでログインして登録する'}
+                  {isEn ? 'Join Crew' : 'Crew に参加する'}
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">
                   {isEn
@@ -359,7 +407,7 @@ function Pricing() {
                 >
                   {subscriptionLoading
                     ? (isEn ? 'Redirecting...' : 'リダイレクト中...')
-                    : (isEn ? 'Become Crew' : 'Crewになる')}
+                    : (isEn ? 'Join Crew' : 'Crew に参加する')}
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">
                   {isEn
