@@ -26,7 +26,7 @@ async function getMetrics() {
     console.log('\n📊 日次メトリクス取得（2026-04-01）\n')
 
     // 1. イベント総件数
-    const events = await client.query(`SELECT COUNT(*) as count FROM ${SCHEMA}.events`)
+    const events = await client.query(`SELECT COUNT(*) as count FROM ${SCHEMA}.events WHERE deleted_at IS NULL`)
     const totalEvents = parseInt(events.rows[0].count, 10)
 
     // 前日比（昨日の統計）
@@ -42,7 +42,7 @@ async function getMetrics() {
     console.log(`   前日比: ${eventsDiff > 0 ? '+' : ''}${eventsDiff} 件\n`)
 
     // 2. カテゴリ総件数
-    const categories = await client.query(`SELECT COUNT(*) as count FROM ${SCHEMA}.categories`)
+    const categories = await client.query(`SELECT COUNT(*) as count FROM ${SCHEMA}.categories WHERE deleted_at IS NULL`)
     const totalCategories = parseInt(categories.rows[0].count, 10)
 
     const prevDayCategories = await client.query(`
@@ -67,6 +67,7 @@ async function getMetrics() {
         COUNT(CASE WHEN collected_at IS NULL AND enrich_attempt_count >= 5 THEN 1 END) as failed,
         COUNT(CASE WHEN collected_at IS NULL AND enrich_attempt_count < 5 THEN 1 END) as pending
       FROM ${SCHEMA}.events
+      WHERE deleted_at IS NULL
     `)
     const eventStats = enrichedEvents.rows[0]
     console.log(`   enrich-event:`)
@@ -82,6 +83,7 @@ async function getMetrics() {
         COUNT(CASE WHEN entry_fee IS NULL AND attempt_count >= 5 THEN 1 END) as failed,
         COUNT(CASE WHEN entry_fee IS NULL AND attempt_count < 5 THEN 1 END) as pending
       FROM ${SCHEMA}.categories
+      WHERE deleted_at IS NULL
     `)
     const catStats = enrichedCategories.rows[0]
     console.log(`   enrich-category-detail:`)
@@ -114,7 +116,7 @@ async function getMetrics() {
     const todayEvents = await client.query(`
       SELECT COUNT(*) as count
       FROM ${SCHEMA}.events
-      WHERE updated_at::DATE = $1
+      WHERE updated_at::DATE = $1 AND deleted_at IS NULL
     `, [today])
 
     console.log(`   新規/更新:`)

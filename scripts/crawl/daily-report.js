@@ -68,15 +68,15 @@ async function collectStats(client) {
     entryFeeFilled,
     todayProcessedStep2,
   ] = await Promise.all([
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE collected_at IS NOT NULL`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE official_url IS NOT NULL AND official_url != ''`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE description IS NOT NULL AND description != ''`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE event_date IS NOT NULL`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE latitude IS NOT NULL AND longitude IS NOT NULL`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE id IN (SELECT DISTINCT event_id FROM ${SCHEMA}.categories)`),
-    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE entry_fee IS NOT NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE deleted_at IS NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE deleted_at IS NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE collected_at IS NOT NULL AND deleted_at IS NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE official_url IS NOT NULL AND official_url != '' AND deleted_at IS NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE description IS NOT NULL AND description != '' AND deleted_at IS NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE event_date IS NOT NULL AND deleted_at IS NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND deleted_at IS NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE id IN (SELECT DISTINCT event_id FROM ${SCHEMA}.categories) AND deleted_at IS NULL`),
+    queryCount(client, `SELECT count(*) FROM ${SCHEMA}.categories WHERE entry_fee IS NOT NULL AND deleted_at IS NULL`),
     queryCount(client, `SELECT count(*) FROM ${SCHEMA}.events WHERE collected_at >= CURRENT_DATE AND deleted_at IS NULL`),
   ])
 
@@ -141,7 +141,7 @@ async function getErrorBreakdown(client) {
   const { rows } = await client.query(`
     SELECT last_error_type, count(*) as cnt
     FROM ${SCHEMA}.events
-    WHERE collected_at IS NULL
+    WHERE collected_at IS NULL AND deleted_at IS NULL
     GROUP BY last_error_type
     ORDER BY cnt DESC
   `)
