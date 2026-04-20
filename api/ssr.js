@@ -21,10 +21,10 @@ import { twMerge } from "tailwind-merge";
 import { DayPicker } from "react-day-picker";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { createPortal } from "react-dom";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { APIProvider, Map as Map$2, Marker, InfoWindow } from "@vis.gl/react-google-maps";
 import { useJsApiLoader, GoogleMap, Marker as Marker$1, Polyline } from "@react-google-maps/api";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 function isAuthError(error) {
   if (!error) return false;
   if ("code" in error && error.code === "PGRST301") {
@@ -564,7 +564,7 @@ function EventCard({
     Card,
     {
       className: cn(
-        "flex h-full flex-col overflow-hidden border-t-4 bg-white py-0 shadow-sm transition-all duration-200 hover:shadow-lg",
+        "flex h-full flex-col overflow-hidden border-t-4 bg-white py-0 shadow-sm transition-all duration-200 hover:shadow-lg aspect-video",
         borderColor
       ),
       children: [
@@ -7204,6 +7204,10 @@ function BlogList() {
     ] })
   ] });
 }
+const MarkdownRenderer$2 = lazy(() => Promise.resolve().then(() => MarkdownRenderer$1));
+function LazyMarkdown({ content }) {
+  return /* @__PURE__ */ jsx(Suspense, { fallback: /* @__PURE__ */ jsx("div", { className: "prose prose-sm animate-pulse" }), children: /* @__PURE__ */ jsx(MarkdownRenderer$2, { content }) });
+}
 function rewriteLinks(content) {
   return content.replace(/https?:\/\/yabai\.travel/g, "");
 }
@@ -7264,7 +7268,7 @@ function BlogPost() {
           }
         )
       ] }),
-      /* @__PURE__ */ jsx("article", { className: "prose prose-sm max-w-none dark:prose-invert prose-headings:font-bold prose-headings:tracking-tight prose-h2:mt-8 prose-h2:mb-4 prose-h2:text-xl prose-h3:mt-6 prose-h3:mb-3 prose-h3:text-lg prose-p:leading-relaxed prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-img:rounded-lg prose-table:text-sm prose-th:text-left prose-strong:font-semibold", children: /* @__PURE__ */ jsx(ReactMarkdown, { remarkPlugins: [remarkGfm], children: markdownContent }) }),
+      /* @__PURE__ */ jsx("article", { className: "prose prose-sm max-w-none dark:prose-invert prose-headings:font-bold prose-headings:tracking-tight prose-h2:mt-8 prose-h2:mb-4 prose-h2:text-xl prose-h3:mt-6 prose-h3:mb-3 prose-h3:text-lg prose-p:leading-relaxed prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-img:rounded-lg prose-table:text-sm prose-th:text-left prose-strong:font-semibold", children: /* @__PURE__ */ jsx(LazyMarkdown, { content: markdownContent }) }),
       /* @__PURE__ */ jsx("div", { className: "mt-12 border-t border-border pt-6", children: /* @__PURE__ */ jsxs(
         Link,
         {
@@ -7873,13 +7877,20 @@ const EventMap$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePr
   __proto__: null,
   default: EventMap
 }, Symbol.toStringTag, { value: "Module" }));
+function MarkdownRenderer({ content }) {
+  return /* @__PURE__ */ jsx(ReactMarkdown, { remarkPlugins: [remarkGfm], children: content });
+}
+const MarkdownRenderer$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: MarkdownRenderer
+}, Symbol.toStringTag, { value: "Module" }));
 export {
   render
 };
 
 // --- End SSR bundle ---
 
-const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png\" />\n    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>yabai.travel</title>\n    <meta name=\"description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:title\" content=\"yabai.travel\" />\n    <meta property=\"og:description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Preconnect to critical origins -->\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link rel=\"dns-prefetch\" href=\"https://maps.googleapis.com\" />\n    <link rel=\"dns-prefetch\" href=\"https://supabase.co\" />\n    <!-- Font display swap for system font fallback during load -->\n    <style>\n      @font-face {\n        font-family: 'Inter';\n        font-display: swap;\n        src: local('Inter');\n      }\n    </style>\n    <!-- Google Search Console verification: add meta tag here after registration -->\n    <!-- Google tag (gtag.js) - deferred to reduce TBT -->\n    <script>\n      window.addEventListener('load', function() {\n        var s = document.createElement('script');\n        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';\n        s.async = true;\n        document.head.appendChild(s);\n        s.onload = function() {\n          window.dataLayer = window.dataLayer || [];\n          function gtag(){dataLayer.push(arguments);}\n          gtag('js', new Date());\n          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });\n        };\n      });\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-D3Icu83l.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-react-C9eTcbUC.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-i18n-G-q73JT-.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-ui-ByVhdQxU.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-DYY38vK9.css\">\n  </head>\n  <body>\n    <div id=\"root\"><!--ssr-outlet--></div>\n  </body>\n</html>\n"
+const TEMPLATE = "<!doctype html>\n<html lang=\"ja\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png\" />\n    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>yabai.travel</title>\n    <meta name=\"description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:title\" content=\"yabai.travel\" />\n    <meta property=\"og:description\" content=\"トレラン・スパルタン・ハイロックス等エンデュランス系大会の情報と参戦ロジスティクスを提供するポータルサイト\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Preconnect to critical origins -->\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link rel=\"dns-prefetch\" href=\"https://maps.googleapis.com\" />\n    <link rel=\"dns-prefetch\" href=\"https://supabase.co\" />\n    <!-- Font display swap for system font fallback during load -->\n    <style>\n      @font-face {\n        font-family: 'Inter';\n        font-display: swap;\n        src: local('Inter');\n      }\n    </style>\n    <!-- Google Search Console verification: add meta tag here after registration -->\n    <!-- Google tag (gtag.js) - deferred to reduce TBT -->\n    <script>\n      window.addEventListener('load', function() {\n        var s = document.createElement('script');\n        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TNN6DES8DP';\n        s.async = true;\n        document.head.appendChild(s);\n        s.onload = function() {\n          window.dataLayer = window.dataLayer || [];\n          function gtag(){dataLayer.push(arguments);}\n          gtag('js', new Date());\n          gtag('config', 'G-TNN6DES8DP', { send_page_view: false });\n        };\n      });\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-IbzB1MlC.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-react-C9eTcbUC.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-i18n-G-q73JT-.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/vendor-ui-ByVhdQxU.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-CMHIvBd5.css\">\n  </head>\n  <body>\n    <div id=\"root\"><!--ssr-outlet--></div>\n  </body>\n</html>\n"
 
 // Prefetch events from Supabase for top page SSR data injection
 // Uses AbortController timeout to avoid blocking SSR if Supabase is slow

@@ -1,10 +1,9 @@
 import { useParams, Link, Navigate } from 'react-router-dom'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { getArticle, getAlternateLang } from '../lib/blog'
 import { blogPostToJsonLd } from '../lib/jsonld'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Calendar } from 'lucide-react'
+import { LazyMarkdown } from '@/components/LazyMarkdown'
 
 /** Convert absolute yabai.travel links to relative paths */
 function rewriteLinks(content: string): string {
@@ -89,7 +88,7 @@ function BlogPost() {
 
         {/* Markdown content */}
         <article className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-bold prose-headings:tracking-tight prose-h2:mt-8 prose-h2:mb-4 prose-h2:text-xl prose-h3:mt-6 prose-h3:mb-3 prose-h3:text-lg prose-p:leading-relaxed prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-img:rounded-lg prose-table:text-sm prose-th:text-left prose-strong:font-semibold">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownContent}</ReactMarkdown>
+          <LazyMarkdown content={markdownContent} />
         </article>
 
         {/* Back to blog link */}
