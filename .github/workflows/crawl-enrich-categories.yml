@@ -2,6 +2,8 @@
 name: Enrich Categories (②-B)
 
 on:
+  schedule:
+    - cron: '0 3 * * 2'  # 毎週火曜03:00 UTC
   workflow_dispatch:
     inputs:
       limit:

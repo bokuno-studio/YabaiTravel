@@ -2,6 +2,8 @@
 name: Enrich Logi (③)
 
 on:
+  schedule:
+    - cron: '0 3 * * 1'  # 毎週月曜03:00 UTC
   workflow_dispatch:
     inputs:
       limit:
