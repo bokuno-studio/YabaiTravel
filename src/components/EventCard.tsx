@@ -157,7 +157,7 @@ export function EventCard({
   return (
     <Card
       className={cn(
-        'flex h-full flex-col overflow-hidden border-t-4 bg-white py-0 shadow-sm transition-all duration-200 hover:shadow-lg',
+        'flex h-full flex-col overflow-hidden border-t-4 bg-white py-0 shadow-sm transition-all duration-200 hover:shadow-lg aspect-video',
         borderColor,
       )}
     >
