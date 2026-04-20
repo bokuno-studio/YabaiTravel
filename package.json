@@ -32,7 +32,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
-    "@react-google-maps/api": "^2.20.8",
     "@sentry/react": "^10.45.0",
     "@supabase/supabase-js": "^2.98.0",
     "@tailwindcss/vite": "^4.2.2",
