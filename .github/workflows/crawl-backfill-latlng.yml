@@ -1,0 +1,32 @@
+name: Backfill latlng (Geocoding)
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: '処理件数上限'
+        required: false
+        default: '100'
+  schedule:
+    - cron: '0 3 * * *'  # 毎日 UTC 3:00（JST 12:00）
+
+permissions:
+  contents: read
+
+jobs:
+  backfill-latlng:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: latlng 補完（Geocoding）
+        run: node scripts/crawl/backfill-latlng.js --limit=${{ github.event.inputs.limit || '100' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_SCHEMA: yabai_travel
+          GOOGLE_DIRECTIONS_API_KEY: ${{ secrets.GOOGLE_DIRECTIONS_API_KEY }}
