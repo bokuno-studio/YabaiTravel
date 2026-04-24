@@ -3,7 +3,7 @@ name: Daily Crawl Report
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # 09:00 JST
+    - cron: '0 20 * * *'  # 05:00 JST
   workflow_dispatch:
 
 permissions:
